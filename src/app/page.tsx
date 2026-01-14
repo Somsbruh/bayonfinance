@@ -16,18 +16,23 @@ import { supabase } from "@/lib/supabase";
 import PatientSearch from "@/components/PatientSearch";
 
 export default function LedgerPage() {
-  const [date, setDate] = useState(new Date());
+  const [date, setDate] = useState<Date>(new Date());
+  const [mounted, setMounted] = useState(false);
   const [entries, setEntries] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Totals
   const totalUSD = entries.reduce((acc, entry) => acc + (Number(entry.amount_paid) || 0), 0);
   const totalKHR = totalUSD * 4100;
 
   useEffect(() => {
-    fetchEntries();
-  }, [date]);
+    if (mounted) fetchEntries();
+  }, [date, mounted]);
 
   async function fetchEntries() {
     setIsLoading(true);
@@ -67,7 +72,7 @@ export default function LedgerPage() {
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <span className="font-bold text-sm min-w-[140px] text-center">
-                {format(date, 'EEEE, MMM do yyyy')}
+                {mounted ? format(date, 'EEEE, MMM do yyyy') : 'Loading date...'}
               </span>
               <button
                 onClick={() => setDate(new Date(date.setDate(date.getDate() + 1)))}
