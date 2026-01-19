@@ -22,87 +22,140 @@
   --color-ring: var(--ring);
   --radius-xl: 0.75rem;
   --radius-2xl: 1rem;
-  --radius-3xl: 1.5rem;
+  --radius-3xl: 1.25rem;
 }
 
 :root {
-  --background: #0f172a;
-  --foreground: #f8fafc;
-  --card: #1e293b;
-  --card-foreground: #f8fafc;
-  --popover: #1e293b;
-  --popover-foreground: #f8fafc;
-  --primary: #3b82f6;
-  --primary-foreground: #ffffff;
-  --secondary: #334155;
-  --secondary-foreground: #f8fafc;
-  --muted: #334155;
-  --muted-foreground: #94a3b8;
-  --accent: #334155;
-  --accent-foreground: #f8fafc;
-  --destructive: #ef4444;
-  --destructive-foreground: #f8fafc;
-  --border: #334155;
-  --input: #334155;
-  --ring: #3b82f6;
+  /* Neutral Palette - Light Mode Only */
+  --background: #F4F7FE;
+  /* Very soft light gray/blue tint */
+  --foreground: #1B2559;
+  /* Deep navy for text */
+
+  --card: #FFFFFF;
+  --card-foreground: #1B2559;
+
+  --popover: #FFFFFF;
+  --popover-foreground: #1B2559;
+
+  --primary: #4318FF;
+  /* Vibrant modern blue */
+  --primary-foreground: #FFFFFF;
+
+  --secondary: #F4F7FE;
+  --secondary-foreground: #1B2559;
+
+  --muted: #A3AED0;
+  /* Soft gray for captions/icons */
+  --muted-foreground: #707EAE;
+
+  --accent: #E9EDF7;
+  --accent-foreground: #1B2559;
+
+  --destructive: #EE5D50;
+  --destructive-foreground: #FFFFFF;
+
+  --border: #E0E5F2;
+  --input: #FFFFFF;
+  --ring: #4318FF;
+
+  --success: #01B574;
+  --warning: #FFB547;
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: 'Inter', sans-serif;
+  font-family: 'DM Sans', 'Inter', sans-serif;
+  letter-spacing: -0.02em;
 }
 
+/* Premium Card Style - Inspiration from Photo */
 .glass {
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 14px 17px 40px 4px rgba(112, 144, 176, 0.08);
+}
+
+.card-premium {
+  background: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 14px 17px 40px 4px rgba(112, 144, 176, 0.08);
+  border: 1px solid transparent;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.card-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: 14px 17px 40px 4px rgba(112, 144, 176, 0.12);
+}
+
+/* Ledger & Tables */
+.ledger-table thead {
+  background: #F4F7FE;
 }
 
 .ledger-table th {
   padding: 0.75rem 1rem;
   text-align: left;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.6rem;
+  font-weight: 800;
   color: var(--muted-foreground);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--border);
+  letter-spacing: 0.1em;
+  border: none;
 }
 
 .ledger-table td {
-  padding: 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
+  padding: 0.6rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--foreground);
   border-bottom: 1px solid var(--border);
 }
 
 .ledger-row:hover td {
-  background-color: var(--accent);
+  background-color: #F8FAFF;
 }
 
-.summary-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 4rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 2rem;
-  z-index: 50;
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+/* Modern Inputs */
+.modern-input {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.5rem 0.875rem;
+  color: var(--foreground);
+  transition: all 0.2s;
+}
+
+.modern-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(67, 24, 255, 0.1);
+  outline: none;
+}
+
+/* Buttons */
+.btn-primary {
+  background: var(--primary);
+  color: white;
+  font-weight: 700;
+  border-radius: 12px;
+  box-shadow: 45px 76px 113px 7px rgba(112, 144, 176, 0.08);
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  background: #3311DB;
+  transform: scale(1.02);
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -110,10 +163,18 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 4px;
+  background: #D1D9E6;
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #A3AED0;
+}
+
+/* Glass Tabs like in the photo */
+.tab-active {
+  background: #FFFFFF;
+  box-shadow: 0px 4px 14px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  color: var(--primary);
 }

@@ -13,106 +13,195 @@ import {
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import PatientSearch from "@/components/PatientSearch";
+import { formatTelegramLink, cn } from "@/lib/utils";
+
+import { useBranch } from "@/context/BranchContext";
 
 export default function PatientsPage() {
+    const { currentBranch } = useBranch();
     const [patients, setPatients] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [filterUnpaid, setFilterUnpaid] = useState(false);
 
     useEffect(() => {
-        fetchPatients();
-    }, []);
+        if (currentBranch) fetchPatients();
+    }, [currentBranch]);
 
     async function fetchPatients() {
         setIsLoading(true);
         const { data, error } = await supabase
             .from('patients')
             .select('*')
+            .eq('branch_id', currentBranch?.id)
             .order('name');
 
         if (data) setPatients(data);
         setIsLoading(false);
     }
 
+    const unpaidCount = patients.filter(p => Number(p.total_remaining) > 0).length;
+
     return (
-        <div className="space-y-8 max-w-6xl mx-auto">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-black">Patient Directory</h1>
-                    <p className="text-sm text-muted-foreground">Manage records and lifetime financial status</p>
+        <div className="space-y-10">
+            {/* Header & Quick Stats */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4">
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-[#A3AED0] font-black text-[10px] uppercase tracking-[0.2em]">
+                        <Users className="w-3.5 h-3.5" />
+                        CRM System
+                    </div>
+                    <h1 className="text-4xl font-black text-[#1B2559] tracking-tight">Patient Portfolio</h1>
+                    <p className="text-sm font-bold text-[#707EAE]">Comprehensive overview of lifecycle clinical records and financial standing</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
+                    <div className="hidden lg:flex flex-col items-end mr-4">
+                        <span className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest">Global Reach</span>
+                        <div className="flex items-center gap-2 mt-1">
+                            {Array.from({ length: 4 }).map((_, i) => (
+                                <div key={i} className="w-6 h-6 rounded-full border-2 border-white bg-[#F4F7FE] flex items-center justify-center -ml-2 first:ml-0 overflow-hidden shadow-sm">
+                                    <UserIcon className="w-3 h-3 text-[#A3AED0]" />
+                                </div>
+                            ))}
+                            <span className="text-xs font-black text-[#1B2559] ml-1">+{patients.length} Registered</span>
+                        </div>
+                    </div>
                     <PatientSearch />
                 </div>
             </div>
 
-            <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-xl">
-                <div className="p-6 border-b border-border bg-secondary/20 flex items-center justify-between">
+            {/* Main Content Area */}
+            <div className="card-premium p-0 border-none overflow-hidden pb-8">
+                <div className="p-8 pb-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="bg-primary/10 text-primary p-2 rounded-lg">
-                            <Users className="w-5 h-5" />
+                        <div className="p-3 rounded-2xl bg-primary/5 text-primary">
+                            <Users className="w-6 h-6" />
                         </div>
-                        <span className="font-bold">{patients.length} Total Patients</span>
+                        <div>
+                            <span className="text-lg font-black text-[#1B2559] block tracking-tight">Clinical Directory</span>
+                            <span className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest">{patients.length} Active Records Linked</span>
+                        </div>
                     </div>
-                    <button className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-2">
-                        <Filter className="w-4 h-4" /> Filter List
-                    </button>
+
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setFilterUnpaid(!filterUnpaid)}
+                            className={cn(
+                                "text-[10px] font-black px-6 py-3 rounded-2xl border transition-all flex items-center gap-3 uppercase tracking-widest shadow-sm hover:shadow-md",
+                                filterUnpaid
+                                    ? "bg-red-500 text-white border-red-400 shadow-xl shadow-red-500/20"
+                                    : "text-[#1B2559] hover:bg-[#F4F7FE] border-[#E0E5F2] bg-white"
+                            )}
+                        >
+                            <Filter className="w-3.5 h-3.5" />
+                            {filterUnpaid ? `Critical Balance Only (${unpaidCount})` : "Filter Arrears"}
+                        </button>
+                    </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full ledger-table">
+                <div className="overflow-x-auto px-4">
+                    <table className="w-full text-left">
                         <thead>
-                            <tr className="bg-secondary/40">
-                                <th>Patient Name</th>
-                                <th>Gender/Age</th>
-                                <th>Contact</th>
-                                <th>Paid to Date</th>
-                                <th>Remaining</th>
-                                <th className="w-[100px]"></th>
+                            <tr className="border-b border-[#F4F7FE]">
+                                <th className="px-4 py-5 text-[10px] font-black text-[#A3AED0] uppercase tracking-[0.2em] min-w-[200px]">Patient Descriptor</th>
+                                <th className="px-4 py-5 text-[10px] font-black text-[#A3AED0] uppercase tracking-[0.2em] min-w-[120px]">Demographics</th>
+                                <th className="px-4 py-5 text-[10px] font-black text-[#A3AED0] uppercase tracking-[0.2em] min-w-[150px]">Contact Node</th>
+                                <th className="px-4 py-5 text-[10px] font-black text-[#A3AED0] uppercase tracking-[0.2em] min-w-[120px]">Aggregate Paid</th>
+                                <th className="px-4 py-5 text-[10px] font-black text-[#A3AED0] uppercase tracking-[0.2em] min-w-[120px]">Outstanding</th>
+                                <th className="px-4 py-5 text-[10px] font-black text-[#A3AED0] uppercase tracking-[0.2em] w-[60px]"></th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y divide-[#F4F7FE]">
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan={6} className="text-center py-20 text-muted-foreground">Searching records...</td>
+                                    <td colSpan={6} className="text-center py-24">
+                                        <div className="flex flex-col items-center gap-4">
+                                            <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                                            <p className="text-xs font-black text-[#A3AED0] uppercase tracking-widest">Deciphering database records...</p>
+                                        </div>
+                                    </td>
                                 </tr>
                             ) : patients.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="text-center py-20 text-muted-foreground italic">No patients registered yet.</td>
+                                    <td colSpan={6} className="text-center py-24">
+                                        <div className="flex flex-col items-center gap-4 opacity-40">
+                                            <div className="w-20 h-20 rounded-full bg-[#F4F7FE] flex items-center justify-center">
+                                                <Users className="w-10 h-10 text-[#A3AED0]" />
+                                            </div>
+                                            <div>
+                                                <p className="text-lg font-black text-[#1B2559]">Portfolio Empty</p>
+                                                <p className="text-xs font-bold text-[#A3AED0]">Initialize CRM by adding your first clinical profile.</p>
+                                            </div>
+                                        </div>
+                                    </td>
                                 </tr>
                             ) : (
-                                patients.map((p) => (
-                                    <tr key={p.id} className="ledger-row group">
-                                        <td>
-                                            <Link href={`/patients/${p.id}`} className="flex items-center gap-3 hover:text-primary transition-colors">
-                                                <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center text-primary font-black">
-                                                    {p.name[0]}
+                                patients
+                                    .filter(p => !filterUnpaid || Number(p.total_remaining) > 0)
+                                    .map((p) => (
+                                        <tr key={p.id} className="group hover:bg-[#F4F7FE]/50 transition-all cursor-pointer">
+                                            <td className="px-4 py-4">
+                                                <Link href={`/patients/${p.id}`} className="flex items-center gap-3 group/link">
+                                                    <div className="w-10 h-10 rounded-xl bg-[#F4F7FE] flex items-center justify-center text-primary font-black shadow-inner border border-[#E0E5F2] group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all duration-300">
+                                                        {p.name[0]}
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-black text-xs text-[#1B2559] group-hover/link:text-primary transition-colors block tracking-tight">{p.name}</span>
+                                                        <span className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest mt-0.5 block opacity-60">ID: {p.id.slice(0, 8)}</span>
+                                                    </div>
+                                                </Link>
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-[9px] font-black bg-[#E9EDF7] text-[#1B2559] px-2.5 py-1 rounded-full uppercase tracking-widest border border-[#E0E5F2]">
+                                                        {p.gender === 'F' ? 'F' : 'M'}
+                                                    </span>
+                                                    <span className="text-[9px] font-black text-[#707EAE] uppercase tracking-widest">
+                                                        {p.age}Y
+                                                    </span>
                                                 </div>
-                                                <span className="font-bold">{p.name}</span>
-                                            </Link>
-                                        </td>
-                                        <td>
-                                            <span className="text-xs bg-secondary px-2 py-1 rounded-lg">
-                                                {p.gender}/{p.age}y
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                <Phone className="w-3 h-3" />
-                                                {p.phone || 'N/A'}
-                                            </div>
-                                        </td>
-                                        <td className="text-green-400 font-bold font-mono">${Number(p.total_paid).toLocaleString()}</td>
-                                        <td className="text-red-400 font-bold font-mono">${Number(p.total_remaining).toLocaleString()}</td>
-                                        <td>
-                                            <Link
-                                                href={`/patients/${p.id}`}
-                                                className="p-2 hover:bg-primary/10 rounded-xl text-primary opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1 text-xs font-bold"
-                                            >
-                                                Details <ChevronRight className="w-4 h-4" />
-                                            </Link>
-                                        </td>
-                                    </tr>
-                                ))
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                {p.phone ? (
+                                                    <a
+                                                        href={formatTelegramLink(p.phone)}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1.5 text-[9px] font-black text-primary hover:text-white hover:bg-primary uppercase tracking-widest bg-primary/5 px-2.5 py-1.5 rounded-lg border border-primary/10 transition-all"
+                                                    >
+                                                        <Phone className="w-2.5 h-2.5" />
+                                                        {p.phone.startsWith('855') ? p.phone.slice(3) : p.phone}
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest italic">Unset</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <div className="space-y-0.5">
+                                                    <div className="text-xs font-black text-[#01B574] tracking-tight">${Number(p.total_paid).toLocaleString()}</div>
+                                                    <div className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest">Realized</div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <div className="space-y-0.5">
+                                                    <div className={cn(
+                                                        "text-xs font-black tracking-tight",
+                                                        Number(p.total_remaining) > 0 ? "text-red-500" : "text-[#1B2559]"
+                                                    )}>
+                                                        ${Number(p.total_remaining).toLocaleString()}
+                                                    </div>
+                                                    <div className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest">Liability</div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <Link
+                                                    href={`/patients/${p.id}`}
+                                                    className="w-8 h-8 rounded-xl bg-white border border-[#E0E5F2] flex items-center justify-center text-[#A3AED0] hover:bg-primary hover:text-white hover:border-primary opacity-0 group-hover:opacity-100 transition-all shadow-sm translate-x-2 group-hover:translate-x-0"
+                                                >
+                                                    <ChevronRight className="w-4 h-4" />
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    ))
                             )}
                         </tbody>
                     </table>
