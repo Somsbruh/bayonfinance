@@ -25,6 +25,7 @@ interface Treatment {
     group_name: string;
     specialty_tag: string;
     intent_tag: string;
+    duration_minutes: number;
     created_at?: string;
 }
 
@@ -78,7 +79,8 @@ export default function TreatmentsPage() {
         category: CATEGORIES[0],
         group_name: "",
         specialty_tag: SPECIALTIES[0],
-        intent_tag: INTENTS[0]
+        intent_tag: INTENTS[0],
+        duration_minutes: "15"
     });
     const [editingTreatment, setEditingTreatment] = useState<Treatment | null>(null);
     const [loading, setLoading] = useState(true);
@@ -118,6 +120,7 @@ export default function TreatmentsPage() {
                 group_name: newTreatment.group_name,
                 specialty_tag: newTreatment.specialty_tag,
                 intent_tag: newTreatment.intent_tag,
+                duration_minutes: parseInt(newTreatment.duration_minutes),
                 branch_id: currentBranch?.id
             });
 
@@ -129,7 +132,8 @@ export default function TreatmentsPage() {
                     category: CATEGORIES[0],
                     group_name: "",
                     specialty_tag: SPECIALTIES[0],
-                    intent_tag: INTENTS[0]
+                    intent_tag: INTENTS[0],
+                    duration_minutes: "15"
                 });
                 fetchTreatments();
             } else {
@@ -150,7 +154,8 @@ export default function TreatmentsPage() {
                 category: editingTreatment.category,
                 group_name: editingTreatment.group_name,
                 specialty_tag: editingTreatment.specialty_tag,
-                intent_tag: editingTreatment.intent_tag
+                intent_tag: editingTreatment.intent_tag,
+                duration_minutes: editingTreatment.duration_minutes
             }).eq('id', editingTreatment.id);
 
             if (!error) {
@@ -289,7 +294,10 @@ export default function TreatmentsPage() {
                                             </div>
                                             <div className="flex items-baseline gap-1.5">
                                                 <span className="text-2xl font-black text-[#1B2559] tracking-tighter group-hover:scale-105 transition-transform origin-left duration-300">${t.price}</span>
-                                                <span className="text-[8px] text-[#A3AED0] font-black uppercase tracking-[0.2em]">USD</span>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[8px] text-[#A3AED0] font-black uppercase tracking-[0.2em] leading-none">USD</span>
+                                                    <span className="text-[10px] text-primary/60 font-bold tracking-tight mt-0.5">{t.duration_minutes}m</span>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -424,6 +432,20 @@ export default function TreatmentsPage() {
                                         placeholder="0.00"
                                     />
                                 </div>
+                            </div>
+
+                            <div className="col-span-2 space-y-1.5">
+                                <label className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest pl-1 block text-center">Standard Duration (Minutes)</label>
+                                <input
+                                    type="number"
+                                    className="w-full bg-[#F4F7FE] border-none rounded-2xl px-12 py-3 text-xl font-black text-[#1B2559] outline-none text-center"
+                                    value={isAdding ? newTreatment.duration_minutes : editingTreatment?.duration_minutes || 0}
+                                    onChange={(e) => isAdding
+                                        ? setNewTreatment({ ...newTreatment, duration_minutes: e.target.value })
+                                        : setEditingTreatment(prev => prev ? { ...prev, duration_minutes: Number(e.target.value) } : null)
+                                    }
+                                    placeholder="Minutes..."
+                                />
                             </div>
                         </div>
 

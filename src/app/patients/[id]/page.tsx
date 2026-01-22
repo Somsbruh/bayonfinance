@@ -20,7 +20,10 @@ import {
     X as XIcon,
     Edit2,
     Target,
-    Clock
+    Clock,
+    CheckCircle2,
+    AlertCircle,
+    XCircle
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { format } from "date-fns";
@@ -31,28 +34,63 @@ import { twMerge } from "tailwind-merge";
 import { Search } from "lucide-react";
 
 const CATEGORIES = [
-    "Diagnostics & Consultation",
-    "Preventive Care",
-    "Restorative Dentistry",
+    "Diagnostics",
+    "Preventive",
+    "Restorative",
     "Endodontics",
-    "Periodontal Care",
+    "Periodontics",
     "Oral Surgery",
-    "Prosthodontics (Fixed)",
-    "Prosthodontics (Removable)",
+    "Prosthodontics",
     "Implant Treatment",
     "Orthodontics",
-    "Cosmetic Dentistry",
-    "Pediatric Dentistry",
-    "Emergency & Pain Management"
+    "Cosmetics",
+    "Pediatrics",
+    "Emergency"
 ];
+
+const CATEGORY_MAPPING: Record<string, string> = {
+    "Diagnostics & Consultation": "Diagnostics",
+    "Preventive Care": "Preventive",
+    "Restorative Dentistry": "Restorative",
+    "Periodontal Care": "Periodontics",
+    "Periodontics": "Periodontics", // For consistency
+    "Prosthodontics (Fixed)": "Prosthodontics",
+    "Prosthodontics (Removable)": "Prosthodontics",
+    "Pediatric Dentistry": "Pediatrics",
+    "Cosmetic Dentistry": "Cosmetics",
+    "Emergency & Pain Management": "Emergency",
+};
+
+const FILTER_COLORS: Record<string, string> = {
+    "Diagnostics": "#4A90E2", // Blue
+    "Preventive": "#2ECC71", // Green
+    "Restorative": "#F1C40F", // Yellow
+    "Endodontics": "#E67E22", // Orange
+    "Periodontics": "#8E44AD", // Purple
+    "Oral Surgery": "#C0392B", // Red
+    "Prosthodontics": "#16A085", // Teal
+    "Implant Treatment": "#2980B9", // Soft Blue
+    "Orthodontics": "#F39C12", // Amber
+    "Cosmetics": "#D35400", // Deep Orange
+    "Pediatrics": "#EC407A", // Pink
+    "Emergency": "#7F8C8D", // Slate
+    // Tags mapping (if distinct from categories)
+    "URGENT": "#C0392B",
+    "ESTHETIC": "#EC407A",
+    "ROUTINE": "#2ECC71",
+};
+
+const getCategoryColor = (name: string) => FILTER_COLORS[name] || "#A3AED0";
 import { useCurrency } from "@/context/CurrencyContext";
 import { useBranch } from "@/context/BranchContext";
+
+import { Suspense } from "react";
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
-export default function PatientDetailsPage() {
+function PatientDetailsContent() {
     const { id } = useParams();
     const router = useRouter();
     const { usdToKhr } = useCurrency();
@@ -89,22 +127,6 @@ export default function PatientDetailsPage() {
         { code: "+49", label: "🇩🇪 DE", name: "Germany" }
     ];
 
-    // Historical Entry States
-    const [isAddingHistorical, setIsAddingHistorical] = useState(false);
-    const [treatmentSearchTerm, setTreatmentSearchTerm] = useState("");
-    const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
-    const [activeCategory, setActiveCategory] = useState<string>(CATEGORIES[0]);
-    const [historicalEntry, setHistoricalEntry] = useState({
-        date: format(new Date(), 'yyyy-MM-dd'),
-        time: format(new Date(), 'HH:mm'),
-        doctorId: "",
-        treatmentId: "",
-        amount_aba: "",
-        amount_cash_usd: "",
-        amount_cash_khr: "",
-        method: "ABA"
-    });
-
     const [isSettlingPayment, setIsSettlingPayment] = useState(false);
     const [settleData, setSettleData] = useState({
         originalDate: "", // To track which session we are updating
@@ -125,13 +147,22 @@ export default function PatientDetailsPage() {
     const [managedEntry, setManagedEntry] = useState<any>(null);
     const [undoItem, setUndoItem] = useState<any>(null);
     const [undoTimer, setUndoTimer] = useState<NodeJS.Timeout | null>(null);
-
+    const [isDoctorSelectorExpanded, setIsDoctorSelectorExpanded] = useState(true);
+    const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState<'patient-info' | 'appointment-history' | 'next-treatment' | 'medical-record'>('appointment-history');
+    const [selectedBulkEntries, setSelectedBulkEntries] = useState<string[]>([]);
+    const [bulkSettleData, setBulkSettleData] = useState({
+        amount_aba: "",
+        amount_cash_usd: "",
+        amount_cash_khr: "",
+        date: format(new Date(), 'yyyy-MM-dd'),
+        time: format(new Date(), 'HH:mm'),
+    });
     const { currentBranch } = useBranch();
 
     useEffect(() => {
         if (currentBranch) {
             fetchPatientData();
-            fetchTreatments();
             fetchStaff();
         }
     }, [id, currentBranch]);
@@ -149,7 +180,7 @@ export default function PatientDetailsPage() {
             setProfileForm({
                 name: pData.name,
                 gender: pData.gender,
-                age: pData.age.toString(),
+                age: pData.age?.toString() || "",
                 phone: pData.phone?.replace(/^\+\d+\s?/, "") || "",
                 countryCode: pData.phone?.match(/^\+\d+/)?.[0] || "+855"
             });
@@ -189,53 +220,14 @@ export default function PatientDetailsPage() {
             // but if it's not found in the searchParams, we default to the first one.
             if (!docParam) {
                 setSelectedDoctorId(data[0].id);
-                setHistoricalEntry(prev => ({ ...prev, doctorId: data[0].id }));
-            } else {
-                setHistoricalEntry(prev => ({ ...prev, doctorId: docParam }));
             }
         }
     }
 
-    async function fetchTreatments() {
-        const { data } = await supabase
-            .from('treatments')
-            .select('*')
-            .eq('branch_id', currentBranch?.id);
-        if (data) setTreatments(data);
-    }
 
-    async function addTreatment(treatment: any) {
-        if (!id) return;
 
-        const { error } = await supabase
-            .from('ledger_entries')
-            .insert({
-                patient_id: id,
-                treatment_id: treatment.id,
-                doctor_id: selectedDoctorId || staff[0]?.id,
-                unit_price: treatment.price,
-                total_price: treatment.price,
-                amount_paid: treatment.price,
-                amount_remaining: 0,
-                paid_aba: treatment.price,
-                paid_cash_usd: 0,
-                paid_cash_khr: 0,
-                applied_exchange_rate: usdToKhr,
-                description: treatment.name,
-                notes: currentNote,
-                date: format(new Date(), 'yyyy-MM-dd'),
-                appointment_time: format(new Date(), 'HH:mm:ss'),
-                branch_id: currentBranch?.id
-            });
-
-        if (!error) {
-            setCurrentNote(""); // Clear note
-            fetchPatientData(); // Refresh
-        }
-    }
 
     async function saveVisitNote(date: string, note: string) {
-        // Find all entries for this date and update their notes
         const { error } = await supabase
             .from('ledger_entries')
             .update({ notes: note })
@@ -245,21 +237,6 @@ export default function PatientDetailsPage() {
         if (!error) {
             fetchPatientData();
         }
-    }
-
-    async function toggleAppointmentPaid(date: string, currentlyPaid: boolean) {
-        // Fetch all entries for this date
-        const entriesOnDate = history.filter(h => h.date === date);
-        for (const entry of entriesOnDate) {
-            await supabase
-                .from('ledger_entries')
-                .update({
-                    amount_paid: currentlyPaid ? 0 : entry.total_price,
-                    amount_remaining: currentlyPaid ? entry.total_price : 0
-                })
-                .eq('id', entry.id);
-        }
-        fetchPatientData(); // Refresh patient totals and history
     }
 
     async function deleteEntry(entry: any) {
@@ -321,6 +298,27 @@ export default function PatientDetailsPage() {
             fetchPatientData();
         } else {
             alert("Error updating entry: " + error.message);
+        }
+    }
+
+    async function updateSessionStatus(date: string, doctorId: string, newStatus: string) {
+        const { error } = await supabase
+            .from('ledger_entries')
+            .update({ status: newStatus })
+            .eq('patient_id', id)
+            .eq('date', date)
+            .eq('doctor_id', doctorId);
+
+        if (!error) {
+            fetchPatientData();
+        } else {
+            console.error("Status update error:", error);
+            if (error.message.includes("column \"status\" of relation \"ledger_entries\" does not exist") ||
+                error.message.includes("Could not find the 'status' column")) {
+                alert("Database Error: The 'status' column is missing from the 'ledger_entries' table. Please run the SQL fix provided in the implementation plan to resolve this.");
+            } else {
+                alert("Error updating status: " + error.message);
+            }
         }
     }
 
@@ -430,6 +428,57 @@ export default function PatientDetailsPage() {
         setEditPaymentData(null);
         fetchPatientData();
     }
+
+    async function handleBulkSettlement() {
+        if (selectedBulkEntries.length === 0) return;
+
+        const aba = Number(bulkSettleData.amount_aba) || 0;
+        const cashUsd = Number(bulkSettleData.amount_cash_usd) || 0;
+        const cashKhr = Number(bulkSettleData.amount_cash_khr) || 0;
+        const totalPaidAmount = aba + cashUsd + (cashKhr / usdToKhr);
+
+        let remainingToDistribute = totalPaidAmount;
+
+        const entriesToSettle = history.filter(h => selectedBulkEntries.includes(h.id))
+            .sort((a, b) => a.created_at.localeCompare(b.created_at));
+
+        for (let i = 0; i < entriesToSettle.length; i++) {
+            const entry = entriesToSettle[i];
+            const unpaid = Number(entry.amount_remaining);
+            if (unpaid <= 0 || remainingToDistribute <= 0) continue;
+
+            const amountForThisEntry = Math.min(remainingToDistribute, unpaid);
+
+            const { error: updateError } = await supabase
+                .from('ledger_entries')
+                .update({
+                    amount_paid: Number(entry.amount_paid) + amountForThisEntry,
+                    amount_remaining: unpaid - amountForThisEntry,
+                })
+                .eq('id', entry.id);
+
+            if (!updateError) {
+                await supabase.from('payment_history').insert({
+                    entry_id: entry.id,
+                    amount_paid: amountForThisEntry,
+                    payment_method: 'Bulk Settle',
+                    payment_currency: 'USD'
+                });
+            }
+            remainingToDistribute -= amountForThisEntry;
+        }
+
+        setIsBulkModalOpen(false);
+        setSelectedBulkEntries([]);
+        setBulkSettleData({
+            amount_aba: "",
+            amount_cash_usd: "",
+            amount_cash_khr: "",
+            date: format(new Date(), 'yyyy-MM-dd'),
+            time: format(new Date(), 'HH:mm'),
+        });
+        fetchPatientData();
+    }
     async function updateDoctor(entryId: string, doctorId: string) {
         const { error } = await supabase
             .from('ledger_entries')
@@ -441,74 +490,6 @@ export default function PatientDetailsPage() {
         }
     }
 
-    async function addHistoricalEntry() {
-        if (!historicalEntry.treatmentId) {
-            alert("Please select a treatment.");
-            return;
-        }
-
-        const treatment = treatments.find(t => t.id === historicalEntry.treatmentId);
-        if (!treatment) return;
-
-        const totalPaid = Number(historicalEntry.amount_aba) + Number(historicalEntry.amount_cash_usd) + (Number(historicalEntry.amount_cash_khr) / usdToKhr);
-
-        const { data, error } = await supabase
-            .from('ledger_entries')
-            .insert({
-                patient_id: id,
-                treatment_id: treatment.id,
-                doctor_id: historicalEntry.doctorId || (staff[0]?.id),
-                unit_price: treatment.price,
-                total_price: treatment.price,
-                amount_paid: totalPaid,
-                amount_remaining: treatment.price - totalPaid,
-                paid_aba: Number(historicalEntry.amount_aba),
-                paid_cash_usd: Number(historicalEntry.amount_cash_usd),
-                paid_cash_khr: Number(historicalEntry.amount_cash_khr),
-                applied_exchange_rate: usdToKhr,
-                description: treatment.name,
-                method: historicalEntry.method,
-                date: historicalEntry.date,
-                appointment_time: historicalEntry.time ? `${historicalEntry.time}:00` : format(new Date(), 'HH:mm:ss'),
-                branch_id: currentBranch?.id
-            })
-            .select()
-            .single();
-
-        if (data) {
-            // Add payment history records
-            const methods = [];
-            if (Number(historicalEntry.amount_aba) > 0) methods.push({ method: 'ABA', amount: Number(historicalEntry.amount_aba), currency: 'USD' });
-            if (Number(historicalEntry.amount_cash_usd) > 0) methods.push({ method: 'CASH', amount: Number(historicalEntry.amount_cash_usd), currency: 'USD' });
-            if (Number(historicalEntry.amount_cash_khr) > 0) methods.push({ method: 'CASH', amount: Number(historicalEntry.amount_cash_khr), currency: 'KHR' });
-
-            for (const m of methods) {
-                await supabase.from('payment_history').insert({
-                    entry_id: data.id,
-                    amount_paid: m.amount,
-                    payment_method: m.method,
-                    payment_currency: m.currency
-                });
-            }
-        }
-
-        if (!error) {
-            // Keep modal open for rapid entry
-            // Preserve sticky context (Date, Time, Doctor, Method)
-            setHistoricalEntry(prev => ({
-                ...prev,
-                treatmentId: "",
-                amount_aba: "",
-                amount_cash_usd: "",
-                amount_cash_khr: ""
-            }));
-            fetchPatientData();
-            // Optional: toast or subtle feedback could go here
-        } else {
-            console.error("Error adding historical entry:", error);
-            alert("Failed to add record. Please try again.");
-        }
-    }
 
     async function handleSaveProfile() {
         if (!profileForm.name) return;
@@ -552,18 +533,27 @@ export default function PatientDetailsPage() {
 
                             <div className="flex-1 min-w-0">
                                 {/* Top Row - Name & Vital Stats */}
+                                <div className="flex items-center gap-4 flex-wrap mb-1">
+                                    <h1 className="text-2xl font-black text-[#1B2559] tracking-tight truncate max-w-[300px]">{patient.name}</h1>
+                                    <button
+                                        onClick={() => setIsEditingProfile(true)}
+                                        className="p-1.5 hover:bg-[#F4F7FE] rounded-lg text-primary transition-all"
+                                    >
+                                        <Edit2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+
                                 <div className="flex items-center gap-4 flex-wrap">
-                                    <h1 className="text-xl font-black text-[#1B2559] tracking-tight truncate max-w-[300px]">{patient.name}</h1>
 
                                     <div className="flex items-center gap-3">
-                                        {/* Unified Vital Badge */}
-                                        <div className="flex items-center bg-[#F4F7FE] px-4 py-1.5 rounded-xl border border-[#E0E5F2] gap-3">
+                                        {/* Unified Vital Badge - Simplified and Smaller */}
+                                        <div className="flex items-center gap-2">
                                             <div className="flex items-center gap-1.5">
-                                                <div className={cn("w-1.5 h-1.5 rounded-full", patient.gender === 'F' ? 'bg-rose-500' : 'bg-blue-500')} />
-                                                <span className="text-[10px] font-black text-[#1B2559] uppercase tracking-widest">{patient.gender === 'F' ? 'Female' : 'Male'}</span>
+                                                <div className={cn("w-1 h-1 rounded-full", patient.gender === 'F' ? 'bg-rose-500' : 'bg-blue-500')} />
+                                                <span className="text-[9px] font-bold text-[#707EAE] uppercase tracking-wider">{patient.gender === 'F' ? 'Female' : 'Male'}</span>
                                             </div>
-                                            <div className="w-px h-3 bg-[#E0E5F2]" />
-                                            <span className="text-[10px] font-black text-[#1B2559] uppercase tracking-widest">{patient.age} Years</span>
+                                            <div className="w-px h-2 bg-[#E0E5F2]" />
+                                            <span className="text-[9px] font-bold text-[#707EAE] uppercase tracking-wider">{patient.age} Yrs</span>
                                         </div>
 
                                         {/* Contact Trigger */}
@@ -591,800 +581,767 @@ export default function PatientDetailsPage() {
                                                 isProfileExpanded ? "bg-primary text-white" : "hover:bg-[#F4F7FE] text-[#A3AED0]"
                                             )}
                                         >
-                                            <MoreHorizontal className="w-4 h-4" />
+                                            <ChevronDown className={cn("w-4 h-4 transition-transform duration-300", isProfileExpanded && "rotate-180")} />
                                         </button>
                                     </div>
                                 </div>
 
                                 {/* Bottom Row - Expandable Details */}
                                 {isProfileExpanded && (
-                                    <div className="mt-3 pt-3 border-t border-[#F4F7FE] flex items-center justify-between animate-in slide-in-from-top-2 duration-300">
-                                        <div className="flex items-center gap-6">
-                                            <div className="flex flex-col">
-                                                <span className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest">Global Register Ref</span>
-                                                <span className="text-[10px] font-bold text-[#1B2559]">{patient.id.toUpperCase()}</span>
-                                            </div>
-                                            <button
-                                                onClick={() => setIsEditingProfile(true)}
-                                                className="flex items-center gap-2 text-primary hover:text-[#3311DB] transition-colors"
-                                            >
-                                                <Edit2 className="w-3.5 h-3.5" />
-                                                <span className="text-[9px] font-black uppercase tracking-widest">Update Identity</span>
-                                            </button>
+                                    <div className="mt-4 pt-4 border-t border-[#F4F7FE] flex items-center gap-8 animate-in slide-in-from-top-2 duration-300">
+                                        <div className="flex flex-col">
+                                            <span className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest leading-none mb-1">Global Register Ref</span>
+                                            <span className="text-[10px] font-black text-[#1B2559] tracking-widest">{patient.id.toUpperCase()}</span>
                                         </div>
-                                        <div className="text-[9px] text-[#707EAE] font-bold italic">
-                                            Client node synchronized & verified
-                                        </div>
+                                        <button
+                                            onClick={() => setIsEditingProfile(true)}
+                                            className="flex items-center gap-2 bg-[#F4F7FE] hover:bg-primary/5 text-primary px-4 py-2 rounded-xl border border-[#E0E5F2] transition-all text-[10px] font-black uppercase tracking-widest"
+                                        >
+                                            <Edit2 className="w-3.5 h-3.5" />
+                                            Update Identity
+                                        </button>
                                     </div>
                                 )}
                             </div>
                         </div>
 
                         {/* Global Actions Context */}
-                        <div className="flex items-center gap-2 border-l border-[#F4F7FE] pl-6 shrink-0">
-                            <button
-                                onClick={() => {
-                                    setHistoricalEntry(prev => ({ ...prev, doctorId: staff[0]?.id || "" }));
-                                    setIsAddingHistorical(true);
-                                }}
-                                className="bg-primary hover:bg-[#3311DB] text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 transition-all shadow-lg active:scale-95 shadow-primary/20"
-                            >
-                                <Plus className="w-4 h-4" />
-                                New Appointment
-                            </button>
+                        <div className="flex items-center gap-3 border-l border-[#F4F7FE] pl-6 shrink-0">
+                            {/* Financial Snapshot - Premium Condensed */}
+                            <div className="flex items-center gap-6 mr-4">
+                                <div className="flex flex-col items-end">
+                                    <span className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest mb-0.5">Lifetime Value</span>
+                                    <span className="text-sm font-black text-[#1B2559] tracking-tight">${Number(lifetimeValue).toLocaleString()}</span>
+                                </div>
+                                <div className="w-px h-8 bg-[#E0E5F2]" />
+                                <div className="flex flex-col items-end">
+                                    <span className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest mb-0.5">Total Paid</span>
+                                    <span className="text-sm font-black text-emerald-600 tracking-tight">${Number(netContributions).toLocaleString()}</span>
+                                </div>
+                                <div className="w-px h-8 bg-[#E0E5F2]" />
+                                <div className="flex flex-col items-end">
+                                    <span className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest mb-0.5">Outstanding</span>
+                                    <span className={cn(
+                                        "text-sm font-black tracking-tight",
+                                        outstandingBalance > 0 ? "text-amber-600" : "text-[#1B2559]"
+                                    )}>${Number(outstandingBalance).toLocaleString()}</span>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                {outstandingBalance > 0 && (
+                                    <button
+                                        onClick={() => setIsBulkModalOpen(true)}
+                                        className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 transition-all shadow-lg active:scale-95 shadow-amber-500/20"
+                                    >
+                                        <Target className="w-4 h-4" />
+                                        Settle Balance
+                                    </button>
+                                )}
+                                <Link
+                                    href={`/patients/${id}/new-appointment`}
+                                    className="bg-primary hover:bg-[#3311DB] text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 transition-all shadow-lg active:scale-95 shadow-primary/20"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    New Appointment
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div className="grid grid-cols-12 gap-6 items-start">
-                <div className="col-span-8 space-y-6">
+                <div className="col-span-12 space-y-6">
 
-                    {/* History Section - Tabbed View */}
-                    < div className="space-y-6" >
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <button
-                                    onClick={() => setHistoryView('clinical')}
-                                    className={cn(
-                                        "px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2",
-                                        historyView === 'clinical'
-                                            ? "bg-primary text-white shadow-lg shadow-primary/20"
-                                            : "bg-[#F4F7FE] text-[#A3AED0] hover:bg-white border border-[#E0E5F2]"
-                                    )}
-                                >
-                                    <Activity className="w-4 h-4" />
-                                    Clinical Progress
-                                </button>
-                                <button
-                                    onClick={() => setHistoryView('invoices')}
-                                    className={cn(
-                                        "px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2",
-                                        historyView === 'invoices'
-                                            ? "bg-primary text-white shadow-lg shadow-primary/20"
-                                            : "bg-[#F4F7FE] text-[#A3AED0] hover:bg-white border border-[#E0E5F2]"
-                                    )}
-                                >
-                                    <Printer className="w-4 h-4" />
-                                    Invoice History
-                                </button>
-                            </div>
-                            <span className="text-[10px] text-[#A3AED0] bg-[#F4F7FE] px-4 py-2 rounded-xl border border-[#E0E5F2] font-black uppercase tracking-widest leading-none">
-                                {history.length} Records
-                            </span>
-                        </div>
-
-                        {/* Clinical Progress View */}
-                        {
-                            historyView === 'clinical' && (
-                                <>
-                                    {Object.entries(
-                                        history.reduce((acc: any, entry: any) => {
-                                            const date = entry.date;
-                                            if (!acc[date]) acc[date] = [];
-                                            acc[date].push(entry);
-                                            return acc;
-                                        }, {})
-                                    ).map(([date, entries]: [string, any]) => {
-                                        const dateTotal = entries.reduce((sum: number, e: any) => sum + Number(e.total_price), 0);
-                                        const datePaid = entries.reduce((sum: number, e: any) => sum + Number(e.amount_paid), 0);
-                                        const dateBalance = entries.reduce((sum: number, e: any) => sum + Number(e.amount_remaining), 0);
-
-                                        return (
-                                            <div key={date} className="card-premium overflow-hidden border border-[#F4F7FE]">
-                                                <div className="bg-[#F4F7FE]/50 px-8 py-6 border-b border-[#E0E5F2] flex items-center justify-between">
-                                                    <div className="flex items-center gap-5">
-                                                        <div className="bg-white text-primary p-3 rounded-2xl shadow-sm border border-[#E0E5F2]">
-                                                            <Calendar className="w-5 h-5" />
-                                                        </div>
-                                                        <div>
-                                                            <div className="text-lg font-black text-[#1B2559] tracking-tight">{(() => {
-                                                                const d = new Date(date);
-                                                                return !isNaN(d.getTime()) ? format(d, 'MMMM do, yyyy') : 'Invalid Date';
-                                                            })()}</div>
-                                                            <div className="text-[10px] text-[#A3AED0] uppercase font-black tracking-widest">Appointment Session</div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="text-right">
-                                                            <div className="text-[8px] text-[#A3AED0] uppercase font-black tracking-widest mb-0.5 opacity-60">Session Value</div>
-                                                            <div className="text-xs font-black text-[#1B2559]">${dateTotal.toLocaleString()}</div>
-                                                        </div>
-                                                        <div className="w-px h-8 bg-[#E0E5F2]" />
-                                                        <div className="text-right">
-                                                            <div className="text-[8px] text-[#A3AED0] uppercase font-black tracking-widest mb-0.5 opacity-60">Remaining</div>
-                                                            <div className="text-xs font-black text-destructive">${dateBalance.toLocaleString()}</div>
-                                                        </div>
-
-                                                        <div className="w-px h-8 bg-[#E0E5F2]" />
-                                                        <div className="flex items-center gap-2 ml-2">
-                                                            <button
-                                                                onClick={() => {
-                                                                    setSettleData({
-                                                                        originalDate: date,
-                                                                        date: date,
-                                                                        time: format(new Date(), 'HH:mm'),
-                                                                        totalValue: dateTotal,
-                                                                        alreadyPaid: datePaid,
-                                                                        amount_aba: "",
-                                                                        amount_cash_usd: "",
-                                                                        amount_cash_khr: ""
-                                                                    });
-                                                                    setIsSettlingPayment(true);
-                                                                }}
-                                                                className="bg-[#01B574] hover:bg-[#01945d] text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-md shadow-[#01B574]/20 flex items-center gap-1.5"
-                                                            >
-                                                                <DollarSign className="w-3 h-3" />
-                                                                Settle
-                                                            </button>
-
-                                                            <Link
-                                                                href={`/print?patient=${encodeURIComponent(patient.name)}&date=${date}&total=${dateTotal}&paid=${datePaid}&balance=${dateBalance}`}
-                                                                className="p-2.5 bg-white hover:bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl text-[#A3AED0] hover:text-primary transition-all shadow-sm flex items-center justify-center"
-                                                            >
-                                                                <Printer className="w-4 h-4" />
-                                                            </Link>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <table className="w-full ledger-table">
-                                                    <thead>
-                                                        <tr className="bg-[#F4F7FE]/20 text-[9px] uppercase font-black tracking-widest text-[#A3AED0] border-b border-[#F4F7FE]">
-                                                            <th className="px-10 py-5 text-left">Clinical Procedure</th>
-                                                            <th className="px-8 py-5 text-right">Value</th>
-                                                            <th className="px-8 py-5 text-center">Practitioner</th>
-                                                            <th className="px-8 py-5 w-[80px]"></th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-[#F4F7FE]">
-                                                        {entries.map((entry: any) => (
-                                                            <tr key={entry.id} className="group hover:bg-[#F8FAFF] transition-colors">
-                                                                <td
-                                                                    className="px-10 py-6 cursor-pointer"
-                                                                    onClick={() => setManagedEntry(entry)}
-                                                                >
-                                                                    <div className="font-bold text-[#1B2559] text-base group-hover:text-primary transition-colors">{entry.treatments?.name || entry.description}</div>
-                                                                    <div className="text-[10px] text-[#A3AED0] font-black uppercase tracking-widest mt-0.5 flex items-center gap-1.5">
-                                                                        <Clock className="w-3 h-3 text-primary/40" />
-                                                                        {(() => {
-                                                                            try {
-                                                                                if (entry.appointment_time && entry.appointment_time.trim()) {
-                                                                                    const timeDate = new Date(`2000-01-01T${entry.appointment_time.trim()}`);
-                                                                                    if (!isNaN(timeDate.getTime())) return format(timeDate, 'hh:mm a');
-                                                                                }
-                                                                                const createdDate = new Date(entry.created_at);
-                                                                                if (!isNaN(createdDate.getTime())) return format(createdDate, 'hh:mm a');
-                                                                                return '--:--';
-                                                                            } catch { return '--:--'; }
-                                                                        })()}
-                                                                    </div>
-                                                                </td>
-                                                                <td className="px-8 py-6 text-right font-black text-[#1B2559] text-base tracking-tight">
-                                                                    ${Number(entry.total_price).toLocaleString()}
-                                                                    {entry.payment_history && entry.payment_history.length > 0 && (
-                                                                        <div className="mt-2 space-y-0.5 opacity-60">
-                                                                            {entry.payment_history.map((ph: any) => (
-                                                                                <div key={ph.id} className="text-[9px] font-bold text-[#A3AED0] uppercase tracking-widest flex items-center justify-end gap-2 group/payment">
-                                                                                    <button
-                                                                                        onClick={(e) => {
-                                                                                            e.stopPropagation();
-                                                                                            setEditPaymentData({
-                                                                                                paymentId: ph.id,
-                                                                                                ledgerEntryId: entry.id,
-                                                                                                method: ph.payment_method,
-                                                                                                currency: ph.payment_currency,
-                                                                                                amount: ph.amount_paid.toString(),
-                                                                                                originalAmount: ph.amount_paid
-                                                                                            });
-                                                                                            setIsEditingPayment(true);
-                                                                                        }}
-                                                                                        className="opacity-0 group-hover/payment:opacity-100 transition-opacity hover:text-primary"
-                                                                                    >
-                                                                                        <Edit2 className="w-3 h-3" />
-                                                                                    </button>
-                                                                                    <span>{ph.payment_method}</span>
-                                                                                    <span className="text-primary">{ph.payment_currency === 'USD' ? '$' : '៛'}{Number(ph.amount_paid).toLocaleString()}</span>
-                                                                                </div>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
-                                                                </td>
-                                                                <td className="px-8 py-6 text-center">
-                                                                    <select
-                                                                        className={cn(
-                                                                            "text-[10px] bg-[#F4F7FE] px-5 py-2 rounded-2xl font-black uppercase tracking-widest cursor-pointer hover:bg-primary/10 transition-colors border-none outline-none text-[#1B2559]",
-                                                                            !entry.doctor_id && "text-destructive bg-destructive/10"
-                                                                        )}
-                                                                        value={entry.doctor_id || ""}
-                                                                        onChange={(e) => updateDoctor(entry.id, e.target.value)}
-                                                                    >
-                                                                        <option value="">Pending Assign</option>
-                                                                        {staff.map(s => (
-                                                                            <option key={s.id} value={s.id}>{s.name}</option>
-                                                                        ))}
-                                                                    </select>
-                                                                </td>
-                                                                <td className="px-8 py-6 text-right">
-                                                                    <button
-                                                                        onClick={() => setManagedEntry(entry)}
-                                                                        className="p-3 hover:bg-white rounded-2xl text-[#A3AED0] hover:text-primary transition-all border border-transparent hover:border-[#E0E5F2] hover:shadow-sm"
-                                                                    >
-                                                                        <MoreHorizontal className="w-5 h-5" />
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-
-                                                {/* Clinical Notes */}
-                                                <div className="px-10 py-6 border-t border-[#F4F7FE] bg-[#F4F7FE]/10">
-                                                    <details className="group">
-                                                        <summary className="list-none cursor-pointer flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-[#707EAE] hover:text-primary transition-colors">
-                                                            <div className="flex items-center gap-3">
-                                                                <BookOpen className="w-4 h-4 text-primary" />
-                                                                <span>Clinical Findings & Session Notes</span>
-                                                            </div>
-                                                            <div className="w-6 h-6 rounded-full bg-white border border-[#E0E5F2] flex items-center justify-center group-open:rotate-180 transition-transform shadow-sm">
-                                                                <ChevronDown className="w-3.5 h-3.5" />
-                                                            </div>
-                                                        </summary>
-                                                        <div className="mt-5">
-                                                            <textarea
-                                                                className="w-full bg-white border border-[#E0E5F2] rounded-3xl p-6 text-sm min-h-[140px] focus:ring-4 focus:ring-primary/5 transition-all shadow-inner font-bold text-[#1B2559] outline-none"
-                                                                placeholder="Input specialized medical findings, observations, or specific patient feedback for this session..."
-                                                                defaultValue={entries[0].notes || ""}
-                                                                onBlur={(e) => saveVisitNote(date, e.target.value)}
-                                                            />
-                                                            <p className="text-[9px] text-[#A3AED0] font-black uppercase tracking-widest mt-3 text-right">Encrypted Medical Storage · Auto-sinc</p>
-                                                        </div>
-                                                    </details>
-                                                    {!entries[0].notes && (
-                                                        <div className="mt-2 pl-7 group-open:hidden">
-                                                            <p className="text-[10px] text-[#A3AED0] font-medium italic opacity-60 italic">Open this section to add specialized clinical observation notes for this visit.</p>
-                                                        </div>
-                                                    )}
-                                                    {entries[0].notes && (
-                                                        <div className="mt-3 pl-7 group-open:hidden border-l-2 border-primary/20">
-                                                            <p className="text-sm text-[#707EAE] font-semibold line-clamp-1 italic">"{entries[0].notes}"</p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-
-                                    {history.length === 0 && (
-                                        <div className="card-premium border-dashed border-2 border-[#E0E5F2] p-24 text-center">
-                                            <div className="flex flex-col items-center gap-5 opacity-40">
-                                                <Activity className="w-20 h-20 text-[#A3AED0]" />
-                                                <div>
-                                                    <p className="text-lg font-black text-[#1B2559] tracking-tight">No Clinical Records Yet</p>
-                                                    <p className="text-sm font-bold text-[#A3AED0]">Start documenting patient progress by selecting treatments from the panel.</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </>
-                            )
-                        }
-
-                        {/* Invoice History View */}
-                        {
-                            historyView === 'invoices' && (
-                                <div className="space-y-4">
-                                    {history.map((entry, idx) => (
-                                        <div key={entry.id} className="card-premium overflow-hidden border border-[#E0E5F2] hover:border-primary/20 transition-all group">
-                                            {/* Invoice Header */}
-                                            <div className="bg-gradient-to-r from-[#F4F7FE] to-white px-6 py-4 border-b border-[#E0E5F2] flex items-center justify-between">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
-                                                        <span className="text-sm font-black text-primary">#{history.length - idx}</span>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-black text-[#1B2559]">{entry.treatments?.name || entry.description}</p>
-                                                        <p className="text-[9px] text-[#A3AED0] font-bold uppercase tracking-wider">
-                                                            {new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} • {new Date(entry.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-3">
-                                                    <span className={cn(
-                                                        "px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider",
-                                                        Number(entry.amount_remaining) > 0
-                                                            ? "bg-amber-50 border border-amber-200 text-amber-600"
-                                                            : "bg-emerald-50 border border-emerald-200 text-emerald-600"
-                                                    )}>
-                                                        {Number(entry.amount_remaining) > 0 ? 'Partial' : 'Paid'}
-                                                    </span>
-                                                    <span className="text-lg font-black text-[#1B2559]">
-                                                        ${Number(entry.amount_paid).toLocaleString()}
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            {/* Invoice Body */}
-                                            <div className="p-6 space-y-4">
-                                                {/* Service Details */}
-                                                <div className="flex items-start justify-between">
-                                                    <div className="flex-1">
-                                                        <p className="text-[10px] text-[#A3AED0] font-black uppercase tracking-widest mb-1">Practitioner</p>
-                                                        <p className="text-sm font-bold text-[#1B2559]">{entry.doctor?.name || 'Unassigned'}</p>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <p className="text-[10px] text-[#A3AED0] font-black uppercase tracking-widest mb-1">Total Billed</p>
-                                                        <p className="text-sm font-bold text-[#1B2559]">${Number(entry.total_price).toLocaleString()}</p>
-                                                    </div>
-                                                </div>
-
-                                                {/* Payment Breakdown */}
-                                                {entry.payment_history && entry.payment_history.length > 0 && (
-                                                    <div className="pt-4 border-t border-[#E0E5F2]">
-                                                        <p className="text-[9px] text-[#A3AED0] font-black uppercase tracking-widest mb-3">Payment Methods</p>
-                                                        <div className="grid grid-cols-3 gap-2">
-                                                            {entry.payment_history.map((ph: any) => (
-                                                                <div key={ph.id} className={cn(
-                                                                    "border rounded-xl px-3 py-2",
-                                                                    ph.payment_method === 'ABA' && "bg-blue-50 border-blue-200",
-                                                                    ph.payment_method === 'Cash' && ph.payment_currency === 'USD' && "bg-emerald-50 border-emerald-200",
-                                                                    ph.payment_method === 'Cash' && ph.payment_currency === 'KHR' && "bg-amber-50 border-amber-200"
-                                                                )}>
-                                                                    <p className={cn(
-                                                                        "text-[8px] font-black uppercase tracking-wider mb-0.5",
-                                                                        ph.payment_method === 'ABA' && "text-blue-600",
-                                                                        ph.payment_method === 'Cash' && ph.payment_currency === 'USD' && "text-emerald-600",
-                                                                        ph.payment_method === 'Cash' && ph.payment_currency === 'KHR' && "text-amber-600"
-                                                                    )}>{ph.payment_method} {ph.payment_currency}</p>
-                                                                    <p className={cn(
-                                                                        "text-xs font-bold",
-                                                                        ph.payment_method === 'ABA' && "text-blue-700",
-                                                                        ph.payment_method === 'Cash' && ph.payment_currency === 'USD' && "text-emerald-700",
-                                                                        ph.payment_method === 'Cash' && ph.payment_currency === 'KHR' && "text-amber-700"
-                                                                    )}>{ph.payment_currency === 'USD' ? '$' : '៛'}{Number(ph.amount_paid).toLocaleString()}</p>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* Receipt Actions */}
-                                                <div className="pt-3 flex items-center justify-between border-t border-[#E0E5F2]">
-                                                    <p className="text-[8px] text-[#A3AED0] font-mono">ID: {entry.id.substring(0, 12)}</p>
-                                                    <Link
-                                                        href={`/print?patient=${encodeURIComponent(patient.name)}&date=${entry.date}&total=${entry.total_price}&paid=${entry.amount_paid}&balance=${entry.amount_remaining}`}
-                                                        className="text-[10px] font-black text-primary hover:text-blue-600 uppercase tracking-wider transition-colors flex items-center gap-2 opacity-0 group-hover:opacity-100"
-                                                    >
-                                                        <Printer className="w-3.5 h-3.5" />
-                                                        Print Receipt
-                                                    </Link>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-
-                                    {history.length === 0 && (
-                                        <div className="card-premium border-dashed border-2 border-[#E0E5F2] p-24 text-center">
-                                            <div className="flex flex-col items-center gap-5 opacity-40">
-                                                <Printer className="w-20 h-20 text-[#A3AED0]" />
-                                                <div>
-                                                    <p className="text-lg font-black text-[#1B2559] tracking-tight">No Invoices Yet</p>
-                                                    <p className="text-sm font-bold text-[#A3AED0]">Invoice history will appear here once treatments are recorded.</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )
-                        }
-                    </div >
-                </div >
-
-                {/* Right Section: Treatment Menu & Statistics */}
-                < div className="col-span-4 space-y-8 sticky top-8" id="treatment-menu" >
-
-                    {/* Management Module */}
-                    < div className="card-premium p-6 border-none flex flex-col h-[700px] sticky top-8" >
-                        <div className="flex items-center justify-between mb-4 shrink-0">
-                            <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-[#A3AED0] flex items-center gap-3">
-                                <Plus className="w-4 h-4 text-primary" />
-                                Clinical Menu
-                            </h3>
-                            <div className="h-1 w-12 bg-primary/10 rounded-full" />
-                        </div>
-
-                        <div className="space-y-4 mb-4 shrink-0">
-                            <div className="space-y-1.5">
-                                <label className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Assign Lead Practitioner</label>
-                                <div className="relative">
-                                    <select
-                                        className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl px-4 py-3 text-xs font-black text-[#1B2559] focus:ring-4 focus:ring-primary/5 transition-all appearance-none outline-none cursor-pointer uppercase tracking-widest"
-                                        value={selectedDoctorId}
-                                        onChange={(e) => setSelectedDoctorId(e.target.value)}
-                                    >
-                                        {staff.map(s => (
-                                            <option key={s.id} value={s.id}>{s.name}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown className="w-4 h-4 text-[#A3AED0] absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                                </div>
-                            </div>
-
-                            {/* Visit Remark Removed */}
-
-                            {/* Search & Filter */}
-                            <div className="space-y-2">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#A3AED0]" />
-                                    <input
-                                        type="text"
-                                        placeholder="Filter treatments..."
-                                        className="w-full bg-white border border-[#E0E5F2] rounded-xl pl-9 pr-3 py-2.5 text-xs font-bold text-[#1B2559] outline-none focus:border-primary/30 transition-all"
-                                        value={treatmentSearchTerm}
-                                        onChange={(e) => setTreatmentSearchTerm(e.target.value)}
-                                    />
-                                </div>
-                                {/* Tags Filter */}
-                                {(() => {
-                                    const specialtyTags = Array.from(new Set(treatments.map(t => t.specialty_tag).filter(Boolean))) as string[];
-                                    if (specialtyTags.length === 0) return null;
-                                    return (
-                                        <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto scrollbar-hide py-1">
-                                            {specialtyTags.map(tag => {
-                                                const isActive = treatmentSearchTerm.includes(tag);
-                                                return (
-                                                    <button
-                                                        key={tag}
-                                                        onClick={() => setTreatmentSearchTerm(isActive ? "" : tag)}
-                                                        className={clsx(
-                                                            "px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all border",
-                                                            isActive
-                                                                ? "bg-[#01B574] text-white border-[#01B574] shadow-md shadow-[#01B574]/20"
-                                                                : "bg-white text-[#A3AED0] border-[#E0E5F2] hover:border-[#01B574]/50 hover:text-[#01B574]"
-                                                        )}
-                                                    >
-                                                        {tag}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    );
-                                })()}
-                            </div>
-                        </div>
-
-                        {/* Category Tabs & Visual Hub */}
-                        <div className="shrink-0 mb-4 bg-[#F4F7FE]/50 p-2 rounded-2xl border border-[#E0E5F2]">
-                            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
-                                {CATEGORIES.map(category => (
-                                    <button
-                                        key={category}
-                                        onClick={() => setActiveCategory(category)}
-                                        className={cn(
-                                            "whitespace-nowrap px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-wider transition-all border",
-                                            activeCategory === category
-                                                ? "bg-[#1B2559] text-white border-[#1B2559] shadow-md shadow-[#1B2559]/20"
-                                                : "bg-white text-[#A3AED0] border-[#E0E5F2] hover:border-primary/30 hover:text-primary"
-                                        )}
-                                    >
-                                        {category.split(' ').slice(0, 2).join(' ')}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Treatments Grid - ULTRA DENSE 3-COLUMN */}
-                        <div className="overflow-y-auto pr-1 flex-1 scrollbar-hide">
-                            <div className="grid grid-cols-3 gap-2 pb-4">
-                                {treatments
-                                    .filter(t => {
-                                        const matchesSearch = treatmentSearchTerm === "" ||
-                                            t.name.toLowerCase().includes(treatmentSearchTerm.toLowerCase()) ||
-                                            (t.specialty_tag && t.specialty_tag.toLowerCase().includes(treatmentSearchTerm.toLowerCase()));
-
-                                        if (treatmentSearchTerm.length > 0) return matchesSearch;
-                                        return t.category === activeCategory;
-                                    })
-                                    .map(t => (
-                                        <button
-                                            key={t.id}
-                                            onClick={() => addTreatment(t)}
-                                            className="group flex flex-col items-center justify-center p-2.5 bg-white border border-[#F4F7FE] hover:border-primary/40 rounded-xl transition-all hover:shadow-lg hover:bg-[#F8FAFF] text-center h-[90px] relative overflow-hidden"
-                                        >
-                                            <div className="text-[8px] font-black text-[#1B2559] group-hover:text-primary leading-tight line-clamp-3 mb-1">
-                                                {t.name}
-                                            </div>
-                                            <div className="text-[9px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded-lg border border-primary/10">
-                                                ${t.price}
-                                            </div>
-                                            <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <div className="w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center">
-                                                    <Plus className="w-2.5 h-2.5" />
-                                                </div>
-                                            </div>
-                                        </button>
-                                    ))}
-                            </div>
-                        </div>
-
-                        <div className="mt-4 pt-4 border-t border-[#F4F7FE] flex items-center justify-center gap-2 opacity-60">
-                            <Info className="w-3 h-3 text-primary" />
-                            <span className="text-[8px] font-bold text-[#A3AED0] uppercase tracking-widest italic">Node sync active</span>
-                        </div>
+                    {/* Tabs Navigation */}
+                    <div className="flex items-center flex-wrap gap-x-10 gap-y-4 border-b border-[#F4F7FE] mb-8 px-2">
+                        {(['patient-info', 'appointment-history', 'next-treatment', 'medical-record'] as const).map((tab) => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className={cn(
+                                    "pb-5 text-[11px] font-black uppercase tracking-[0.15em] transition-all relative shrink-0",
+                                    activeTab === tab ? "text-primary" : "text-[#A3AED0] hover:text-[#707EAE]"
+                                )}
+                            >
+                                <span className="relative z-10">
+                                    {tab === 'patient-info' && "Patient Information"}
+                                    {tab === 'appointment-history' && "Appointment History"}
+                                    {tab === 'next-treatment' && "Next Treatment"}
+                                    {tab === 'medical-record' && "Medical Record"}
+                                </span>
+                                {activeTab === tab && (
+                                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full shadow-[0_-4px_10px_rgba(51,17,219,0.2)]" />
+                                )}
+                            </button>
+                        ))}
                     </div>
 
-                    {/* Contract Summary Card - Inspiration from Gradient Card */}
-                    < div className="rounded-[2.5rem] bg-gradient-to-br from-primary to-[#3311DB] p-8 space-y-6 shadow-2xl shadow-primary/30 relative overflow-hidden" >
-                        <div className="absolute top-0 right-0 p-8 opacity-10">
-                            <Activity className="w-24 h-24 text-white" />
-                        </div>
-
-                        <div className="relative z-10">
-                            <div className="flex items-center gap-3 text-white/70 font-black text-[10px] uppercase tracking-[0.2em] mb-4">
-                                <DollarSign className="w-4 h-4" />
-                                Portfolio health
-                            </div>
-                            <div className="space-y-1">
-                                <p className="text-white/60 text-[10px] font-black uppercase tracking-widest">Aggregate Liability</p>
-                                <p className="text-3xl font-black text-white tracking-tighter">${lifetimeValue.toLocaleString()}</p>
-                            </div>
-
-                            <div className="mt-8 space-y-3">
-                                <div className="flex justify-between items-end">
-                                    <p className="text-[10px] text-white/70 font-black uppercase tracking-widest">Realized Collection</p>
-                                    <p className="text-xs text-white font-black">{lifetimeValue > 0 ? ((netContributions / lifetimeValue) * 100).toFixed(1) : 0}%</p>
+                    {/* Tab Content: Appointment History */}
+                    {activeTab === 'appointment-history' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <button
+                                        onClick={() => setHistoryView('clinical')}
+                                        className={cn(
+                                            "px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                                            historyView === 'clinical'
+                                                ? "bg-primary text-white shadow-lg shadow-primary/20"
+                                                : "bg-[#F4F7FE] text-[#A3AED0] hover:bg-white border border-[#E0E5F2]"
+                                        )}
+                                    >
+                                        <Activity className="w-4 h-4" />
+                                        Clinical Progress
+                                    </button>
+                                    <button
+                                        onClick={() => setHistoryView('invoices')}
+                                        className={cn(
+                                            "px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                                            historyView === 'invoices'
+                                                ? "bg-primary text-white shadow-lg shadow-primary/20"
+                                                : "bg-[#F4F7FE] text-[#A3AED0] hover:bg-white border border-[#E0E5F2]"
+                                        )}
+                                    >
+                                        <Printer className="w-4 h-4" />
+                                        Invoice History
+                                    </button>
                                 </div>
-                                <div className="w-full h-2.5 bg-white/20 rounded-full overflow-hidden backdrop-blur-md">
-                                    <div
-                                        className="h-full bg-white shadow-[0_0_15px_rgba(255,255,255,0.5)] transition-all duration-1000"
-                                        style={{ width: `${lifetimeValue > 0 ? (netContributions / lifetimeValue) * 100 : 0}% ` }}
-                                    />
-                                </div>
-                            </div>
-
-                            <p className="text-[9px] text-white/50 font-medium italic mt-6 text-center">
-                                Detailed audit available in global financial reports
-                            </p>
-                        </div>
-                    </div >
-                </div >
-            </div >
-            {/* Historical Entry Modal */}
-            {
-                isAddingHistorical && (
-                    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[#1B2559]/30 backdrop-blur-md p-4 animate-in fade-in duration-300">
-                        <div className="bg-white border border-[#E0E5F2] rounded-[2rem] w-full max-w-2xl shadow-2xl p-6 space-y-4 relative overflow-hidden max-h-[90vh] flex flex-col">
-                            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary to-[#3311DB]" />
-
-                            <div className="flex items-center justify-between shrink-0">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 rounded-xl bg-primary/10 text-primary shadow-inner">
-                                        <Calendar className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-black text-[#1B2559] tracking-tight leading-none">Record Legacy Visit</h3>
-                                        <p className="text-[8px] text-[#A3AED0] font-black uppercase tracking-widest mt-1">Manual Procedural Entry</p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => setIsAddingHistorical(false)}
-                                    className="p-2 rounded-xl text-[#A3AED0] hover:text-primary transition-all border border-[#E0E5F2]"
-                                >
-                                    <XIcon className="w-4 h-4" />
-                                </button>
+                                <span className="text-[10px] text-[#A3AED0] bg-[#F4F7FE] px-4 py-2 rounded-xl border border-[#E0E5F2] font-black uppercase tracking-widest leading-none">
+                                    {history.length} Records
+                                </span>
                             </div>
 
-                            <div className="space-y-3 overflow-y-auto pr-1 flex-1">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1">
-                                        <label className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Clinical Date</label>
-                                        <input
-                                            type="date"
-                                            className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl px-3 py-2.5 text-xs font-bold text-[#1B2559] outline-none focus:ring-4 focus:ring-primary/5 transition-all"
-                                            value={historicalEntry.date}
-                                            onChange={(e) => setHistoricalEntry({ ...historicalEntry, date: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Time</label>
-                                        <div className="relative">
-                                            <input
-                                                type="time"
-                                                className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl px-3 py-2.5 text-xs font-bold text-[#1B2559] outline-none focus:ring-4 focus:ring-primary/5 transition-all"
-                                                value={historicalEntry.time}
-                                                onChange={(e) => setHistoricalEntry({ ...historicalEntry, time: e.target.value })}
-                                            />
-                                            <Clock className="w-3.5 h-3.5 text-[#A3AED0] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                                        </div>
-                                    </div>
-                                </div>
+                            {/* Clinical Progress View */}
+                            {
+                                historyView === 'clinical' && (
+                                    <>
+                                        {Object.entries(
+                                            history.reduce((acc: any, entry: any) => {
+                                                const date = entry.date;
+                                                if (!acc[date]) acc[date] = [];
+                                                acc[date].push(entry);
+                                                return acc;
+                                            }, {})
+                                        ).map(([date, entries]: [string, any]) => {
+                                            const dateTotal = entries.reduce((sum: number, e: any) => sum + Number(e.total_price), 0);
+                                            const datePaid = entries.reduce((sum: number, e: any) => sum + Number(e.amount_paid), 0);
+                                            const dateBalance = entries.reduce((sum: number, e: any) => sum + Number(e.amount_remaining), 0);
 
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1 flex flex-col">
-                                        <label className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Practitioner</label>
-                                        <select
-                                            className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl px-3 py-2.5 text-[11px] font-bold text-[#1B2559] outline-none focus:ring-4 focus:ring-primary/5 transition-all appearance-none cursor-pointer"
-                                            value={historicalEntry.doctorId}
-                                            onChange={(e) => setHistoricalEntry({ ...historicalEntry, doctorId: e.target.value })}
-                                        >
-                                            {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                        </select>
-                                    </div>
+                                            return (
+                                                <div key={date} className="card-premium overflow-hidden border border-[#F4F7FE]">
+                                                    <div className="bg-[#F4F7FE]/50 px-8 py-6 border-b border-[#E0E5F2] flex items-center justify-between">
+                                                        <div className="flex items-center gap-5">
+                                                            <div className="bg-white text-primary p-3 rounded-2xl shadow-sm border border-[#E0E5F2]">
+                                                                <Calendar className="w-5 h-5" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="text-lg font-black text-[#1B2559] tracking-tight">{(() => {
+                                                                    const d = new Date(date);
+                                                                    return !isNaN(d.getTime()) ? format(d, 'MMMM do, yyyy') : 'Invalid Date';
+                                                                })()}</div>
+                                                                <div className="text-[10px] text-[#A3AED0] uppercase font-black tracking-widest">Appointment Session</div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="text-right">
+                                                                <div className="text-[8px] text-[#A3AED0] uppercase font-black tracking-widest mb-0.5 opacity-60">Session Value</div>
+                                                                <div className="text-xs font-black text-[#1B2559]">${dateTotal.toLocaleString()}</div>
+                                                            </div>
+                                                            <div className="w-px h-8 bg-[#E0E5F2]" />
+                                                            <div className="text-right">
+                                                                <div className="text-[8px] text-[#A3AED0] uppercase font-black tracking-widest mb-0.5 opacity-60">Remaining</div>
+                                                                <div className="text-xs font-black text-destructive">${dateBalance.toLocaleString()}</div>
+                                                            </div>
 
-                                    <div className="space-y-1 flex flex-col min-w-0">
-                                        <label className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Clinical Procedure</label>
+                                                            <div className="w-px h-8 bg-[#E0E5F2]" />
+                                                            <div className="flex items-center gap-2 ml-2">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setSettleData({
+                                                                            originalDate: date,
+                                                                            date: date,
+                                                                            time: format(new Date(), 'HH:mm'),
+                                                                            totalValue: dateTotal,
+                                                                            alreadyPaid: datePaid,
+                                                                            amount_aba: "",
+                                                                            amount_cash_usd: "",
+                                                                            amount_cash_khr: ""
+                                                                        });
+                                                                        setIsSettlingPayment(true);
+                                                                    }}
+                                                                    className="bg-[#01B574] hover:bg-[#01945d] text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-md shadow-[#01B574]/20 flex items-center gap-1.5"
+                                                                >
+                                                                    <DollarSign className="w-3 h-3" />
+                                                                    Settle
+                                                                </button>
 
-                                        <div className="bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl flex flex-col overflow-hidden h-[180px]">
-                                            <div className="p-2 border-b border-[#E0E5F2] bg-white/50 sticky top-0 z-10 shrink-0">
-                                                <div className="relative">
-                                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[#A3AED0]" />
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Search clinical lexicon..."
-                                                        className="w-full bg-white border border-[#E0E5F2] rounded-lg pl-7 pr-3 py-1.5 text-[10px] font-bold text-[#1B2559] outline-none"
-                                                        value={treatmentSearchTerm}
-                                                        onChange={(e) => setTreatmentSearchTerm(e.target.value)}
-                                                    />
+                                                                <Link
+                                                                    href={`/print?patient=${encodeURIComponent(patient.name)}&date=${date}&total=${dateTotal}&paid=${datePaid}&balance=${dateBalance}`}
+                                                                    className="p-2.5 bg-white hover:bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl text-[#A3AED0] hover:text-primary transition-all shadow-sm flex items-center justify-center"
+                                                                >
+                                                                    <Printer className="w-4 h-4" />
+                                                                </Link>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <table className="w-full ledger-table">
+                                                        <thead>
+                                                            <tr className="bg-[#F4F7FE]/20 text-[9px] uppercase font-black tracking-widest text-[#A3AED0] border-b border-[#F4F7FE]">
+                                                                <th className="px-10 py-5 text-left">Clinical Procedure</th>
+                                                                <th className="px-8 py-5 text-right">Value</th>
+                                                                <th className="px-8 py-5 text-center">Dentist</th>
+                                                                <th className="px-8 py-5 w-[80px]"></th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-[#F4F7FE]">
+                                                            {entries.map((entry: any) => (
+                                                                <tr key={entry.id} className="group hover:bg-[#F8FAFF] transition-colors">
+                                                                    <td
+                                                                        className="px-10 py-6 cursor-pointer"
+                                                                        onClick={() => setManagedEntry(entry)}
+                                                                    >
+                                                                        <div className="font-bold text-[#1B2559] text-base group-hover:text-primary transition-colors">{entry.treatments?.name || entry.description}</div>
+                                                                        <div className="text-[10px] text-[#A3AED0] font-black uppercase tracking-widest mt-0.5 flex items-center gap-1.5">
+                                                                            <Clock className="w-3 h-3 text-primary/40" />
+                                                                            {(() => {
+                                                                                try {
+                                                                                    if (entry.appointment_time && entry.appointment_time.trim()) {
+                                                                                        const timeDate = new Date(`2000-01-01T${entry.appointment_time.trim()}`);
+                                                                                        if (!isNaN(timeDate.getTime())) return format(timeDate, 'hh:mm a');
+                                                                                    }
+                                                                                    const createdDate = new Date(entry.created_at);
+                                                                                    if (!isNaN(createdDate.getTime())) return format(createdDate, 'hh:mm a');
+                                                                                    return '--:--';
+                                                                                } catch { return '--:--'; }
+                                                                            })()}
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="px-8 py-6 text-right font-black text-[#1B2559] text-base tracking-tight">
+                                                                        ${Number(entry.total_price).toLocaleString()}
+                                                                        {entry.payment_history && entry.payment_history.length > 0 && (
+                                                                            <div className="mt-2 space-y-0.5 opacity-60">
+                                                                                {entry.payment_history.map((ph: any) => (
+                                                                                    <div key={ph.id} className="text-[9px] font-bold text-[#A3AED0] uppercase tracking-widest flex items-center justify-end gap-2 group/payment">
+                                                                                        <button
+                                                                                            onClick={(e) => {
+                                                                                                e.stopPropagation();
+                                                                                                setEditPaymentData({
+                                                                                                    paymentId: ph.id,
+                                                                                                    ledgerEntryId: entry.id,
+                                                                                                    method: ph.payment_method,
+                                                                                                    currency: ph.payment_currency,
+                                                                                                    amount: ph.amount_paid.toString(),
+                                                                                                    originalAmount: ph.amount_paid
+                                                                                                });
+                                                                                                setIsEditingPayment(true);
+                                                                                            }}
+                                                                                            className="opacity-0 group-hover/payment:opacity-100 transition-opacity hover:text-primary"
+                                                                                        >
+                                                                                            <Edit2 className="w-3 h-3" />
+                                                                                        </button>
+                                                                                        <span>{ph.payment_method}</span>
+                                                                                        <span className="text-primary">{ph.payment_currency === 'USD' ? '$' : '៛'}{Number(ph.amount_paid).toLocaleString()}</span>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                    </td>
+                                                                    <td className="px-8 py-6 text-center">
+                                                                        <select
+                                                                            className={cn(
+                                                                                "text-[10px] bg-[#F4F7FE] px-5 py-2 rounded-2xl font-black uppercase tracking-widest cursor-pointer hover:bg-primary/10 transition-colors border-none outline-none text-[#1B2559]",
+                                                                                !entry.doctor_id && "text-destructive bg-destructive/10"
+                                                                            )}
+                                                                            value={entry.doctor_id || ""}
+                                                                            onChange={(e) => updateDoctor(entry.id, e.target.value)}
+                                                                        >
+                                                                            <option value="">Pending Assign</option>
+                                                                            {staff.map(s => (
+                                                                                <option key={s.id} value={s.id}>{s.name}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </td>
+                                                                    <td className="px-8 py-6 text-right">
+                                                                        <button
+                                                                            onClick={() => setManagedEntry(entry)}
+                                                                            className="p-3 hover:bg-white rounded-2xl text-[#A3AED0] hover:text-primary transition-all border border-transparent hover:border-[#E0E5F2] hover:shadow-sm"
+                                                                        >
+                                                                            <MoreHorizontal className="w-5 h-5" />
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+
+                                                    {/* Clinical Notes */}
+                                                    <div className="px-10 py-6 border-t border-[#F4F7FE] bg-[#F4F7FE]/10">
+                                                        <details className="group">
+                                                            <summary className="list-none cursor-pointer flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-[#707EAE] hover:text-primary transition-colors">
+                                                                <div className="flex items-center gap-3">
+                                                                    <BookOpen className="w-4 h-4 text-primary" />
+                                                                    <span>Clinical Findings & Session Notes</span>
+                                                                </div>
+                                                                <div className="w-6 h-6 rounded-full bg-white border border-[#E0E5F2] flex items-center justify-center group-open:rotate-180 transition-transform shadow-sm">
+                                                                    <ChevronDown className="w-3.5 h-3.5" />
+                                                                </div>
+                                                            </summary>
+                                                            <div className="mt-5">
+                                                                <textarea
+                                                                    className="w-full bg-white border border-[#E0E5F2] rounded-3xl p-6 text-sm min-h-[140px] focus:ring-4 focus:ring-primary/5 transition-all shadow-inner font-bold text-[#1B2559] outline-none"
+                                                                    placeholder="Input specialized medical findings, observations, or specific patient feedback for this session..."
+                                                                    defaultValue={entries[0].notes || ""}
+                                                                    onBlur={(e) => saveVisitNote(date, e.target.value)}
+                                                                />
+                                                                <p className="text-[9px] text-[#A3AED0] font-black uppercase tracking-widest mt-3 text-right">Encrypted Medical Storage · Auto-sinc</p>
+                                                            </div>
+                                                        </details>
+                                                        {!entries[0].notes && (
+                                                            <div className="mt-2 pl-7 group-open:hidden">
+                                                                <p className="text-[10px] text-[#A3AED0] font-medium italic opacity-60 italic">Open this section to add specialized clinical observation notes for this visit.</p>
+                                                            </div>
+                                                        )}
+                                                        {entries[0].notes && (
+                                                            <div className="mt-3 pl-7 group-open:hidden border-l-2 border-primary/20">
+                                                                <p className="text-sm text-[#707EAE] font-semibold line-clamp-1 italic">"{entries[0].notes}"</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+
+                                        {history.length === 0 && (
+                                            <div className="card-premium border-dashed border-2 border-[#E0E5F2] p-24 text-center">
+                                                <div className="flex flex-col items-center gap-5 opacity-40">
+                                                    <Activity className="w-20 h-20 text-[#A3AED0]" />
+                                                    <div>
+                                                        <p className="text-lg font-black text-[#1B2559] tracking-tight">No Clinical Records Yet</p>
+                                                        <p className="text-sm font-bold text-[#A3AED0]">Start documenting patient progress by selecting treatments from the panel.</p>
+                                                    </div>
                                                 </div>
                                             </div>
+                                        )}
+                                    </>
+                                )
+                            }
 
-                                            <div className="overflow-y-auto p-1.5 space-y-1 scrollbar-hide flex-1">
-                                                {CATEGORIES.map(category => {
-                                                    const categoryTreatments = treatments.filter(t =>
-                                                        t.category === category &&
-                                                        (t.name.toLowerCase().includes(treatmentSearchTerm.toLowerCase()) ||
-                                                            category.toLowerCase().includes(treatmentSearchTerm.toLowerCase()))
-                                                    );
+                            {/* Invoice History View */}
+                            {
+                                historyView === 'invoices' && (
+                                    <div className="space-y-4">
+                                        {history.map((entry, idx) => (
+                                            <div key={entry.id} className="relative group overflow-hidden rounded-[2rem] border border-[#E0E5F2] bg-white/40 backdrop-blur-xl hover:bg-white/60 transition-all duration-500 hover:shadow-xl hover:shadow-primary/5">
+                                                <div className="p-5">
+                                                    <div className="grid grid-cols-12 gap-5">
+                                                        {/* Timestamp Anchor - Compact & Clear */}
+                                                        <div className="col-span-12 lg:col-span-2 flex flex-col justify-center border-b lg:border-b-0 lg:border-r border-[#F4F7FE] pb-4 lg:pb-0 lg:pr-5">
+                                                            <div className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-1.5 opacity-60">Timestamp</div>
+                                                            <div className="flex lg:flex-col items-baseline lg:items-start gap-4 lg:gap-0">
+                                                                <span className="text-3xl font-black text-[#1B2559] leading-none mb-1">
+                                                                    {new Date(entry.created_at).toLocaleDateString('en-US', { day: '2-digit' })}
+                                                                </span>
+                                                                <span className="text-[11px] font-black text-[#A3AED0] uppercase tracking-widest leading-none">
+                                                                    {new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                                                                </span>
+                                                            </div>
+                                                            <div className="mt-3 flex items-center gap-2 bg-[#F4F7FE] px-2.5 py-1.5 rounded-xl w-fit">
+                                                                <Clock className="w-3 h-3 text-primary" />
+                                                                <span className="text-[10px] font-black text-[#1B2559]">
+                                                                    {new Date(entry.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                                                </span>
+                                                            </div>
+                                                        </div>
 
-                                                    if (categoryTreatments.length === 0) return null;
-                                                    const isExpanded = expandedCategories.includes(category) || treatmentSearchTerm.length > 0;
+                                                        {/* Bento Core Content */}
+                                                        <div className="col-span-12 lg:col-span-10 grid grid-cols-2 gap-4">
+                                                            {/* Service Block */}
+                                                            <div className="col-span-2 flex flex-col sm:flex-row items-start justify-between gap-3">
+                                                                <div>
+                                                                    <div className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest mb-1">Service</div>
+                                                                    <h4 className="text-lg font-black text-[#1B2559] tracking-tight group-hover:text-primary transition-colors leading-tight">
+                                                                        {entry.treatments?.name || entry.description}
+                                                                    </h4>
+                                                                    <div className="flex items-center gap-2 mt-1.5">
+                                                                        <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                                                                        <span className="text-[9px] font-bold text-[#A3AED0] uppercase tracking-widest italic">
+                                                                            Dr. {entry.doctor?.name || 'Unassigned'}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="sm:text-right">
+                                                                    <div className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest mb-1">Status</div>
+                                                                    <div className={cn(
+                                                                        "inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider border transition-all",
+                                                                        Number(entry.amount_remaining) > 0
+                                                                            ? "bg-amber-50/50 border-amber-200 text-amber-600"
+                                                                            : "bg-emerald-50/50 border-emerald-200 text-emerald-600"
+                                                                    )}>
+                                                                        <div className={cn("w-1 h-1 rounded-full", Number(entry.amount_remaining) > 0 ? "bg-amber-600" : "bg-emerald-600")} />
+                                                                        {Number(entry.amount_remaining) > 0 ? 'Partial' : 'Paid'}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
 
-                                                    return (
-                                                        <div key={category} className="space-y-0.5">
-                                                            <button
-                                                                onClick={() => setExpandedCategories(prev =>
-                                                                    prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category]
-                                                                )}
-                                                                className="w-full flex items-center justify-between px-2 py-1 bg-white/40 hover:bg-white/60 rounded-lg transition-colors text-left"
-                                                            >
-                                                                <span className="text-[8px] font-black text-[#707EAE] uppercase tracking-widest leading-none">{category}</span>
-                                                                <ChevronDown className={clsx("w-3 h-3 text-[#A3AED0] transition-transform", isExpanded && "rotate-180")} />
-                                                            </button>
-
-                                                            {isExpanded && (
-                                                                <div className="grid grid-cols-1 gap-0.5">
-                                                                    {categoryTreatments.map(t => (
-                                                                        <button
-                                                                            key={t.id}
-                                                                            onClick={() => setHistoricalEntry({
-                                                                                ...historicalEntry,
-                                                                                treatmentId: t.id,
-                                                                                amount_aba: t.price.toString(),
-                                                                                amount_cash_usd: "",
-                                                                                amount_cash_khr: ""
-                                                                            })}
-                                                                            className={clsx(
-                                                                                "w-full text-left p-1.5 rounded-lg border transition-all flex items-center justify-between gap-2",
-                                                                                historicalEntry.treatmentId === t.id
-                                                                                    ? "bg-primary border-primary shadow-sm shadow-primary/20"
-                                                                                    : "bg-white border-[#E0E5F2] hover:border-primary/20"
-                                                                            )}
-                                                                        >
-                                                                            <div className="flex flex-col gap-0.5 min-w-0">
-                                                                                <span className={clsx("text-[9px] font-black leading-tight truncate", historicalEntry.treatmentId === t.id ? "text-white" : "text-[#1B2559]")}>
-                                                                                    {t.name}
-                                                                                </span>
+                                                            {/* Financials Bento Section */}
+                                                            <div className="bg-[#F4F7FE]/30 rounded-2xl p-4 border border-[#E0E5F2] flex items-center justify-between col-span-2 gap-4">
+                                                                <div className="flex items-center gap-6 lg:gap-10">
+                                                                    <div>
+                                                                        <p className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest mb-0.5">Paid</p>
+                                                                        <p className="text-xl font-black text-[#1B2559] tracking-tighter">
+                                                                            ${Number(entry.amount_paid).toLocaleString()}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="w-px h-8 bg-[#E0E5F2]" />
+                                                                    <div>
+                                                                        <p className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest mb-0.5">Total</p>
+                                                                        <p className="text-sm font-bold text-[#A3AED0] line-through decoration-primary/20">
+                                                                            ${Number(entry.total_price).toLocaleString()}
+                                                                        </p>
+                                                                    </div>
+                                                                    {Number(entry.amount_remaining) > 0 && (
+                                                                        <>
+                                                                            <div className="w-px h-8 bg-[#E0E5F2]" />
+                                                                            <div>
+                                                                                <p className="text-[8px] font-black text-amber-600 uppercase tracking-widest mb-0.5">Balance</p>
+                                                                                <p className="text-sm font-black text-amber-600">
+                                                                                    ${Number(entry.amount_remaining).toLocaleString()}
+                                                                                </p>
                                                                             </div>
-                                                                            <span className={clsx("text-[9px] font-black shrink-0", historicalEntry.treatmentId === t.id ? "text-white" : "text-primary")}>
-                                                                                ${t.price}
+                                                                        </>
+                                                                    )}
+                                                                </div>
+
+                                                                <Link
+                                                                    href={`/print?patient=${encodeURIComponent(patient.name)}&date=${entry.date}&total=${entry.total_price}&paid=${entry.amount_paid}&balance=${entry.amount_remaining}`}
+                                                                    className="flex items-center justify-center gap-2 bg-white hover:bg-primary hover:text-white text-primary px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border border-primary/10 shadow-sm active:scale-95"
+                                                                >
+                                                                    <Printer className="w-3.5 h-3.5" />
+                                                                    Print
+                                                                </Link>
+                                                            </div>
+
+                                                            {/* Mini payment trace */}
+                                                            {entry.payment_history && entry.payment_history.length > 0 && (
+                                                                <div className="col-span-2 flex flex-wrap items-center gap-2 px-1">
+                                                                    <div className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest mr-1">Trace:</div>
+                                                                    {entry.payment_history.map((ph: any) => (
+                                                                        <div key={ph.id} className="flex items-center gap-2 bg-white/60 border border-[#E0E5F2] px-2.5 py-1 rounded-lg">
+                                                                            <div className={cn(
+                                                                                "w-1 h-1 rounded-full",
+                                                                                ph.payment_method === 'ABA' ? "bg-blue-500" : "bg-emerald-500"
+                                                                            )} />
+                                                                            <span className="text-[8px] font-black text-[#1B2559] uppercase tracking-widest">
+                                                                                {ph.payment_method} · {ph.payment_currency === 'USD' ? '$' : '៛'}{Number(ph.amount_paid).toLocaleString()}
                                                                             </span>
-                                                                        </button>
+                                                                        </div>
                                                                     ))}
                                                                 </div>
                                                             )}
                                                         </div>
-                                                    );
-                                                })}
+                                                    </div>
+                                                </div>
                                             </div>
+                                        ))}
+
+                                    </div>
+                                )
+                            }
+                        </div>
+                    )}
+
+                    {/* Tab Content: Patient Information */}
+                    {activeTab === 'patient-info' && (
+                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {/* Summary Grid */}
+                            <div className="grid grid-cols-3 gap-6">
+                                <div className="card-premium p-6 border-none bg-emerald-50/30">
+                                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">Primary Consultation</p>
+                                    <p className="text-lg font-black text-[#1B2559]">No</p>
+                                </div>
+                                <div className="card-premium p-6 border-none bg-primary/5">
+                                    <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-2">Special Interest</p>
+                                    <p className="text-lg font-black text-[#1B2559]">Yes <span className="text-[10px] text-[#A3AED0] font-bold">(tooth number 11,21)</span></p>
+                                </div>
+                                <div className="card-premium p-6 border-none bg-amber-50/30">
+                                    <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2">High Risk Conditions</p>
+                                    <p className="text-lg font-black text-[#1B2559]">No</p>
+                                </div>
+                            </div>
+
+                            {/* Oral Hygiene Habits */}
+                            <div className="card-premium p-8">
+                                <div className="flex items-center justify-between mb-8">
+                                    <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-[#1B2559] flex items-center gap-3">
+                                        <Activity className="w-5 h-5 text-primary" />
+                                        Oral Hygiene Habits
+                                    </h3>
+                                    <span className="text-[10px] text-[#A3AED0] font-bold uppercase tracking-widest">Last update 12 July 2022</span>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-10">
+                                    <div className="space-y-10">
+                                        <div>
+                                            <p className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-2">Latest dental visit?</p>
+                                            <p className="text-sm font-black text-[#1B2559]">Less than 3 months ago</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-2">Do you use mouthwash?</p>
+                                            <p className="text-sm font-black text-[#1B2559]">Yes</p>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-10">
+                                        <div>
+                                            <p className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-2">What time did you start?</p>
+                                            <p className="text-sm font-black text-[#1B2559]">About 20 years old</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-2">Do you use dental floss?</p>
+                                            <p className="text-sm font-black text-[#1B2559]">Yes</p>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-10">
+                                        <div>
+                                            <p className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-2">How many times a day?</p>
+                                            <p className="text-sm font-black text-[#1B2559]">Twice</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-2">Changing toothbrush?</p>
+                                            <p className="text-sm font-black text-[#1B2559]">Every 3 months</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="space-y-2 bg-[#F4F7FE]/50 p-4 rounded-2xl border border-[#E0E5F2] shrink-0">
-                                <label className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest pl-1 mb-0.5 block">Financial Breakdown</label>
+                            {/* Attachments Section */}
+                            <div className="card-premium p-8">
+                                <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-[#1B2559] mb-8 flex items-center gap-3">
+                                    <Printer className="w-5 h-5 text-primary" />
+                                    Clinical Media Attachments
+                                </h3>
 
-                                <div className="flex gap-2">
-                                    <div className="relative flex-1">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-primary">ABA</span>
-                                        <input
-                                            type="number"
-                                            className="w-full bg-white border border-[#E0E5F2] rounded-lg pl-10 pr-2 py-2 text-xs font-black text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all"
-                                            placeholder="0.00"
-                                            value={historicalEntry.amount_aba}
-                                            onChange={(e) => setHistoricalEntry({ ...historicalEntry, amount_aba: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="relative flex-1">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-[#01B574]">USD</span>
-                                        <input
-                                            type="number"
-                                            className="w-full bg-white border border-[#E0E5F2] rounded-lg pl-10 pr-2 py-2 text-xs font-black text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all"
-                                            placeholder="0.00"
-                                            value={historicalEntry.amount_cash_usd}
-                                            onChange={(e) => setHistoricalEntry({ ...historicalEntry, amount_cash_usd: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="relative flex-1">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-rose-500">KHR</span>
-                                        <input
-                                            type="number"
-                                            className="w-full bg-white border border-[#E0E5F2] rounded-lg pl-10 pr-2 py-2 text-xs font-black text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all"
-                                            placeholder="0"
-                                            value={historicalEntry.amount_cash_khr}
-                                            onChange={(e) => setHistoricalEntry({ ...historicalEntry, amount_cash_khr: e.target.value })}
-                                        />
-                                    </div>
+                                <div className="grid grid-cols-3 gap-6">
+                                    {[1, 2, 3].map((i) => (
+                                        <div key={i} className="group relative rounded-2xl overflow-hidden aspect-[4/3] border border-[#E0E5F2] bg-[#F4F7FE]/30 hover:shadow-xl transition-all">
+                                            <div className="absolute inset-0 flex items-center justify-center opacity-40">
+                                                <Printer className="w-12 h-12 text-[#A3AED0]" />
+                                            </div>
+                                            <div className="absolute bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-[#E0E5F2] flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-[9px] font-black text-[#1B2559] truncate">Med_Pic_2134.jpg</p>
+                                                    <button className="text-[8px] font-bold text-primary uppercase tracking-widest mt-0.5">+ Add notes</button>
+                                                </div>
+                                                <div className="p-1.5 bg-[#F4F7FE] rounded-lg">
+                                                    <Edit2 className="w-3 h-3 text-[#A3AED0]" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-
-                                <div className="flex justify-between items-center px-2 pt-1.5 border-t border-[#E0E5F2]">
-                                    <span className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest leading-none">Total Intake</span>
-                                    <span className="text-sm font-black text-primary tracking-tighter">
-                                        ${(Number(historicalEntry.amount_aba) + Number(historicalEntry.amount_cash_usd) + (Number(historicalEntry.amount_cash_khr) / usdToKhr)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 items-center gap-3 shrink-0">
-                                <label className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest pl-1 leading-none">Principal Instrument</label>
-                                <select
-                                    className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg px-3 py-2 text-[10px] font-bold text-[#1B2559] outline-none focus:ring-4 focus:ring-primary/5 transition-all appearance-none cursor-pointer"
-                                    value={historicalEntry.method}
-                                    onChange={(e) => setHistoricalEntry({ ...historicalEntry, method: e.target.value })}
-                                >
-                                    <option value="ABA">ABA Bank</option>
-                                    <option value="CASH">Cash</option>
-                                </select>
-                            </div>
-
-                            <div className="flex gap-3 pt-1 shrink-0">
-                                <button
-                                    onClick={() => setIsAddingHistorical(false)}
-                                    className="flex-1 text-[#A3AED0] hover:text-[#1B2559] py-3 rounded-xl text-[9px] font-black transition-all uppercase tracking-widest border border-transparent hover:border-[#E0E5F2]"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={addHistoricalEntry}
-                                    className="flex-[2] bg-primary hover:bg-[#3311DB] text-white py-3 rounded-xl text-[10px] font-black transition-all shadow-lg shadow-primary/25 uppercase tracking-[0.2em]"
-                                >
-                                    Reconcile Past Entry
-                                </button>
                             </div>
                         </div>
-                    </div>
-                )
-            }
+                    )}
+
+                    {/* Tab Content: Next Treatment */}
+                    {activeTab === 'next-treatment' && (
+                        <div className="card-premium p-16 text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className="flex flex-col items-center gap-6 opacity-40">
+                                <Activity className="w-20 h-20 text-primary" />
+                                <div>
+                                    <p className="text-xl font-black text-[#1B2559] tracking-tight">Next Treatment Planning</p>
+                                    <p className="text-sm font-bold text-[#A3AED0] max-w-md mx-auto mt-2">No future treatments are currently scheduled. Use the clinical menu to prepare a new session plan.</p>
+                                </div>
+                                <button className="mt-4 bg-primary text-white px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20">Schedule Next Phase</button>
+                            </div>
+                        </div>
+                    )}
+
+
+                    {/* Tab Content: Medical Record */}
+                    {activeTab === 'medical-record' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className="card-premium p-8">
+                                <div className="space-y-0 relative">
+                                    {/* Vertical Timeline Line */}
+                                    <div className="absolute left-[23px] top-4 bottom-4 w-px bg-[#E0E5F2]" />
+
+                                    {(() => {
+                                        // 1. Sort history earliest to latest
+                                        const sortedHistory = history.slice().sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+                                        // 2. Group by Date
+                                        const groupedByDate: Record<string, any[]> = {};
+                                        sortedHistory.forEach(entry => {
+                                            if (!groupedByDate[entry.date]) groupedByDate[entry.date] = [];
+                                            groupedByDate[entry.date].push(entry);
+                                        });
+
+                                        return Object.entries(groupedByDate).map(([date, dateEntries]) => {
+                                            const entryDate = new Date(date);
+
+                                            // 3. Within each date, group by Dentist
+                                            const groupedByDentist: Record<string, any[]> = {};
+                                            dateEntries.forEach(entry => {
+                                                const dName = entry.doctor?.name || 'Unassigned';
+                                                if (!groupedByDentist[dName]) groupedByDentist[dName] = [];
+                                                groupedByDentist[dName].push(entry);
+                                            });
+
+                                            return (
+                                                <div key={date} className="relative pl-16 pb-12 last:pb-0 group">
+                                                    {/* Timeline Node */}
+                                                    <div className="absolute left-4 top-1 w-4 h-4 rounded-full border-4 border-white shadow-sm z-10 bg-primary transition-all group-hover:scale-125" />
+
+                                                    <div className="grid grid-cols-12 gap-6 items-start">
+                                                        {/* Date Column */}
+                                                        <div className="col-span-2">
+                                                            <div className="text-[10px] font-black text-[#A3AED0] uppercase tracking-[0.2em] mb-1">{format(entryDate, 'MMM')}</div>
+                                                            <div className="text-2xl font-black text-[#1B2559] leading-none">{format(entryDate, 'dd')}</div>
+                                                            <div className="text-[10px] font-bold text-[#A3AED0] mt-1">{format(entryDate, 'yyyy')}</div>
+                                                        </div>
+
+                                                        {/* Content Cards grouped by Dentist */}
+                                                        <div className="col-span-10 space-y-4">
+                                                            {Object.entries(groupedByDentist).map(([dentistName, dentistEntries]) => (
+                                                                <div key={dentistName} className="bg-white rounded-3xl border border-[#F4F7FE] p-6 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500 relative">
+                                                                    <div className="flex items-center justify-between mb-4 border-b border-[#F4F7FE] pb-4">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                                                <User className="w-4 h-4" />
+                                                                            </div>
+                                                                            <div>
+                                                                                <div className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest">Dentist</div>
+                                                                                <div className="text-xs font-black text-[#1B2559]">Dr. {dentistName}</div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Session Status - Positioned Far Right */}
+                                                                    <div className="absolute top-6 right-6">
+                                                                        <div className="text-right">
+                                                                            <div className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">Session Status</div>
+                                                                            <div className="relative group/status">
+                                                                                {(() => {
+                                                                                    const currentStatus = dentistEntries[0]?.status || 'pending';
+                                                                                    const statusStyles: Record<string, { color: string, icon: any, label: string }> = {
+                                                                                        'done': { color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20', icon: <CheckCircle2 className="w-3 h-3" />, label: 'Done' },
+                                                                                        'pending': { color: 'text-amber-500 bg-amber-500/10 border-amber-500/20', icon: <Clock className="w-3 h-3" />, label: 'Scheduled' },
+                                                                                        'scheduled': { color: 'text-blue-500 bg-blue-500/10 border-blue-500/20', icon: <Calendar className="w-3 h-3" />, label: 'Scheduled' },
+                                                                                        'cancelled': { color: 'text-rose-500 bg-rose-500/10 border-rose-500/20', icon: <AlertCircle className="w-3 h-3" />, label: 'Cancelled' },
+                                                                                        'no-show': { color: 'text-slate-500 bg-slate-500/10 border-slate-500/20', icon: <XCircle className="w-3 h-3" />, label: 'No-Show' }
+                                                                                    };
+                                                                                    const style = statusStyles[currentStatus] || statusStyles['pending'];
+
+                                                                                    return (
+                                                                                        <div className="flex flex-col items-end gap-1">
+                                                                                            <div className={cn(
+                                                                                                "inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer hover:bg-white hover:shadow-lg",
+                                                                                                style.color
+                                                                                            )}>
+                                                                                                {style.icon}
+                                                                                                {style.label}
+                                                                                                <ChevronDown className="w-3 h-3 opacity-50" />
+                                                                                            </div>
+
+                                                                                            {/* Status Dropdown */}
+                                                                                            <div className="absolute top-full right-0 pt-2 w-40 hidden group-hover/status:block z-50 animate-in fade-in zoom-in-95 duration-200">
+                                                                                                <div className="bg-white border border-[#E0E5F2] rounded-2xl shadow-2xl p-2">
+                                                                                                    {(['scheduled', 'done', 'cancelled', 'no-show'] as const).map(s => (
+                                                                                                        <button
+                                                                                                            key={s}
+                                                                                                            onClick={() => updateSessionStatus(date, dentistEntries[0].doctor_id, s)}
+                                                                                                            className={cn(
+                                                                                                                "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-[10px] font-bold transition-all hover:bg-[#F4F7FE]",
+                                                                                                                currentStatus === s ? "text-primary bg-primary/5" : "text-[#707EAE]"
+                                                                                                            )}
+                                                                                                        >
+                                                                                                            <div className={cn("w-1.5 h-1.5 rounded-full",
+                                                                                                                s === 'done' ? "bg-emerald-500" :
+                                                                                                                    s === 'scheduled' ? "bg-blue-500" :
+                                                                                                                        s === 'cancelled' ? "bg-rose-500" : "bg-slate-500"
+                                                                                                            )} />
+                                                                                                            {s.charAt(0).toUpperCase() + s.slice(1)}
+                                                                                                        </button>
+                                                                                                    ))}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    );
+                                                                                })()}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div className="space-y-4">
+                                                                        {(() => {
+                                                                            // Group dentistEntries by treatment name/description
+                                                                            const groupedByTreatment = dentistEntries.reduce((acc: any[], entry: any) => {
+                                                                                const treatmentName = entry.treatments?.name || entry.description;
+                                                                                const existing = acc.find(g => (g.treatments?.name || g.description) === treatmentName);
+
+                                                                                if (existing) {
+                                                                                    existing.quantity = (existing.quantity || 1) + (entry.quantity || 1);
+                                                                                    existing.total_price = (Number(existing.total_price) || 0) + (Number(entry.total_price) || 0);
+                                                                                    // Append notes if they exist and are different
+                                                                                    if (entry.notes && !existing.notes?.includes(entry.notes)) {
+                                                                                        existing.notes = existing.notes ? `${existing.notes} | ${entry.notes}` : entry.notes;
+                                                                                    }
+                                                                                    return acc;
+                                                                                }
+                                                                                return [...acc, { ...entry }];
+                                                                            }, []);
+
+                                                                            return groupedByTreatment.map((entry) => (
+                                                                                <div key={entry.id} className="space-y-3">
+                                                                                    <div className="flex items-start justify-between">
+                                                                                        <div>
+                                                                                            <div className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest mb-1">Treatment</div>
+                                                                                            <div className="flex items-center gap-3">
+                                                                                                <div className="text-sm font-black text-primary tracking-tight">{entry.treatments?.name || entry.description}</div>
+                                                                                                {(entry.quantity || 1) > 1 && (
+                                                                                                    <span className="text-[10px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded-lg border border-primary/10">x{entry.quantity}</span>
+                                                                                                )}
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        <div className="text-right">
+                                                                                            <div className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest mb-1">Total</div>
+                                                                                            <div className="text-[10px] font-bold text-[#1B2559]">${Number(entry.total_price).toLocaleString()}</div>
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    {entry.notes && (
+                                                                                        <div className="bg-[#F4F7FE]/50 rounded-2xl p-4 border border-[#E0E5F2]/50 flex items-start gap-4">
+                                                                                            <div className="p-2 bg-white rounded-xl border border-[#E0E5F2] shrink-0">
+                                                                                                <BookOpen className="w-3.5 h-3.5 text-primary" />
+                                                                                            </div>
+                                                                                            <p className="text-xs font-medium text-[#707EAE] leading-relaxed italic">
+                                                                                                {entry.notes}
+                                                                                            </p>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            ));
+                                                                        })()}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        });
+                                    })()}
+                                    {history.length === 0 && <p className="text-center text-[#A3AED0] py-10 italic">No clinical milestones recorded.</p>}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
             {/* Treatment Management Modal */}
             {
                 managedEntry && (
@@ -1431,7 +1388,7 @@ export default function PatientDetailsPage() {
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <label className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Practitioner</label>
+                                        <label className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Dentist</label>
                                         <select
                                             className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl px-4 py-3 text-[11px] font-black text-[#1B2559] outline-none cursor-pointer appearance-none uppercase tracking-widest"
                                             defaultValue={managedEntry.doctor_id || ""}
@@ -1773,6 +1730,159 @@ export default function PatientDetailsPage() {
                 )
             }
 
+            {/* Bulk Settlement Modal */}
+            {
+                isBulkModalOpen && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#1B2559]/40 backdrop-blur-xl p-4 animate-in fade-in duration-300">
+                        <div className="bg-white border border-[#E0E5F2] rounded-[3rem] w-full max-w-4xl shadow-2xl p-10 space-y-8 relative overflow-hidden flex flex-col max-h-[90vh]">
+                            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-500 to-primary" />
+
+                            <button
+                                onClick={() => {
+                                    setIsBulkModalOpen(false);
+                                    setSelectedBulkEntries([]);
+                                }}
+                                className="absolute top-8 right-8 p-2.5 hover:bg-[#F4F7FE] rounded-2xl text-[#A3AED0] hover:text-primary transition-all"
+                            >
+                                <XIcon className="w-5 h-5" />
+                            </button>
+
+                            <div className="flex items-center gap-6 shrink-0">
+                                <div className="w-16 h-16 bg-emerald-500/10 rounded-[2rem] flex items-center justify-center">
+                                    <DollarSign className="w-8 h-8 text-emerald-500" />
+                                </div>
+                                <div>
+                                    <h3 className="text-3xl font-black text-[#1B2559] tracking-tight">Bulk Settlement</h3>
+                                    <p className="text-xs text-[#707EAE] font-bold uppercase tracking-[0.2em]">Select multiple appointments to clear balance</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-12 gap-8 flex-1 min-h-0">
+                                {/* Selection List */}
+                                <div className="col-span-12 lg:col-span-7 flex flex-col gap-4 overflow-y-auto pr-4 custom-scrollbar">
+                                    <div className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest pl-2">Outstanding Appointments</div>
+                                    {history.filter(e => Number(e.amount_remaining) > 0).map((entry) => (
+                                        <div
+                                            key={entry.id}
+                                            onClick={() => {
+                                                setSelectedBulkEntries(prev =>
+                                                    prev.includes(entry.id)
+                                                        ? prev.filter(id => id !== entry.id)
+                                                        : [...prev, entry.id]
+                                                );
+                                            }}
+                                            className={cn(
+                                                "group p-5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between",
+                                                selectedBulkEntries.includes(entry.id)
+                                                    ? "bg-primary/5 border-primary shadow-lg shadow-primary/5"
+                                                    : "bg-white border-[#E0E5F2] hover:border-primary/30"
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className={cn(
+                                                    "w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all",
+                                                    selectedBulkEntries.includes(entry.id)
+                                                        ? "bg-primary border-primary text-white"
+                                                        : "border-[#E0E5F2] group-hover:border-primary/50"
+                                                )}>
+                                                    {selectedBulkEntries.includes(entry.id) && <Check className="w-4 h-4" />}
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-black text-[#1B2559]">{entry.treatments?.name || entry.description}</div>
+                                                    <div className="text-[10px] text-[#A3AED0] font-bold uppercase tracking-widest">{format(new Date(entry.date), 'MMM dd, yyyy')}</div>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-sm font-black text-amber-600">${Number(entry.amount_remaining).toLocaleString()}</div>
+                                                <div className="text-[9px] text-[#A3AED0] font-bold uppercase">Balance</div>
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {history.filter(e => Number(e.amount_remaining) > 0).length === 0 && (
+                                        <div className="p-10 text-center border-2 border-dashed border-[#E0E5F2] rounded-3xl opacity-40">
+                                            <p className="text-sm font-bold text-[#A3AED0]">No outstanding balances found</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Payment Section */}
+                                <div className="col-span-12 lg:col-span-5 space-y-6">
+                                    <div className="bg-[#F4F7FE] p-6 rounded-[2rem] border border-[#E0E5F2] space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest">Selected Total</span>
+                                            <span className="text-2xl font-black text-[#1B2559]">
+                                                ${history
+                                                    .filter(e => selectedBulkEntries.includes(e.id))
+                                                    .reduce((sum, e) => sum + Number(e.amount_remaining), 0)
+                                                    .toLocaleString()}
+                                            </span>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">ABA Payment ($)</label>
+                                                <input
+                                                    type="number"
+                                                    placeholder="0.00"
+                                                    className="w-full bg-white border border-[#E0E5F2] rounded-xl px-4 py-3 text-sm font-black text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all"
+                                                    value={bulkSettleData.amount_aba}
+                                                    onChange={(e) => setBulkSettleData({ ...bulkSettleData, amount_aba: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Cash USD ($)</label>
+                                                    <input
+                                                        type="number"
+                                                        placeholder="0.00"
+                                                        className="w-full bg-white border border-[#E0E5F2] rounded-xl px-4 py-3 text-sm font-black text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all"
+                                                        value={bulkSettleData.amount_cash_usd}
+                                                        onChange={(e) => setBulkSettleData({ ...bulkSettleData, amount_cash_usd: e.target.value })}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Cash KHR (៛)</label>
+                                                    <input
+                                                        type="number"
+                                                        placeholder="0"
+                                                        className="w-full bg-white border border-[#E0E5F2] rounded-xl px-4 py-3 text-sm font-black text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all"
+                                                        value={bulkSettleData.amount_cash_khr}
+                                                        onChange={(e) => setBulkSettleData({ ...bulkSettleData, amount_cash_khr: e.target.value })}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-4 border-t border-[#E0E5F2]">
+                                            <div className="flex items-center justify-between opacity-60">
+                                                <span className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest">Total Entered</span>
+                                                <span className="text-sm font-black text-[#1B2559]">
+                                                    ${(
+                                                        (Number(bulkSettleData.amount_aba) || 0) +
+                                                        (Number(bulkSettleData.amount_cash_usd) || 0) +
+                                                        ((Number(bulkSettleData.amount_cash_khr) || 0) / usdToKhr)
+                                                    ).toLocaleString()}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={handleBulkSettlement}
+                                        disabled={selectedBulkEntries.length === 0}
+                                        className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-[#A3AED0] disabled:opacity-30 text-white py-5 rounded-[2rem] text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
+                                    >
+                                        <Check className="w-4 h-4" />
+                                        Confirm Bulk Settlement
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
             {/* Edit Payment Modal */}
             {
                 isEditingPayment && editPaymentData && (
@@ -1850,6 +1960,14 @@ export default function PatientDetailsPage() {
                     </div>
                 )
             }
-        </div >
+        </div>
+    );
+}
+
+export default function PatientDetailsPage() {
+    return (
+        <Suspense fallback={<div className="p-10 text-center">Initialing Clinical Environment...</div>}>
+            <PatientDetailsContent />
+        </Suspense>
     );
 }

@@ -21,10 +21,13 @@ import {
   TrendingUp,
   Search,
   Layout,
-  ChevronDown
+  ChevronDown,
+  User,
+  Clock
 } from "lucide-react";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, startOfDay } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, startOfDay, addMinutes } from "date-fns";
 import { useRouter } from "next/navigation";
+import DatePicker from "@/components/DatePicker";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -39,7 +42,8 @@ import {
   ShieldCheck,
   Target,
   Wallet,
-  Info
+  Info,
+  Stethoscope
 } from "lucide-react";
 
 export default function LedgerPage() {
@@ -54,6 +58,10 @@ export default function LedgerPage() {
   const [isAddingEntry, setIsAddingEntry] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
+  const [doctorFilter, setDoctorFilter] = useState<string[]>([]);
+  const [calendarSearchQuery, setCalendarSearchQuery] = useState("");
+  const [isDoctorFilterOpen, setIsDoctorFilterOpen] = useState(false);
+  const [isCalendarSearchOpen, setIsCalendarSearchOpen] = useState(false);
 
   const { isCollapsed, showSummary, setShowSummary } = useSidebar();
   const { usdToKhr } = useCurrency();
@@ -70,6 +78,24 @@ export default function LedgerPage() {
   const [managedEntry, setManagedEntry] = useState<any>(null);
   const [undoItem, setUndoItem] = useState<any>(null);
   const [undoTimer, setUndoTimer] = useState<NodeJS.Timeout | null>(null);
+  const [intakeResults, setIntakeResults] = useState<any[]>([]);
+  const [isIntakeSearching, setIsIntakeSearching] = useState(false);
+
+  // Quick Calendar Event States
+  const [isQuickEventOpen, setIsQuickEventOpen] = useState(false);
+  const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
+  const [quickEventData, setQuickEventData] = useState({
+    date: format(new Date(), 'yyyy-MM-dd'),
+    time: "09:00",
+    patientId: "",
+    patientName: "",
+    gender: "F",
+    age: "",
+    doctorId: "",
+    treatmentId: "",
+    duration: 15
+  });
+  const [treatmentSearch, setTreatmentSearch] = useState("");
 
   useEffect(() => {
     setMounted(true);
@@ -133,8 +159,8 @@ export default function LedgerPage() {
       .from('ledger_entries')
       .select(`
         *,
-        patients (name),
-        treatments (name)
+        patients (name, phone),
+        doctor:staff!doctor_id (name)
       `)
       .eq('branch_id', currentBranch?.id)
       .gte('date', start)
@@ -146,42 +172,36 @@ export default function LedgerPage() {
     setIsLoading(false);
   }
 
-  const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [localSearchQuery, setLocalSearchQuery] = useState("");
 
+  // Quick Intake Search logic (Independent of main ledger search)
   useEffect(() => {
-    const delaySearch = setTimeout(async () => {
-      if (searchQuery.length > 2) {
-        setIsSearching(true);
-        setIsLoading(true);
-        try {
-          const { data, error } = await supabase
-            .from('ledger_entries')
-            .select(`
-                *,
-                patients!inner(name, gender, age),
-                treatments (name),
-                doctor:staff!doctor_id (name)
-              `)
-            .eq('branch_id', currentBranch?.id)
-            .ilike('patients.name', `%${searchQuery}%`)
-            .order('date', { ascending: false });
+    const delayIntakeSearch = setTimeout(async () => {
+      if (quickPatient.name.length > 1) {
+        setIsIntakeSearching(true);
+        const { data } = await supabase
+          .from('patients')
+          .select('*')
+          .ilike('name', `%${quickPatient.name}%`)
+          .limit(5);
 
-          if (data) setSearchResults(data);
-        } finally {
-          setIsLoading(false);
-          setIsSearching(false);
-        }
+        if (data) setIntakeResults(data);
+        setIsIntakeSearching(false);
       } else {
-        setSearchResults([]);
+        setIntakeResults([]);
       }
-    }, 500);
+    }, 400);
 
-    return () => clearTimeout(delaySearch);
-  }, [searchQuery]);
+    return () => clearTimeout(delayIntakeSearch);
+  }, [quickPatient.name]);
 
   // Stats - Dynamically switch based on view mode
-  const currentEntries = searchQuery.length > 2 ? searchResults : (viewMode === 'list' ? entries : monthEntries);
+  const currentEntries = viewMode === 'list'
+    ? entries
+    : monthEntries.filter(e => doctorFilter.length === 0 || doctorFilter.includes(e.doctor_id));
+
+
 
   // Revised Intake Logic: Separate ABA, USD Cash, KHR Cash
   const abaIntake = currentEntries.reduce((acc, e) => acc + (Number(e.paid_aba) || 0), 0);
@@ -195,9 +215,9 @@ export default function LedgerPage() {
   const totalValue = currentEntries.reduce((acc, e) => acc + (Number(e.total_price) || 0), 0);
 
   // Grouping Logic for List View (Minimized/Maximized)
-  // Logic: Use searchResults if searching, otherwise use entries (Daily).
+  // Logic: Use currentEntries (Daily).
   // Note: Monthly View uses the Calendar Matrix, not this list.
-  const sourceEntries = searchQuery.length > 2 ? searchResults : entries;
+  const sourceEntries = currentEntries;
 
   const groupedEntries = Object.values(
     sourceEntries.reduce((acc: any, entry: any) => {
@@ -277,6 +297,91 @@ export default function LedgerPage() {
     }
   }
 
+  // Generate 15-minute intervals
+  const timeIntervals = [];
+  for (let h = 7; h <= 20; h++) {
+    for (let m = 0; m < 60; m += 15) {
+      const hh = h.toString().padStart(2, '0');
+      const mm = m.toString().padStart(2, '0');
+      timeIntervals.push(`${hh}:${mm}`);
+    }
+  }
+
+  async function handleSaveQuickEvent() {
+    if (!quickEventData.patientName) return alert("Please enter a patient name");
+    if (!quickEventData.doctorId) return alert("Please select a dentist");
+
+    setIsLoading(true);
+    let finalPatientId = quickEventData.patientId;
+
+    // Create new patient if it's a forced create
+    if (!finalPatientId) {
+      const { data: newP, error: pErr } = await supabase
+        .from('patients')
+        .insert({
+          name: quickEventData.patientName,
+          gender: quickEventData.gender,
+          age: quickEventData.age ? Number(quickEventData.age) : null,
+          phone: '', // Placeholder
+          branch_id: currentBranch?.id
+        })
+        .select()
+        .single();
+
+      if (pErr) {
+        alert("Patient creation failed: " + pErr.message);
+        setIsLoading(false);
+        return;
+      }
+      finalPatientId = newP.id;
+    }
+
+    const { error } = await supabase
+      .from('ledger_entries')
+      .insert({
+        patient_id: finalPatientId,
+        doctor_id: quickEventData.doctorId,
+        treatment_id: quickEventData.treatmentId || null,
+        description: quickEventData.treatmentId
+          ? treatments.find(t => t.id === quickEventData.treatmentId)?.name
+          : "Initial Consultation",
+        total_price: quickEventData.treatmentId
+          ? treatments.find(t => t.id === quickEventData.treatmentId)?.price
+          : 0,
+        amount_paid: 0,
+        amount_remaining: quickEventData.treatmentId
+          ? treatments.find(t => t.id === quickEventData.treatmentId)?.price
+          : 0,
+        date: quickEventData.date,
+        appointment_time: `${quickEventData.time}:00`,
+        duration_minutes: quickEventData.duration,
+        branch_id: currentBranch?.id,
+        status: 'pending'
+      });
+
+    if (!error) {
+      setIsQuickEventOpen(false);
+      setQuickEventData({
+        date: format(new Date(), 'yyyy-MM-dd'),
+        time: "09:00",
+        patientId: "",
+        patientName: "",
+        gender: "F",
+        age: "",
+        doctorId: "",
+        treatmentId: "",
+        duration: 15
+      });
+      setTreatmentSearch("");
+      fetchDailyEntries();
+      fetchMonthlyEntries();
+      alert("Appointment saved successfully!");
+    } else {
+      alert("Error saving: " + error.message);
+    }
+    setIsLoading(false);
+  }
+
   if (!mounted) return null;
 
   return (
@@ -311,7 +416,7 @@ export default function LedgerPage() {
                   viewMode === v ? "bg-white text-primary shadow-sm border border-[#E0E5F2]" : "text-[#A3AED0] hover:text-[#1B2559]"
                 )}
               >
-                {v}
+                {v === 'list' ? 'Daily View' : 'Calendar'}
               </button>
             ))}
           </div>
@@ -347,77 +452,87 @@ export default function LedgerPage() {
             </button>
           </div>
 
+          {/* Global Search Button */}
+          <button
+            onClick={() => setIsCalendarSearchOpen(true)}
+            className="p-2.5 bg-[#F4F7FE] border border-[#E0E5F2] hover:border-primary/30 rounded-xl text-[#A3AED0] hover:text-primary transition-all shadow-sm group shrink-0"
+          >
+            <Search className="w-4 h-4 group-hover:scale-110 transition-transform" />
+          </button>
+
           <button
             onClick={() => setIsAddingEntry(true)}
             className="bg-primary hover:bg-[#3311DB] text-white px-5 py-2.5 rounded-xl text-[9px] font-black flex items-center gap-2 transition-all shadow-lg active:scale-95 group shrink-0 uppercase tracking-widest"
           >
             <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300" />
-            Quick Entry
+            Create Patient
           </button>
         </div>
       </div>
 
       {/* Modern Bento Grid Stats - Massive Density Gain */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-        {/* Primary Stat Card */}
-        <div className="md:col-span-4 bg-white border border-[#E0E5F2] rounded-[1.5rem] p-5 relative overflow-hidden group hover:border-primary/30 transition-all flex flex-col justify-between min-h-[140px]">
-          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-            <TrendingUp className="w-24 h-24 rotate-12" />
-          </div>
-          <div className="space-y-1">
-            <p className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest">Realized Intake</p>
-            <h2 className="text-3xl font-black text-[#1B2559] tracking-tighter">${totalRealized.toLocaleString(undefined, { maximumFractionDigits: 2 })}</h2>
-          </div>
-          <div className="flex items-center justify-between text-[10px]">
-            <span className="text-success font-bold flex items-center gap-1">
-              <ArrowUpRight className="w-3 h-3" /> +12.5% vs Yesterday
-            </span>
-            <span className="text-[#A3AED0] font-bold">Today's Realization</span>
-          </div>
-        </div>
+      {/* Intake / Stats Summary - Hidden in Calendar View for Full Screen experience */}
+      {viewMode !== 'calendar' && (
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-6 animate-in fade-in slide-in-from-top-2 duration-500">
+          {/* Main Portfolio Card - Total Earnings (Highlighted) */}
+          <div className="md:col-span-4 bg-gradient-to-br from-[#1B2559] to-[#3311DB] rounded-[1.25rem] p-5 text-white flex flex-col justify-between relative overflow-hidden group hover:shadow-xl hover:shadow-primary/20 transition-all">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-bl-full -mr-6 -mt-6 transition-transform group-hover:scale-110" />
 
-        {/* Binary Stats (ABA + Cash) */}
-        <div className="md:col-span-5 grid grid-cols-2 gap-4">
-          <div className="bg-white border border-[#E0E5F2] rounded-[1.5rem] p-5 flex flex-col justify-between hover:border-blue-500/30 transition-all">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
-                <Zap className="w-4 h-4" />
+            <div className="relative z-10">
+              <span className="text-[9px] font-black text-white/50 uppercase tracking-widest">Total Earnings</span>
+              <h2 className="text-2xl font-black text-white mt-1 tracking-tight">
+                ${(currentEntries.reduce((acc, curr) => acc + (Number(curr.amount_paid) || 0), 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </h2>
+            </div>
+
+            <div className="relative z-10 flex items-center justify-between mt-4">
+              <div className="flex items-center gap-1.5 text-emerald-400 bg-white/10 px-2 py-0.5 rounded-lg">
+                <TrendingUp className="w-3 h-3" />
+                <span className="text-[9px] font-bold">+12.5%</span>
               </div>
-              <span className="text-[8px] font-black text-[#A3AED0] uppercase">ABA Intake</span>
+            </div>
+          </div>
+
+          {/* Binary Stats (ABA + Cash) */}
+          <div className="md:col-span-5 grid grid-cols-2 gap-4">
+            <div className="bg-white border border-[#E0E5F2] rounded-[1.25rem] p-4 flex flex-col justify-between hover:border-blue-500/30 transition-all">
+              <div className="flex items-center justify-between mb-2">
+                <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+                  <Zap className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-[8px] font-black text-[#A3AED0] uppercase">ABA</span>
+              </div>
+              <div>
+                <p className="text-lg font-black text-[#1B2559] tracking-tight">${abaIntake.toLocaleString()}</p>
+              </div>
+            </div>
+            <div className="bg-white border border-[#E0E5F2] rounded-[1.25rem] p-4 flex flex-col justify-between hover:border-emerald-500/30 transition-all">
+              <div className="flex items-center justify-between mb-2">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                  <Wallet className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-[8px] font-black text-[#A3AED0] uppercase">USD Cash</span>
+              </div>
+              <div>
+                <p className="text-lg font-black text-[#1B2559] tracking-tight">${usdCashIntake.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* KHR Card - Standardized */}
+          <div className="md:col-span-3 bg-white border border-[#E0E5F2] rounded-[1.25rem] p-4 flex flex-col justify-between hover:border-indigo-500/30 transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+                <Target className="w-3.5 h-3.5" />
+              </div>
+              <span className="text-[8px] font-black text-[#A3AED0] uppercase">KHR Cash</span>
             </div>
             <div>
-              <p className="text-xl font-black text-[#1B2559] tracking-tight">${abaIntake.toLocaleString()}</p>
-              <p className="text-[9px] font-bold text-[#A3AED0]">Bank Transfers</p>
-            </div>
-          </div>
-          <div className="bg-white border border-[#E0E5F2] rounded-[1.5rem] p-5 flex flex-col justify-between hover:border-emerald-500/30 transition-all">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                <Wallet className="w-4 h-4" />
-              </div>
-              <span className="text-[8px] font-black text-[#A3AED0] uppercase">USD Cash</span>
-            </div>
-            <div>
-              <p className="text-xl font-black text-[#1B2559] tracking-tight">${usdCashIntake.toLocaleString()}</p>
-              <p className="text-[9px] font-bold text-[#A3AED0]">Physical Green</p>
+              <p className="text-lg font-black text-[#1B2559] tracking-tight">{khrCashIntake.toLocaleString()} <span className="text-xs font-bold text-[#A3AED0]">៛</span></p>
             </div>
           </div>
         </div>
-
-        {/* Local Currency Card */}
-        <div className="md:col-span-3 bg-gradient-to-br from-[#1B2559] to-[#3311DB] rounded-[1.5rem] p-5 text-white flex flex-col justify-between hover:shadow-xl hover:shadow-primary/20 transition-all">
-          <div className="flex items-center justify-between">
-            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white">
-              <Target className="w-4 h-4" />
-            </div>
-            <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">Local KHR</span>
-          </div>
-          <div>
-            <p className="text-xl font-black tracking-tight">{khrCashIntake.toLocaleString()} <span className="text-xs">៛</span></p>
-            <p className="text-[9px] font-bold text-white/50">Market Rate Applied</p>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Main Viewport */}
       {viewMode === 'calendar' ? (
@@ -452,7 +567,10 @@ export default function LedgerPage() {
 
               dayCells.forEach(day => {
                 const dayStr = format(day, 'yyyy-MM-dd');
-                const dayEntries = monthEntries.filter(e => e.date === dayStr);
+                const dayEntries = monthEntries.filter(e =>
+                  e.date === dayStr &&
+                  (doctorFilter.length === 0 || doctorFilter.includes(e.doctor_id))
+                );
                 const isCurrent = isToday(day);
 
                 // Calculate Daily Total for the pill
@@ -461,61 +579,82 @@ export default function LedgerPage() {
                 cells.push(
                   <div
                     key={dayStr}
-                    onClick={() => {
-                      setDate(day);
-                      setViewMode('list');
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      let leftPos = rect.left + rect.width + 10;
+                      let topPos = rect.top;
+
+                      // Right edge check
+                      if (leftPos + 400 > window.innerWidth) {
+                        leftPos = rect.left - 410; // Place on left if no space on right
+                      }
+                      let top = rect.top;
+                      let left = rect.right + 10;
+                      if (left + 420 > window.innerWidth) left = rect.left - 430;
+                      if (top + 400 > window.innerHeight) top = window.innerHeight - 420;
+
+                      setModalPosition({ top, left });
+                      setQuickEventData({
+                        date: format(day, 'yyyy-MM-dd'),
+                        time: "09:00",
+                        patientId: "",
+                        patientName: "",
+                        gender: "F",
+                        age: "",
+                        doctorId: "",
+                        treatmentId: "",
+                        duration: 15
+                      });
+                      setIntakeResults([]);
+                      setIsIntakeSearching(false);
+                      setIsQuickEventOpen(true);
                     }}
                     className={cn(
-                      "border-r border-b border-[#E0E5F2] hover:bg-[#F4F7FE] transition-colors cursor-pointer group flex flex-col relative",
-                      isCurrent ? "bg-primary/5" : "bg-white"
+                      "min-h-[120px] bg-white border-r border-b border-[#F4F7FE] p-2 hover:bg-[#F4F7FE]/30 transition-all flex flex-col group relative cursor-pointer",
+                      !isSameMonth(day, date) && "bg-gray-50/20",
+                      isToday(day) && "bg-blue-50/40"
                     )}
                   >
-                    {/* Cell Header: Date + Metrics */}
-                    <div className="flex items-center justify-between p-2 pb-1">
+                    <div className="flex justify-between items-start mb-1">
                       <span className={cn(
-                        "text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full",
-                        isCurrent ? "bg-primary text-white shadow-md" : "text-[#707EAE]"
+                        "text-[10px] font-black",
+                        isToday(day) ? "bg-primary text-white w-5 h-5 flex items-center justify-center rounded-lg shadow-lg shadow-primary/30 scale-110" :
+                          isSameMonth(day, date) ? "text-[#1B2559]" : "text-[#A3AED0]/40"
                       )}>
                         {format(day, 'd')}
                       </span>
-
-                      {/* Daily Summary: Revenue & Count */}
                       {dayEntries.length > 0 && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[9px] font-bold text-[#A3AED0] flex items-center gap-0.5">
-                            {dayEntries.length}
-                            <span className="text-[7px] uppercase">Pts</span>
-                          </span>
-                          <span className="text-[9px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded-md">
-                            ${dailyTotal.toLocaleString()}
+                        <div className="flex flex-col items-end">
+                          <span className="text-[8px] font-black text-[#A3AED0] uppercase leading-none tracking-tighter">{dayEntries.length} PTS</span>
+                          <span className="text-[10px] font-black text-primary leading-none mt-1">
+                            ${dayEntries.reduce((sum, e) => sum + (e.total_price || 0), 0).toLocaleString()}
                           </span>
                         </div>
                       )}
                     </div>
 
-                    {/* Patient List - Compact Stream */}
-                    <div className="flex-1 overflow-hidden px-1 pb-1 space-y-0.5">
-                      {dayEntries.slice(0, 6).map((e, idx) => (
-                        <div key={idx} className="flex items-center justify-between px-1.5 py-0.5 rounded hover:bg-white hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-[#E0E5F2]/50 group/item">
-                          <div className="flex items-center gap-1 min-w-0">
-                            {/* Payment Method Dot */}
-                            <div className={cn(
-                              "w-1 h-1 rounded-full shrink-0",
-                              Number(e.paid_aba) > 0 ? "bg-blue-500" :
-                                Number(e.paid_cash_usd) > 0 ? "bg-emerald-500" : "bg-amber-500"
-                            )} />
-                            <span className="text-[9px] font-medium text-[#1B2559] truncate">
-                              {e.patients?.name || 'Client'}
-                            </span>
+                    <div className="space-y-0.5 mt-2">
+                      {dayEntries.slice(0, dayEntries.length > 2 ? 2 : 3).map((entry, idx) => {
+                        const startTime = entry.appointment_time || "09:00:00";
+                        const start = new Date(`2000-01-01T${startTime}`);
+                        const end = addMinutes(start, entry.duration_minutes || 15);
+                        return (
+                          <div key={idx} className="flex items-center gap-1 group/item cursor-pointer overflow-hidden">
+                            <div className="w-1 h-1 rounded-full bg-amber-400 group-hover/item:scale-125 transition-transform shrink-0" />
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-[8px] font-black text-blue-600/60 leading-none">
+                                {format(start, 'h:mm')} - {format(end, 'h:mm a')}
+                              </span>
+                              <span className="text-[10px] font-semibold text-[#1B2559] truncate group-hover/item:text-blue-600">
+                                {entry.patients?.name || 'Unknown'}
+                              </span>
+                            </div>
                           </div>
-                          <span className="text-[8px] font-bold text-[#A3AED0] opacity-0 group-hover/item:opacity-100 transition-opacity whitespace-nowrap ml-1">
-                            ${(Number(e.amount_paid) || 0).toFixed(0)}
-                          </span>
-                        </div>
-                      ))}
-                      {dayEntries.length > 6 && (
-                        <p className="text-[8px] font-black text-[#A3AED0] text-center pt-0.5 tracking-wide">
-                          +{dayEntries.length - 6} more
+                        );
+                      })}
+                      {dayEntries.length > 2 && (
+                        <p className="text-[9px] font-black text-primary/60 pt-1 tracking-tight">
+                          +{dayEntries.length - 2} more
                         </p>
                       )}
                     </div>
@@ -542,16 +681,6 @@ export default function LedgerPage() {
             <div className="flex items-center gap-4">
               <h2 className="text-lg font-black text-[#1B2559]">Session Roster</h2>
               <div className="h-4 w-px bg-[#E0E5F2]" />
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A3AED0]" />
-                <input
-                  type="text"
-                  placeholder="Filter records..."
-                  className="bg-[#F4F7FE] border-none rounded-xl pl-10 pr-4 py-2 text-[10px] font-bold w-48 md:w-64 focus:ring-2 ring-primary/20 outline-none transition-all placeholder:text-[#A3AED0]"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
             </div>
             <div className="flex items-center gap-1.5 text-xs text-[#A3AED0] font-bold">
               <span className="hidden md:inline mr-2">{groupedEntries.length} Active Records</span>
@@ -675,7 +804,7 @@ export default function LedgerPage() {
                             <td colSpan={2} className="px-6 py-2 border-r border-[#F4F7FE]">
                               <div className="flex items-center gap-2 text-[#A3AED0]">
                                 <div className="w-1 h-1 rounded-full bg-primary" />
-                                <span className="text-[9px] font-black uppercase tracking-widest">DR. {entry.doctor?.name || 'Practitioner'}</span>
+                                <span className="text-[9px] font-black uppercase tracking-widest">DR. {entry.doctor?.name || 'Dentist'}</span>
                               </div>
                             </td>
                             <td className="px-4 py-2">
@@ -719,29 +848,13 @@ export default function LedgerPage() {
         </div>
       )}
 
-      {/* Daily Status Toggle - Centered Circular Button */}
-      <button
-        onClick={() => setShowSummary(!showSummary)}
-        className={cn(
-          "fixed z-[100] w-12 h-12 rounded-full flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] shadow-2xl active:scale-90 group",
-          showSummary
-            ? "bg-[#1B2559] text-white shadow-[#1B2559]/30 bottom-[calc(80px+1.5rem)]"
-            : "bg-white text-primary border border-[#E0E5F2] hover:border-primary/50 shadow-primary/10 bottom-2",
-          isCollapsed ? "left-[calc(50%+40px)]" : "left-[calc(50%+144px)]",
-          "-translate-x-1/2"
-        )}
-        title={showSummary ? "Hide Daily Status" : "Show Daily Status"}
-      >
-        <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping group-hover:block hidden" />
-        {showSummary ? <EyeOff className="w-5 h-5 animate-in zoom-in-50 duration-500" /> : <Eye className="w-5 h-5 animate-in zoom-in-50 duration-500" />}
-      </button>
 
       {/* Daily Status Bar */}
       <div
         className={cn(
           "fixed bottom-0 right-0 bg-white/95 backdrop-blur-3xl border-t border-[#E0E5F2] h-20 md:h-22 flex items-center justify-between px-8 md:px-12 z-[95] shadow-[0_-20px_60px_rgba(0,0,0,0.1)] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]",
           isCollapsed ? "left-20" : "left-72",
-          showSummary ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"
+          (showSummary && viewMode !== 'calendar') ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"
         )}
       >
         <div className="flex items-center gap-20">
@@ -780,7 +893,7 @@ export default function LedgerPage() {
 
       {/* Modals & Popovers */}
       {isAddingEntry && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#1B2559]/30 backdrop-blur-md p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#1B2559]/30 p-4 animate-in fade-in duration-300">
           <div className="bg-white border-2 border-white rounded-[2.5rem] w-full max-w-lg shadow-2xl p-10 space-y-8 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-purple-500 to-primary" />
 
@@ -796,14 +909,13 @@ export default function LedgerPage() {
                 <Plus className="w-7 h-7" />
               </div>
               <div>
-                <h3 className="text-2xl font-black text-[#1B2559] tracking-tight">Quick Intake</h3>
-                <p className="text-[10px] text-[#A3AED0] font-black uppercase tracking-widest mt-1">Unified Registration & Re-routing</p>
+                <h3 className="text-2xl font-black text-[#1B2559] tracking-tight">Create Patient</h3>
               </div>
             </div>
 
             <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Full Patient Identity</label>
+                <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Full Name</label>
                 <div className="relative">
                   <input
                     type="text"
@@ -813,6 +925,47 @@ export default function LedgerPage() {
                     onChange={(e) => setQuickPatient({ ...quickPatient, name: e.target.value })}
                   />
                   <Search className="w-4 h-4 text-[#A3AED0] absolute left-5 top-1/2 -translate-y-1/2" />
+
+                  {/* High-Density Search Results Dropdown */}
+                  {intakeResults.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#E0E5F2] rounded-2xl shadow-xl z-[210] overflow-hidden p-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="max-h-[250px] overflow-y-auto custom-scrollbar">
+                        <div className="px-3 py-2 text-[8px] font-black text-[#A3AED0] uppercase tracking-widest border-b border-[#F4F7FE] mb-1">
+                          Existing Patient Matches
+                        </div>
+                        {intakeResults.map((p) => (
+                          <button
+                            key={p.id}
+                            onClick={() => router.push(`/patients/${p.id}`)}
+                            className="w-full flex items-center justify-between p-3 hover:bg-[#F4F7FE] rounded-xl transition-all group text-left"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-black text-[10px]">
+                                {p.name[0]}
+                              </div>
+                              <div>
+                                <div className="text-xs font-black text-[#1B2559] group-hover:text-primary transition-colors">{p.name}</div>
+                                <div className="text-[8px] text-[#A3AED0] font-bold uppercase tracking-widest mt-0.5">
+                                  {p.gender} · {p.age} Yrs · {p.phone || 'No Phone'}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-[8px] font-black text-primary bg-primary/5 px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                              OPEN RECORDS
+                            </div>
+                          </button>
+                        ))}
+                        <div className="p-2 border-t border-[#F4F7FE] mt-1">
+                          <button
+                            onClick={() => setIntakeResults([])}
+                            className="w-full py-2.5 rounded-xl bg-primary text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#3311DB] transition-all shadow-lg shadow-primary/10"
+                          >
+                            Proceed as New Patient "{quickPatient.name}"
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -846,7 +999,7 @@ export default function LedgerPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Biological Identity (Gender)</label>
+                <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Gender</label>
                 <div className="flex p-1.5 bg-[#F4F7FE] rounded-2xl gap-2">
                   <button
                     onClick={() => setQuickPatient({ ...quickPatient, gender: 'F' })}
@@ -870,7 +1023,7 @@ export default function LedgerPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Practitioner (Optional)</label>
+                <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Dentist</label>
                 <select
                   className="w-full bg-[#F4F7FE] border-none rounded-xl px-5 py-4 text-sm font-bold text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all appearance-none cursor-pointer"
                   value={quickPatient.doctor_id || ""}
@@ -927,7 +1080,7 @@ export default function LedgerPage() {
               }}
               className="w-full bg-primary hover:bg-[#3311DB] text-white py-5 rounded-[1.5rem] text-xs font-black transition-all shadow-xl shadow-primary/25 uppercase tracking-[0.2em]"
             >
-              Initialize Profile & Redirect
+              Create Profile
             </button>
           </div>
         </div>
@@ -937,7 +1090,7 @@ export default function LedgerPage() {
       {/* Managed Entry (Edit) */}
       {
         managedEntry && (
-          <div className="fixed inset-0 z-[250] flex items-center justify-center bg-[#1B2559]/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div className="fixed inset-0 z-[250] flex items-center justify-center bg-[#1B2559]/60 p-4 animate-in fade-in duration-300">
             {/* ... Similar Modal with Edit Logic ... */}
             <div className="bg-white rounded-[3rem] w-full max-w-md p-12 space-y-8 relative border border-white">
               <button onClick={() => setManagedEntry(null)} className="absolute top-10 right-10 text-[#A3AED0]"><X className="w-6 h-6" /></button>
@@ -998,6 +1151,402 @@ export default function LedgerPage() {
           </div>
         )
       }
-    </div >
+      {/* Google Calendar Style Quick Event Modal - Light Mode & Relative Position */}
+      {isQuickEventOpen && (
+        <>
+          {/* Transparent Backdrop to close on click outside */}
+          <div
+            className="fixed inset-0 z-[299] bg-transparent"
+            onClick={() => setIsQuickEventOpen(false)}
+          />
+
+          <div
+            className="fixed z-[300] bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 p-8 w-[420px] animate-in fade-in zoom-in-95 duration-200 font-sans max-h-[min(650px,90vh)] overflow-y-auto custom-scrollbar"
+            style={{ top: modalPosition.top, left: modalPosition.left }}
+          >
+            <div className="space-y-8">
+              {/* Patient Name / Title Input with Icon */}
+              <div className="flex items-center gap-4">
+                <User className="w-5 h-5 text-gray-400" />
+                <div className="flex-1 relative group border-b border-gray-100 focus-within:border-blue-600 transition-all pb-1.5 flex items-center">
+                  <input
+                    type="text"
+                    placeholder="Patient Name"
+                    className="w-full text-2xl font-semibold text-gray-800 placeholder:text-gray-300 border-none focus:ring-0 p-0 bg-transparent tracking-tight"
+                    autoFocus
+                    value={quickEventData.patientName}
+                    onChange={(e) => {
+                      setQuickEventData({ ...quickEventData, patientName: e.target.value });
+                      setQuickPatient({ ...quickPatient, name: e.target.value });
+                    }}
+                  />
+                  {/* Search Results & Force New Option */}
+                  {quickEventData.patientName.length > 1 && !quickEventData.patientId && (
+                    <div className="absolute top-full left-0 right-0 mt-3 bg-white border border-gray-100 rounded-2xl shadow-2xl z-50 overflow-hidden ring-1 ring-black/5">
+                      <div className="max-h-[220px] overflow-y-auto custom-scrollbar">
+                        {intakeResults.map(p => (
+                          <button
+                            key={p.id}
+                            onClick={() => {
+                              setQuickEventData({
+                                ...quickEventData,
+                                patientId: p.id,
+                                patientName: p.name
+                              });
+                              setIntakeResults([]);
+                              setIsIntakeSearching(false);
+                            }}
+                            className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between group/item border-b border-gray-50 last:border-0"
+                          >
+                            <div>
+                              <span className="text-sm font-semibold text-gray-700 block">{p.name}</span>
+                              <span className="text-[10px] text-gray-400">{p.gender} · {p.age}y · {p.phone}</span>
+                            </div>
+                            <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium opacity-0 group-hover/item:opacity-100 transition-opacity">Select</span>
+                          </button>
+                        ))}
+
+                        <button
+                          onClick={() => {
+                            // Close Quick Event and open "Create Patient" modal
+                            setIsQuickEventOpen(false);
+                            setQuickPatient({
+                              ...quickPatient,
+                              name: quickEventData.patientName,
+                              phone: "",
+                              dob: "",
+                              gender: "F",
+                              doctor_id: ""
+                            });
+                            setIsAddingEntry(true);
+                            setIntakeResults([]);
+                            setIsIntakeSearching(false);
+                          }}
+                          className="w-full px-4 py-3 text-left bg-gray-50/50 hover:bg-blue-50/50 flex items-center gap-3 text-blue-600 font-medium transition-colors border-t border-gray-100"
+                        >
+                          <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
+                            <span className="text-sm font-bold text-blue-600">+</span>
+                          </div>
+                          <span className="text-sm">Create new "{quickEventData.patientName}"</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Treatment Selection Row */}
+            <div className="flex items-center gap-4">
+              <Stethoscope className="w-5 h-5 text-gray-400" />
+              <div className="flex-1 relative">
+                <div className="flex-1 border-b border-gray-100 focus-within:border-blue-600 transition-all pb-1.5 flex items-center">
+                  <input
+                    type="text"
+                    placeholder="Search Treatment (Optional)"
+                    className="w-full text-sm font-medium text-gray-700 placeholder:text-gray-300 border-none focus:ring-0 p-0 bg-transparent"
+                    value={treatmentSearch}
+                    onChange={(e) => setTreatmentSearch(e.target.value)}
+                    onFocus={() => {
+                      if (treatmentSearch.length === 0) {
+                        // Optionally show all or just wait for type
+                      }
+                    }}
+                  />
+                  {quickEventData.treatmentId && (
+                    <button
+                      onClick={() => {
+                        setQuickEventData({ ...quickEventData, treatmentId: "", duration: 15 });
+                        setTreatmentSearch("");
+                      }}
+                      className="text-gray-300 hover:text-gray-500"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                {treatmentSearch.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-2xl z-50 overflow-hidden ring-1 ring-black/5">
+                    <div className="max-h-[180px] overflow-y-auto custom-scrollbar">
+                      {treatments
+                        .filter(t => t.name.toLowerCase().includes(treatmentSearch.toLowerCase()))
+                        .map(t => (
+                          <button
+                            key={t.id}
+                            onClick={() => {
+                              setQuickEventData({
+                                ...quickEventData,
+                                treatmentId: t.id,
+                                duration: t.duration_minutes || 15
+                              });
+                              setTreatmentSearch(t.name);
+                            }}
+                            className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 text-gray-600 hover:text-gray-900 transition-colors border-b border-gray-50 last:border-0"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold">{t.name}</span>
+                              <span className="text-[10px] text-gray-400">{t.duration_minutes || 15}m</span>
+                            </div>
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Date / Time / Duration Row */}
+            <div className="flex items-start gap-4">
+              <Clock className="w-5 h-5 text-gray-400 mt-2.5" />
+              <div className="flex-1 space-y-3">
+                <div className="flex items-center gap-3">
+                  {/* Date Pill */}
+                  <div className="flex-1 h-11 bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl border border-transparent hover:border-gray-200 flex items-center">
+                    <DatePicker
+                      value={quickEventData.date}
+                      onChange={(d) => setQuickEventData({ ...quickEventData, date: format(d, 'yyyy-MM-dd') })}
+                      placeholder="Select Date"
+                      className="w-full bg-transparent border-none text-sm font-medium text-gray-700 px-3 focus:ring-0 cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Start Time Dropdown */}
+                  <div className="relative w-[130px] h-11 text-center">
+                    <div
+                      className="h-full bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl border border-transparent hover:border-gray-200 px-3 flex items-center justify-between cursor-pointer"
+                      onClick={() => {
+                        document.getElementById('time-dropdown')?.classList.toggle('hidden');
+                      }}
+                    >
+                      <span className="text-sm font-medium text-gray-700">
+                        {format(new Date(`2000-01-01T${quickEventData.time}:00`), 'h:mm a')}
+                      </span>
+                      <ChevronDown className="w-4 h-4 text-gray-400" />
+                    </div>
+
+                    <div
+                      id="time-dropdown"
+                      className="absolute top-full left-0 mt-2 w-full bg-white border border-gray-100 rounded-xl shadow-2xl z-50 overflow-hidden hidden max-h-[180px] overflow-y-auto custom-scrollbar ring-1 ring-black/5"
+                    >
+                      {timeIntervals.map(t => (
+                        <button
+                          key={t}
+                          onClick={() => {
+                            setQuickEventData({ ...quickEventData, time: t });
+                            document.getElementById('time-dropdown')?.classList.add('hidden');
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 text-gray-600 hover:text-gray-900 transition-colors"
+                        >
+                          {format(new Date(`2000-01-01T${t}:00`), 'h:mm a')}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Dentist Select - Premium "Pillar" Look */}
+            <div className="flex items-center gap-4">
+              <Activity className="w-5 h-5 text-gray-400" />
+              <div className="relative flex-1">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)] z-10" />
+                <select
+                  className="w-full h-11 bg-gray-50 hover:bg-gray-100 border border-transparent hover:border-blue-200 rounded-xl px-9 text-sm font-semibold text-gray-700 focus:ring-0 outline-none appearance-none cursor-pointer transition-all focus:bg-white focus:border-blue-500/30 shadow-sm"
+                  value={quickEventData.doctorId}
+                  onChange={(e) => setQuickEventData({ ...quickEventData, doctorId: e.target.value })}
+                >
+                  <option value="" disabled>Select Dentist</option>
+                  {staff.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-gray-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 mt-6 pt-3 border-t border-gray-50/50">
+              <button
+                onClick={() => setIsQuickEventOpen(false)}
+                className="px-4 py-1.5 rounded-full text-sm font-semibold text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveQuickEvent}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-7 py-1.5 rounded-full text-sm font-bold shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Floating Bottom Button (Intelligence vs Filter) */}
+      <button
+        onClick={() => {
+          if (viewMode === 'list') {
+            setShowSummary(!showSummary);
+          } else {
+            setIsDoctorFilterOpen(!isDoctorFilterOpen);
+          }
+        }}
+        className={cn(
+          "fixed bottom-8 z-[100] p-4 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.2)] transition-all duration-500 active:scale-95 group flex items-center gap-0 hover:gap-3 px-4 hover:px-6 overflow-hidden",
+          isCollapsed ? "left-[calc(50%+40px)]" : "left-[calc(50%+144px)]",
+          "-translate-x-1/2",
+          (viewMode === 'list' ? showSummary : isDoctorFilterOpen)
+            ? "bg-[#6366F1] text-white"
+            : "bg-white text-[#6366F1] hover:bg-gray-50 underline-offset-4"
+        )}
+      >
+        <div className="relative">
+          {viewMode === 'calendar' ? (
+            <Filter className={cn(
+              "w-6 h-6 transition-transform duration-500",
+              "group-hover:scale-110"
+            )} />
+          ) : (
+            <Activity className={cn(
+              "w-6 h-6 transition-transform duration-500",
+              "group-hover:scale-110"
+            )} />
+          )}
+          {viewMode === 'calendar' && doctorFilter.length > 0 && (
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
+          )}
+        </div>
+        <span className="max-w-0 group-hover:max-w-[200px] opacity-0 group-hover:opacity-100 transition-all duration-500 whitespace-nowrap text-[10px] font-black uppercase tracking-widest leading-none">
+          {viewMode === 'calendar' ? 'Filter Dentists' : 'Daily Insights'}
+        </span>
+      </button>
+
+      {/* Doctor Filter Modal (Calendar Only) */}
+      {isDoctorFilterOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/10 z-[400] transition-all"
+            onClick={() => setIsDoctorFilterOpen(false)}
+          />
+          <div
+            className={cn(
+              "fixed bottom-28 z-[401] bg-white rounded-[2.5rem] shadow-[0_30px_70px_rgba(0,0,0,0.3)] border border-gray-100 p-8 w-[380px] animate-in slide-in-from-bottom-5 duration-500 ease-out font-sans",
+              isCollapsed ? "left-[calc(50%+40px)]" : "left-[calc(50%+144px)]",
+              "-translate-x-1/2"
+            )}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-[#1B2559]">Filter by Dentist</h3>
+              <button
+                onClick={() => setDoctorFilter([])}
+                className="text-[10px] font-bold text-blue-600 hover:underline"
+              >
+                Reset
+              </button>
+            </div>
+            <div className="space-y-3">
+              {staff.map(member => (
+                <label key={member.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 cursor-pointer border border-transparent transition-all overflow-hidden group">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    checked={doctorFilter.includes(member.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setDoctorFilter([...doctorFilter, member.id]);
+                      } else {
+                        setDoctorFilter(doctorFilter.filter(id => id !== member.id));
+                      }
+                    }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-700 truncate">{member.name}</p>
+                    <p className="text-[10px] text-gray-400 tracking-wider">DENTIST</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <button
+              onClick={() => setIsDoctorFilterOpen(false)}
+              className="w-full mt-6 bg-[#1B2559] text-white py-3 rounded-2xl text-sm font-bold shadow-lg shadow-blue-500/10 active:scale-95 transition-all"
+            >
+              Show Results
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Calendar Search Overlay */}
+      {isCalendarSearchOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/5 backdrop-blur-[2px] z-[500]"
+            onClick={() => setIsCalendarSearchOpen(false)}
+          />
+          <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[501] w-[500px] animate-in slide-in-from-top-5 duration-300">
+            <div className="bg-white rounded-[2rem] shadow-2xl border border-gray-100 p-4 ring-1 ring-black/5">
+              <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-2xl border border-transparent focus-within:bg-white focus-within:border-blue-500/30 focus-within:ring-4 focus-within:ring-blue-500/5 transition-all">
+                <Search className="w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search appointments by patient name..."
+                  className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-gray-700"
+                  autoFocus
+                  onChange={(e) => setCalendarSearchQuery(e.target.value)}
+                />
+                <button onClick={() => setIsCalendarSearchOpen(false)}>
+                  <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                </button>
+              </div>
+
+              {calendarSearchQuery.length > 1 && (
+                <div className="mt-4 max-h-[400px] overflow-y-auto custom-scrollbar px-2 pb-2">
+                  {currentEntries
+                    .filter(e => e.patients?.name?.toLowerCase().includes(calendarSearchQuery.toLowerCase()))
+                    .reduce((acc: any[], current) => {
+                      const isDuplicate = acc.find(item =>
+                        item.patient_id === current.patient_id &&
+                        item.date === current.date
+                      );
+                      if (!isDuplicate) acc.push(current);
+                      return acc;
+                    }, [])
+                    .map((e, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setIsCalendarSearchOpen(false);
+                          router.push(`/patients/${e.patient_id}`);
+                        }}
+                        className="w-full flex items-center gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-all group border border-transparent hover:border-gray-100"
+                      >
+                        <div className="w-12 h-12 rounded-xl bg-indigo-50 flex flex-col items-center justify-center text-indigo-600">
+                          <span className="text-[10px] font-black uppercase">{format(new Date(e.created_at), 'MMM')}</span>
+                          <span className="text-sm font-bold leading-tight">{format(new Date(e.created_at), 'd')}</span>
+                        </div>
+                        <div className="flex-1 text-left min-w-0">
+                          <p className="text-sm font-bold text-[#1B2559] truncate group-hover:text-indigo-600 transition-colors uppercase tracking-tight">{e.patients?.name}</p>
+                          <p className="text-[10px] text-gray-400 font-medium">
+                            {format(new Date(e.created_at), 'EEEE, h:mm a')} · Dr. {e.doctor?.name || 'Assigned'}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  {monthEntries.filter(e => e.patients?.name?.toLowerCase().includes(calendarSearchQuery.toLowerCase())).length === 0 && (
+                    <div className="p-12 text-center">
+                      <p className="text-sm font-medium text-gray-400">No appointments found</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   );
 }

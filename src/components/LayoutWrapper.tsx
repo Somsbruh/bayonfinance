@@ -3,9 +3,16 @@
 import Sidebar from "@/components/Sidebar";
 import { useSidebar } from "@/context/SidebarContext";
 import { cn } from "@/lib/utils";
+import { usePathname } from "next/navigation";
 
 export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
     const { isCollapsed } = useSidebar();
+    const pathname = usePathname();
+    const isLoginPage = pathname === "/login";
+
+    if (isLoginPage) {
+        return <>{children}</>;
+    }
 
     return (
         <div className="flex min-h-screen">
