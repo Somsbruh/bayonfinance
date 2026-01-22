@@ -3,8 +3,9 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Printer, ChevronLeft, Download } from 'lucide-react';
 import { format } from 'date-fns';
+import { Suspense } from 'react';
 
-export default function ClinicalReportPage() {
+function ReportContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
 
@@ -130,5 +131,13 @@ export default function ClinicalReportPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function ClinicalReportPage() {
+    return (
+        <Suspense fallback={<div className="p-10 text-center font-black uppercase tracking-widest text-[#A3AED0]">Formatting Clinical Manuscript...</div>}>
+            <ReportContent />
+        </Suspense>
     );
 }
