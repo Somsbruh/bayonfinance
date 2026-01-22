@@ -1,14 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-    // Check for Supabase Auth cookie
-    // Next.js with Supabase Auth usually sets a cookie like sb-<project>-auth-token
-    const cookies = request.cookies.getAll();
-    const authSession = cookies.some(c =>
-        (c.name.startsWith('sb-') && c.name.endsWith('-auth-token')) ||
-        c.name === 'supabase-auth-token'
-    );
-
+    // Check for our custom auth cookie
+    const authSession = request.cookies.get('bayon_authenticated');
     const { pathname } = request.nextUrl;
 
     // Allow access to login page, public assets, and root redirections if needed

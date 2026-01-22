@@ -30,9 +30,8 @@ export default function LoginPage() {
                 setError(authError.message);
                 setIsLoading(false);
             } else if (data.session) {
-                // Manually set the auth cookie for the middleware to be absolutely sure
-                // although supabase-js tries to handle this, in Next.js it's safer to have a sync point
-                document.cookie = `sb-fatfgymyoiyemjtnotos-auth-token=${JSON.stringify(data.session)}; path=/; max-age=86400; SameSite=Lax`;
+                // Set a simple flag cookie for the middleware
+                document.cookie = "bayon_authenticated=true; path=/; max-age=86400; SameSite=Lax";
                 router.push("/");
                 router.refresh();
             }
