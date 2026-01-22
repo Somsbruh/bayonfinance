@@ -19,8 +19,9 @@ export default function LoginPage() {
         setIsLoading(true);
         setError("");
 
-        if (username === "Kanika" && password === "123123") {
-            const { error: authError } = await supabase.auth.signInWithPassword({
+        // Case-insensitive check for UX
+        if (username.trim().toLowerCase() === "kanika" && password === "123123") {
+            const { data, error: authError } = await supabase.auth.signInWithPassword({
                 email: "kanika@bayon.com",
                 password: "123123",
             });
@@ -28,8 +29,12 @@ export default function LoginPage() {
             if (authError) {
                 setError(authError.message);
                 setIsLoading(false);
-            } else {
+            } else if (data.session) {
+                // Manually set the auth cookie for the middleware to be absolutely sure
+                // although supabase-js tries to handle this, in Next.js it's safer to have a sync point
+                document.cookie = `sb-fatfgymyoiyemjtnotos-auth-token=${JSON.stringify(data.session)}; path=/; max-age=86400; SameSite=Lax`;
                 router.push("/");
+                router.refresh();
             }
         } else {
             setError("Invalid credentials. Please contact administration.");
