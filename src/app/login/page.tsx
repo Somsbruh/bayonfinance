@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, User, Eye, EyeOff, Loader2, ArrowRight, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -18,15 +19,18 @@ export default function LoginPage() {
         setIsLoading(true);
         setError("");
 
-        // Simulate network delay
-        await new Promise((resolve) => setTimeout(resolve, 800));
-
         if (username === "Kanika" && password === "123123") {
-            // In a real app, we'd set a secure cookie here.
-            // For this implementation, we'll set a simple document cookie
-            // that the middleware can check.
-            document.cookie = "bayon_auth=true; path=/; max-age=86400; SameSite=Strict";
-            router.push("/");
+            const { error: authError } = await supabase.auth.signInWithPassword({
+                email: "kanika@bayon.com",
+                password: "123123",
+            });
+
+            if (authError) {
+                setError(authError.message);
+                setIsLoading(false);
+            } else {
+                router.push("/");
+            }
         } else {
             setError("Invalid credentials. Please contact administration.");
             setIsLoading(false);
