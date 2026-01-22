@@ -26,25 +26,31 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         const fetchBranches = async () => {
+            console.debug('BranchContext: Fetching branches...');
             const { data, error } = await supabase
                 .from('branches')
                 .select('*')
                 .order('name');
 
+            if (error) {
+                console.error('BranchContext: Fetch Error:', error);
+            }
+
             if (data && data.length > 0) {
+                console.debug('BranchContext: Success, branches found:', data.length);
                 setBranches(data);
 
-                // Try to load from localStorage
                 const savedBranchId = localStorage.getItem('active-branch-id');
                 const savedBranch = data.find(b => b.id === savedBranchId);
 
                 if (savedBranch) {
                     setCurrentBranch(savedBranch);
                 } else {
-                    // Default to main branch or first one
                     const main = data.find(b => b.is_main) || data[0];
                     setCurrentBranch(main);
                 }
+            } else if (data) {
+                console.warn('BranchContext: No branches returned from DB.');
             }
             setIsLoading(false);
         };

@@ -20,6 +20,7 @@ export default function LoginPage() {
         setError("");
 
         // Case-insensitive check for UX
+        console.debug('Login Attempt:', { username: username.trim().toLowerCase() });
         if (username.trim().toLowerCase() === "kanika" && password === "123123") {
             const { data, error: authError } = await supabase.auth.signInWithPassword({
                 email: "kanika@bayon.com",
@@ -27,15 +28,22 @@ export default function LoginPage() {
             });
 
             if (authError) {
+                console.error('Login: Auth Error:', authError.message);
                 setError(authError.message);
                 setIsLoading(false);
             } else if (data.session) {
+                console.debug('Login: Success, session active');
                 // Set a simple flag cookie for the middleware
                 document.cookie = "bayon_authenticated=true; path=/; max-age=86400; SameSite=Lax";
                 router.push("/");
                 router.refresh();
+            } else {
+                console.warn('Login: Sign-in successful but no session returned.');
+                setError("Session initialization failed. Try again.");
+                setIsLoading(false);
             }
         } else {
+            console.warn('Login: Local credential check failed');
             setError("Invalid credentials. Please contact administration.");
             setIsLoading(false);
         }
