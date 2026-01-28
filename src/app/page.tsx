@@ -98,6 +98,7 @@ export default function LedgerPage() {
     treatmentId: "",
     duration: 15
   });
+  const [isMonthSelectorOpen, setIsMonthSelectorOpen] = useState(false);
   const [treatmentSearch, setTreatmentSearch] = useState("");
 
   useEffect(() => {
@@ -431,11 +432,7 @@ export default function LedgerPage() {
     )}>
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <h1 className="h1-premium">Clinic Ledger</h1>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          {/* View Toggle - Compact */}
+          {/* View Toggle - Compact - Now on the left */}
           <div className="bg-[#F4F7FE] p-1 rounded-xl border border-[#E0E5F2] flex items-center gap-1 shrink-0">
             {(['list', 'calendar'] as const).map((v) => (
               <button
@@ -451,7 +448,12 @@ export default function LedgerPage() {
             ))}
           </div>
 
-          {/* Date Picker - Ultra Compact */}
+          <div className="h-6 w-px bg-[#E0E5F2] mx-2 hidden xl:block" />
+          <h1 className="h1-premium hidden xl:block">Clinic Ledger</h1>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Date Picker / Month Selector Placeholder */}
           <div className="bg-white border border-[#E0E5F2] rounded-xl p-1 flex items-center shadow-sm shrink-0">
             <button
               onClick={() => {
@@ -464,7 +466,7 @@ export default function LedgerPage() {
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <div className="px-3 min-w-[120px] text-center border-x border-[#F4F7FE]">
+            <div className="px-3 min-w-[120px] text-center border-x border-[#F4F7FE] cursor-pointer" onClick={() => setIsMonthSelectorOpen(true)}>
               <span className="font-bold text-xs text-[#1B2559]">
                 {viewMode === 'calendar' ? format(date, 'MMM yyyy') : format(date, 'MMM do, yy')}
               </span>
@@ -666,29 +668,36 @@ export default function LedgerPage() {
                         )}
                       </div>
 
-                      <div className="space-y-0.5 mt-2">
-                        {dayEntries.slice(0, dayEntries.length > 2 ? 2 : 3).map((entry, idx) => {
+                      <div className="space-y-1 mt-3">
+                        {dayEntries.length > 0 && dayEntries.slice(0, 3).map((entry, idx) => {
                           const startTime = entry.appointment_time || "09:00:00";
                           const start = new Date(`2000-01-01T${startTime}`);
-                          const end = addMinutes(start, entry.duration_minutes || 15);
                           return (
-                            <div key={idx} className="flex items-center gap-1 group/item cursor-pointer overflow-hidden">
-                              <div className="w-1 h-1 rounded-full bg-amber-400 group-hover/item:scale-125 transition-transform shrink-0" />
-                              <div className="flex flex-col min-w-0">
-                                <span className="text-[8px] font-black text-blue-600/60 leading-none">
-                                  {format(start, 'h:mm')} - {format(end, 'h:mm a')}
-                                </span>
-                                <span className="text-[10px] font-semibold text-[#1B2559] truncate group-hover/item:text-blue-600">
-                                  {entry.patients?.name || 'Unknown'}
-                                </span>
-                              </div>
+                            <div key={idx} className="flex items-center gap-1.5 group/item cursor-pointer overflow-hidden p-0.5 rounded-md hover:bg-primary/5 transition-colors">
+                              <span className="text-[9px] font-black text-primary/60 shrink-0 tabular-nums">
+                                {format(start, 'h:mm')}
+                              </span>
+                              <span className="text-[10px] font-bold text-[#1B2559] truncate group-hover/item:text-primary transition-colors font-kantumruy">
+                                {entry.patients?.name || 'Unknown'}
+                              </span>
                             </div>
                           );
                         })}
-                        {dayEntries.length > 2 && (
-                          <p className="text-[9px] font-black text-primary/60 pt-1 tracking-tight">
-                            +{dayEntries.length - 2} more
-                          </p>
+                        {/* Placeholder slots to maintain 3-item height consistency */}
+                        {dayEntries.length < 3 && Array.from({ length: 3 - dayEntries.length }).map((_, i) => (
+                          <div key={`placeholder-${i}`} className="h-4 p-0.5" />
+                        ))}
+                        {dayEntries.length > 3 && (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDate(day);
+                              setViewMode('list');
+                            }}
+                            className="text-[9px] font-black text-[#A3AED0] hover:text-primary transition-colors pt-1 tracking-widest uppercase cursor-pointer"
+                          >
+                            + {dayEntries.length - 3} View More
+                          </div>
                         )}
                       </div>
                     </div>
@@ -1642,6 +1651,92 @@ export default function LedgerPage() {
           </>
         )
       }
-    </div >
+      {/* Custom Month Selector Modal */}
+      {isMonthSelectorOpen && (
+        <>
+          <div className="fixed inset-0 z-[100] bg-[#1B2559]/20 backdrop-blur-sm" onClick={() => setIsMonthSelectorOpen(false)} />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-white rounded-[2rem] shadow-2xl z-[101] border border-[#E0E5F2] p-8 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-xl font-black text-[#1B2559] tracking-tight">Timeline Selection</h3>
+              <button
+                onClick={() => setIsMonthSelectorOpen(false)}
+                className="w-10 h-10 flex items-center justify-center bg-[#F4F7FE] rounded-xl text-[#A3AED0] hover:text-[#EE5D50] transition-colors"
+                title="Cancel"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-8">
+              {/* Year Selector */}
+              <div className="space-y-4">
+                <p className="text-[10px] font-black text-[#A3AED0] uppercase tracking-[0.2em]">Deployment Year</p>
+                <div className="flex items-center justify-between bg-[#F4F7FE] p-1.5 rounded-2xl border border-[#E0E5F2]">
+                  <button
+                    onClick={() => {
+                      const next = new Date(date);
+                      next.setFullYear(date.getFullYear() - 1);
+                      setDate(next);
+                    }}
+                    className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm text-primary hover:bg-primary hover:text-white transition-all"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <span className="text-2xl font-black text-[#1B2559] tracking-tighter">{date.getFullYear()}</span>
+                  <button
+                    onClick={() => {
+                      const next = new Date(date);
+                      next.setFullYear(date.getFullYear() + 1);
+                      setDate(next);
+                    }}
+                    className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm text-primary hover:bg-primary hover:text-white transition-all"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Month Grid */}
+              <div className="space-y-4">
+                <p className="text-[10px] font-black text-[#A3AED0] uppercase tracking-[0.2em]">Operational Month</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, idx) => (
+                    <button
+                      key={m}
+                      onClick={() => {
+                        const next = new Date(date);
+                        next.setMonth(idx);
+                        setDate(next);
+                        setIsMonthSelectorOpen(false);
+                      }}
+                      className={cn(
+                        "py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all border",
+                        date.getMonth() === idx
+                          ? "bg-primary text-white border-primary shadow-lg shadow-primary/20"
+                          : "bg-white text-[#1B2559] border-[#E0E5F2] hover:border-primary/50 hover:bg-[#F4F7FE]"
+                      )}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-[#F4F7FE]">
+              <button
+                onClick={() => {
+                  setDate(new Date());
+                  setIsMonthSelectorOpen(false);
+                }}
+                className="w-full py-4 rounded-2xl bg-[#F4F7FE] text-[11px] font-black text-[#1B2559] uppercase tracking-[0.2em] hover:bg-[#1B2559] hover:text-white transition-all"
+              >
+                Reset to Today
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
