@@ -230,9 +230,10 @@ export default function ReportsPage() {
     return (
         <div className="space-y-8 max-w-6xl mx-auto">
             <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-black">Financial Overview</h1>
-                    <p className="text-sm text-muted-foreground">Performance metrics and summaries</p>
+                <div className="space-y-1">
+                    <p className="caption-premium">System Performance Cluster</p>
+                    <h1 className="h1-premium">Financial Overview</h1>
+                    <p className="text-[10px] font-bold text-[#A3AED0] uppercase tracking-widest">Performance metrics and node summaries</p>
                 </div>
                 <div className="flex items-center gap-3">
                     {timeframe === '365' && (
@@ -262,9 +263,9 @@ export default function ReportsPage() {
                     </div>
                     <button
                         onClick={generateReport}
-                        className="bg-[#1B2559] text-white px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all shadow-lg active:scale-95 flex items-center gap-2 shrink-0"
+                        className="btn-primary-premium !bg-[#1B2559] hover:!bg-black h-[42px]"
                     >
-                        <BarChart3 className="w-4 h-4" />
+                        <Download className="w-4 h-4" />
                         Export Report
                     </button>
                 </div>

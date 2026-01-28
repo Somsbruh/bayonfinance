@@ -19,11 +19,13 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
             <Sidebar />
             <main
                 className={cn(
-                    "flex-1 p-2 md:p-4 lg:p-6 relative pb-24 transition-all duration-500 ease-in-out print:ml-0 print:p-0",
-                    isCollapsed ? "ml-20" : "ml-72"
+                    "flex-1 relative pb-24 transition-all duration-500 ease-in-out print:ml-0 print:p-0 overflow-x-hidden",
+                    isCollapsed ? "ml-20" : "ml-[264px]"
                 )}
             >
-                {children}
+                <div className="max-w-[1440px] px-7 py-10">
+                    {children}
+                </div>
             </main>
         </div>
     );

@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+@layer base {
+  :root {
+    --font-kantumruy: 'Kantumruy Pro', sans-serif;
+  }
+}
+
+@layer utilities {
+  .font-kantumruy {
+    font-family: var(--font-kantumruy);
+  }
+}
+
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -63,11 +75,14 @@
   --warning: #FFB547;
 }
 
+html,
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: 'DM Sans', 'Inter', sans-serif;
-  letter-spacing: -0.02em;
+  font-family: DM Sans, Inter, sans-serif;
+  letter-spacing: -.02em;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 /* Premium Card Style - Inspiration from Photo */
@@ -99,21 +114,21 @@ body {
 }
 
 .ledger-table th {
-  padding: 0.75rem 1rem;
+  padding: 1.25rem 1.25rem;
   text-align: left;
-  font-size: 0.6rem;
-  font-weight: 800;
-  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 900;
+  color: #A3AED0;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   border: none;
 }
 
 .ledger-table td {
-  padding: 0.6rem 1rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--foreground);
+  padding: 1rem 1.25rem;
+  font-size: 12px;
+  font-weight: 900;
+  color: #1B2559;
   border-bottom: 1px solid var(--border);
 }
 
@@ -135,6 +150,46 @@ body {
   border-color: var(--primary);
   box-shadow: 0 0 0 4px rgba(67, 24, 255, 0.1);
   outline: none;
+}
+
+/* Premium Standard Styles from GEMINI.md */
+.h1-premium {
+  @apply text-4xl font-black text-[#1B2559] tracking-tight;
+}
+
+.h2-premium {
+  @apply text-2xl font-black text-[#1B2559] leading-none;
+}
+
+.caption-premium {
+  @apply text-[11px] font-black text-[#A3AED0] uppercase tracking-widest leading-none;
+}
+
+.data-premium {
+  @apply text-[12px] font-black text-[#1B2559] tracking-tight;
+}
+
+.btn-primary-premium {
+  @apply bg-primary hover:bg-[#3311DB] text-white px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all shadow-md shadow-[#4318FF]/20 active:scale-95 flex items-center gap-2;
+}
+
+.btn-secondary-premium {
+  @apply bg-[#F4F7FE] border border-[#E0E5F2] hover:border-primary/30 rounded-2xl px-5 py-3 text-[11px] font-black text-[#1B2559] uppercase transition-all shadow-sm;
+}
+
+.card-premium {
+  @apply bg-white rounded-[24px] p-8 transition-all duration-300;
+  border: 1px solid rgba(224, 229, 242, 0.5);
+  box-shadow: 14px 17px 40px 4px rgba(112, 144, 176, 0.08);
+}
+
+.card-premium:hover {
+  @apply shadow-xl;
+  box-shadow: 14px 17px 40px 10px rgba(112, 144, 176, 0.12);
+}
+
+.glass {
+  @apply backdrop-blur-[20px] bg-white/90 border border-white/30;
 }
 
 /* Buttons */

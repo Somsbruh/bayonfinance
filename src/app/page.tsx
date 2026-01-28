@@ -62,6 +62,9 @@ export default function LedgerPage() {
   const [calendarSearchQuery, setCalendarSearchQuery] = useState("");
   const [isDoctorFilterOpen, setIsDoctorFilterOpen] = useState(false);
   const [isCalendarSearchOpen, setIsCalendarSearchOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'none' | 'expensive' | 'unpaid'>('none');
+  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+  const [globalSearchResults, setGlobalSearchResults] = useState<any[]>([]);
 
   const { isCollapsed, showSummary, setShowSummary } = useSidebar();
   const { usdToKhr } = useCurrency();
@@ -175,6 +178,27 @@ export default function LedgerPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [localSearchQuery, setLocalSearchQuery] = useState("");
 
+  // Global Search logic (Top Header)
+  useEffect(() => {
+    const delayGlobalSearch = setTimeout(async () => {
+      if (calendarSearchQuery.length > 1) {
+        setIsSearching(true);
+        const { data, error } = await supabase
+          .from('patients')
+          .select('*')
+          .ilike('name', `%${calendarSearchQuery}%`)
+          .limit(10);
+
+        if (data) setGlobalSearchResults(data);
+        setIsSearching(false);
+      } else {
+        setGlobalSearchResults([]);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayGlobalSearch);
+  }, [calendarSearchQuery]);
+
   // Quick Intake Search logic (Independent of main ledger search)
   useEffect(() => {
     const delayIntakeSearch = setTimeout(async () => {
@@ -201,6 +225,22 @@ export default function LedgerPage() {
     ? entries
     : monthEntries.filter(e => doctorFilter.length === 0 || doctorFilter.includes(e.doctor_id));
 
+  let sourceEntries = currentEntries;
+
+  // Apply Local Filter (Search)
+  if (localSearchQuery.length > 1) {
+    sourceEntries = sourceEntries.filter(e =>
+      e.patients?.name?.toLowerCase().includes(localSearchQuery.toLowerCase())
+    );
+  }
+
+  // Apply Advanced Filters
+  if (activeFilter === 'expensive') {
+    sourceEntries = [...sourceEntries].sort((a, b) => Number(b.total_price) - Number(a.total_price));
+  } else if (activeFilter === 'unpaid') {
+    sourceEntries = sourceEntries.filter(e => Number(e.amount_remaining) > 0);
+  }
+
 
 
   // Revised Intake Logic: Separate ABA, USD Cash, KHR Cash
@@ -217,7 +257,7 @@ export default function LedgerPage() {
   // Grouping Logic for List View (Minimized/Maximized)
   // Logic: Use currentEntries (Daily).
   // Note: Monthly View uses the Calendar Matrix, not this list.
-  const sourceEntries = currentEntries;
+
 
   const groupedEntries = Object.values(
     sourceEntries.reduce((acc: any, entry: any) => {
@@ -389,19 +429,9 @@ export default function LedgerPage() {
       "relative transition-all",
       viewMode === 'list' ? "space-y-6 pb-24 block" : "flex flex-col h-[calc(100vh-3rem)] gap-4"
     )}>
-      {/* High-Density Optimized Header */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/20 shrink-0">
-            <LayoutGrid className="w-6 h-6" />
-          </div>
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-2 text-[#A3AED0] font-black text-[9px] uppercase tracking-[0.2em] leading-none">
-              <Activity className="w-3 h-3" />
-              Daily Status Portfolio
-            </div>
-            <h1 className="text-2xl font-black text-[#1B2559] tracking-tight whitespace-nowrap">Clinic Ledger</h1>
-          </div>
+          <h1 className="h1-premium">Clinic Ledger</h1>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -462,7 +492,7 @@ export default function LedgerPage() {
 
           <button
             onClick={() => setIsAddingEntry(true)}
-            className="bg-primary hover:bg-[#3311DB] text-white px-5 py-2.5 rounded-xl text-[9px] font-black flex items-center gap-2 transition-all shadow-lg active:scale-95 group shrink-0 uppercase tracking-widest"
+            className="btn-primary-premium shadow-lg shadow-primary/20 h-[44px]"
           >
             <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300" />
             Create Patient
@@ -472,381 +502,441 @@ export default function LedgerPage() {
 
       {/* Modern Bento Grid Stats - Massive Density Gain */}
       {/* Intake / Stats Summary - Hidden in Calendar View for Full Screen experience */}
-      {viewMode !== 'calendar' && (
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-6 animate-in fade-in slide-in-from-top-2 duration-500">
-          {/* Main Portfolio Card - Total Earnings (Highlighted) */}
-          <div className="md:col-span-4 bg-gradient-to-br from-[#1B2559] to-[#3311DB] rounded-[1.25rem] p-5 text-white flex flex-col justify-between relative overflow-hidden group hover:shadow-xl hover:shadow-primary/20 transition-all">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-bl-full -mr-6 -mt-6 transition-transform group-hover:scale-110" />
+      {
+        viewMode !== 'calendar' && (
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-6 animate-in fade-in slide-in-from-top-2 duration-500">
+            {/* Main Portfolio Card - Total Earnings (Highlighted) */}
+            <div className="md:col-span-4 bg-gradient-to-br from-[#1B2559] to-[#3311DB] rounded-[1.25rem] p-5 text-white flex flex-col justify-between relative overflow-hidden group hover:shadow-xl hover:shadow-primary/20 transition-all">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-bl-full -mr-6 -mt-6 transition-transform group-hover:scale-110" />
 
-            <div className="relative z-10">
-              <span className="text-[9px] font-black text-white/50 uppercase tracking-widest">Total Earnings</span>
-              <h2 className="text-2xl font-black text-white mt-1 tracking-tight">
-                ${(currentEntries.reduce((acc, curr) => acc + (Number(curr.amount_paid) || 0), 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </h2>
-            </div>
+              <div className="relative z-10">
+                <span className="text-[9px] font-black text-white/50 uppercase tracking-widest">Global Earnings Cluster</span>
+                <h2 className="text-2xl font-black text-white mt-1 tracking-tight">
+                  ${(currentEntries.reduce((acc, curr) => acc + (Number(curr.amount_paid) || 0), 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </h2>
+              </div>
 
-            <div className="relative z-10 flex items-center justify-between mt-4">
-              <div className="flex items-center gap-1.5 text-emerald-400 bg-white/10 px-2 py-0.5 rounded-lg">
-                <TrendingUp className="w-3 h-3" />
-                <span className="text-[9px] font-bold">+12.5%</span>
+              <div className="relative z-10 flex items-center justify-between mt-4">
+                <div className="flex items-center gap-1.5 text-emerald-400 bg-white/10 px-2 py-0.5 rounded-lg">
+                  <TrendingUp className="w-3 h-3" />
+                  <span className="text-[9px] font-bold">+12.5%</span>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Binary Stats (ABA + Cash) */}
-          <div className="md:col-span-5 grid grid-cols-2 gap-4">
-            <div className="bg-white border border-[#E0E5F2] rounded-[1.25rem] p-4 flex flex-col justify-between hover:border-blue-500/30 transition-all">
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
-                  <Zap className="w-3.5 h-3.5" />
+            {/* Binary Stats (ABA + Cash) */}
+            <div className="md:col-span-5 grid grid-cols-2 gap-4">
+              <div className="bg-white border border-[#E0E5F2] rounded-[1.25rem] p-4 flex flex-col justify-between hover:border-blue-500/30 transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+                    <Zap className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-[8px] font-black text-[#A3AED0] uppercase">ABA</span>
                 </div>
-                <span className="text-[8px] font-black text-[#A3AED0] uppercase">ABA</span>
+                <div>
+                  <p className="text-lg font-black text-[#1B2559] tracking-tight">${abaIntake.toLocaleString()}</p>
+                </div>
+              </div>
+              <div className="bg-white border border-[#E0E5F2] rounded-[1.25rem] p-4 flex flex-col justify-between hover:border-emerald-500/30 transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                    <Wallet className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-[8px] font-black text-[#A3AED0] uppercase">USD Cash</span>
+                </div>
+                <div>
+                  <p className="text-lg font-black text-[#1B2559] tracking-tight">${usdCashIntake.toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* KHR Card - Standardized */}
+            <div className="md:col-span-3 bg-white border border-[#E0E5F2] rounded-[1.25rem] p-4 flex flex-col justify-between hover:border-indigo-500/30 transition-all">
+              <div className="flex items-center justify-between mb-2">
+                <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+                  <Target className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-[8px] font-black text-[#A3AED0] uppercase">KHR Cash</span>
               </div>
               <div>
-                <p className="text-lg font-black text-[#1B2559] tracking-tight">${abaIntake.toLocaleString()}</p>
-              </div>
-            </div>
-            <div className="bg-white border border-[#E0E5F2] rounded-[1.25rem] p-4 flex flex-col justify-between hover:border-emerald-500/30 transition-all">
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                  <Wallet className="w-3.5 h-3.5" />
-                </div>
-                <span className="text-[8px] font-black text-[#A3AED0] uppercase">USD Cash</span>
-              </div>
-              <div>
-                <p className="text-lg font-black text-[#1B2559] tracking-tight">${usdCashIntake.toLocaleString()}</p>
+                <p className="text-lg font-black text-[#1B2559] tracking-tight">{khrCashIntake.toLocaleString()} <span className="text-xs font-bold text-[#A3AED0]">៛</span></p>
               </div>
             </div>
           </div>
-
-          {/* KHR Card - Standardized */}
-          <div className="md:col-span-3 bg-white border border-[#E0E5F2] rounded-[1.25rem] p-4 flex flex-col justify-between hover:border-indigo-500/30 transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-                <Target className="w-3.5 h-3.5" />
-              </div>
-              <span className="text-[8px] font-black text-[#A3AED0] uppercase">KHR Cash</span>
-            </div>
-            <div>
-              <p className="text-lg font-black text-[#1B2559] tracking-tight">{khrCashIntake.toLocaleString()} <span className="text-xs font-bold text-[#A3AED0]">៛</span></p>
-            </div>
-          </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Main Viewport */}
-      {viewMode === 'calendar' ? (
-        /* Calendar View - Full Screen Google Calendar Style */
-        <div className="flex-1 flex flex-col bg-white border border-[#E0E5F2] rounded-[2rem] shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-0">
-          {/* Calendar Header Days */}
-          <div className="grid grid-cols-7 border-b border-[#E0E5F2]">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div key={day} className="py-3 text-center border-r border-[#E0E5F2] last:border-r-0">
-                <span className="text-[11px] font-black text-[#1B2559] uppercase tracking-widest">{day}</span>
-              </div>
-            ))}
+      {
+        viewMode === 'calendar' ? (
+          /* Calendar View - Full Screen Google Calendar Style */
+          <div className="flex-1 flex flex-col bg-white border border-[#E0E5F2] rounded-[2rem] shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-0">
+            {/* Calendar Header Days */}
+            <div className="grid grid-cols-7 border-b border-[#E0E5F2]">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                <div key={day} className="py-3 text-center border-r border-[#E0E5F2] last:border-r-0">
+                  <span className="text-[11px] font-black text-[#1B2559] uppercase tracking-widest">{day}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Calendar Grid - Flex Grow to fill height */}
+            <div className="flex-1 grid grid-cols-7 grid-rows-6 lg:grid-rows-6 h-full">
+              {(() => {
+                const monthStart = startOfMonth(date);
+                const monthEnd = endOfMonth(date);
+                const dayCells = eachDayOfInterval({ start: monthStart, end: monthEnd });
+                const startPadding = monthStart.getDay();
+
+                // Calculate total cells needed to fill the grid (usually 35 or 42)
+                // For a fixed grid, we can just pad with empty cells or prev/next month
+                const cells = [];
+
+                for (let i = 0; i < startPadding; i++) {
+                  cells.push(
+                    <div key={`empty-${i}`} className="border-r border-b border-[#E0E5F2] bg-slate-50/30" />
+                  );
+                }
+
+                dayCells.forEach(day => {
+                  const dayStr = format(day, 'yyyy-MM-dd');
+                  const dayEntries = monthEntries.filter(e =>
+                    e.date === dayStr &&
+                    (doctorFilter.length === 0 || doctorFilter.includes(e.doctor_id))
+                  );
+                  const isCurrent = isToday(day);
+
+                  // Calculate Daily Total for the pill
+                  const dailyTotal = dayEntries.reduce((acc, e) => acc + (Number(e.amount_paid) || 0), 0);
+
+                  cells.push(
+                    <div
+                      key={dayStr}
+                      onClick={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        let leftPos = rect.left + rect.width + 10;
+                        let topPos = rect.top;
+
+                        // Right edge check
+                        if (leftPos + 400 > window.innerWidth) {
+                          leftPos = rect.left - 410; // Place on left if no space on right
+                        }
+                        let top = rect.top;
+                        let left = rect.right + 10;
+                        if (left + 420 > window.innerWidth) left = rect.left - 430;
+                        if (top + 400 > window.innerHeight) top = window.innerHeight - 420;
+
+                        setModalPosition({ top, left });
+                        setQuickEventData({
+                          date: format(day, 'yyyy-MM-dd'),
+                          time: "09:00",
+                          patientId: "",
+                          patientName: "",
+                          gender: "F",
+                          age: "",
+                          doctorId: "",
+                          treatmentId: "",
+                          duration: 15
+                        });
+                        setIntakeResults([]);
+                        setIsIntakeSearching(false);
+                        setIsQuickEventOpen(true);
+                      }}
+                      className={cn(
+                        "min-h-[120px] bg-white border-r border-b border-[#F4F7FE] p-2 hover:bg-[#F4F7FE]/30 transition-all flex flex-col group relative cursor-pointer",
+                        !isSameMonth(day, date) && "bg-gray-50/20",
+                        isToday(day) && "bg-blue-50/40"
+                      )}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <span className={cn(
+                          "text-[10px] font-black",
+                          isToday(day) ? "bg-primary text-white w-5 h-5 flex items-center justify-center rounded-lg shadow-lg shadow-primary/30 scale-110" :
+                            isSameMonth(day, date) ? "text-[#1B2559]" : "text-[#A3AED0]/40"
+                        )}>
+                          {format(day, 'd')}
+                        </span>
+                        {dayEntries.length > 0 && (
+                          <div className="flex flex-col items-end">
+                            <span className="text-[8px] font-black text-[#A3AED0] uppercase leading-none tracking-tighter">{dayEntries.length} PTS</span>
+                            <span className="text-[10px] font-black text-primary leading-none mt-1">
+                              ${dayEntries.reduce((sum, e) => sum + (e.total_price || 0), 0).toLocaleString()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-0.5 mt-2">
+                        {dayEntries.slice(0, dayEntries.length > 2 ? 2 : 3).map((entry, idx) => {
+                          const startTime = entry.appointment_time || "09:00:00";
+                          const start = new Date(`2000-01-01T${startTime}`);
+                          const end = addMinutes(start, entry.duration_minutes || 15);
+                          return (
+                            <div key={idx} className="flex items-center gap-1 group/item cursor-pointer overflow-hidden">
+                              <div className="w-1 h-1 rounded-full bg-amber-400 group-hover/item:scale-125 transition-transform shrink-0" />
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-[8px] font-black text-blue-600/60 leading-none">
+                                  {format(start, 'h:mm')} - {format(end, 'h:mm a')}
+                                </span>
+                                <span className="text-[10px] font-semibold text-[#1B2559] truncate group-hover/item:text-blue-600">
+                                  {entry.patients?.name || 'Unknown'}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {dayEntries.length > 2 && (
+                          <p className="text-[9px] font-black text-primary/60 pt-1 tracking-tight">
+                            +{dayEntries.length - 2} more
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                });
+
+                // Fill remaining cells to maintain grid structure (6 rows * 7 cols = 42)
+                const remainingCells = 42 - cells.length;
+                if (remainingCells > 0) {
+                  for (let i = 0; i < remainingCells; i++) {
+                    cells.push(<div key={`fill-${i}`} className="border-r border-b border-[#E0E5F2] bg-slate-50/30" />);
+                  }
+                }
+
+                return cells;
+              })()}
+            </div>
           </div>
-
-          {/* Calendar Grid - Flex Grow to fill height */}
-          <div className="flex-1 grid grid-cols-7 grid-rows-6 lg:grid-rows-6 h-full">
-            {(() => {
-              const monthStart = startOfMonth(date);
-              const monthEnd = endOfMonth(date);
-              const dayCells = eachDayOfInterval({ start: monthStart, end: monthEnd });
-              const startPadding = monthStart.getDay();
-
-              // Calculate total cells needed to fill the grid (usually 35 or 42)
-              // For a fixed grid, we can just pad with empty cells or prev/next month
-              const cells = [];
-
-              for (let i = 0; i < startPadding; i++) {
-                cells.push(
-                  <div key={`empty-${i}`} className="border-r border-b border-[#E0E5F2] bg-slate-50/30" />
-                );
-              }
-
-              dayCells.forEach(day => {
-                const dayStr = format(day, 'yyyy-MM-dd');
-                const dayEntries = monthEntries.filter(e =>
-                  e.date === dayStr &&
-                  (doctorFilter.length === 0 || doctorFilter.includes(e.doctor_id))
-                );
-                const isCurrent = isToday(day);
-
-                // Calculate Daily Total for the pill
-                const dailyTotal = dayEntries.reduce((acc, e) => acc + (Number(e.amount_paid) || 0), 0);
-
-                cells.push(
-                  <div
-                    key={dayStr}
-                    onClick={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      let leftPos = rect.left + rect.width + 10;
-                      let topPos = rect.top;
-
-                      // Right edge check
-                      if (leftPos + 400 > window.innerWidth) {
-                        leftPos = rect.left - 410; // Place on left if no space on right
-                      }
-                      let top = rect.top;
-                      let left = rect.right + 10;
-                      if (left + 420 > window.innerWidth) left = rect.left - 430;
-                      if (top + 400 > window.innerHeight) top = window.innerHeight - 420;
-
-                      setModalPosition({ top, left });
-                      setQuickEventData({
-                        date: format(day, 'yyyy-MM-dd'),
-                        time: "09:00",
-                        patientId: "",
-                        patientName: "",
-                        gender: "F",
-                        age: "",
-                        doctorId: "",
-                        treatmentId: "",
-                        duration: 15
-                      });
-                      setIntakeResults([]);
-                      setIsIntakeSearching(false);
-                      setIsQuickEventOpen(true);
-                    }}
+        ) : (
+          /* Stream / List View with Minimized/Maximized behavior */
+          <div className="bg-white border border-[#E0E5F2] rounded-[1.5rem] shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="p-4 md:p-6 flex items-center justify-between border-b border-[#F4F7FE]">
+              <div className="flex items-center gap-4">
+                <h2 className="h2-premium">Session Roster</h2>
+                <div className="h-4 w-px bg-[#E0E5F2]" />
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A3AED0]" />
+                  <input
+                    type="text"
+                    placeholder="Find on this day..."
+                    className="bg-[#F4F7FE] border-none rounded-2xl pl-10 pr-4 py-2 text-[10px] font-black w-48 md:w-64 focus:ring-2 ring-primary/20 outline-none transition-all placeholder:text-[#A3AED0] uppercase tracking-widest"
+                    value={localSearchQuery}
+                    onChange={(e) => setLocalSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-[#A3AED0] font-bold relative">
+                <div className="relative">
+                  <button
+                    onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
                     className={cn(
-                      "min-h-[120px] bg-white border-r border-b border-[#F4F7FE] p-2 hover:bg-[#F4F7FE]/30 transition-all flex flex-col group relative cursor-pointer",
-                      !isSameMonth(day, date) && "bg-gray-50/20",
-                      isToday(day) && "bg-blue-50/40"
+                      "p-2 rounded-lg transition-all border",
+                      activeFilter !== 'none' ? "bg-primary/10 border-primary/20 text-primary" : "hover:bg-[#F4F7FE] border-transparent"
                     )}
                   >
-                    <div className="flex justify-between items-start mb-1">
-                      <span className={cn(
-                        "text-[10px] font-black",
-                        isToday(day) ? "bg-primary text-white w-5 h-5 flex items-center justify-center rounded-lg shadow-lg shadow-primary/30 scale-110" :
-                          isSameMonth(day, date) ? "text-[#1B2559]" : "text-[#A3AED0]/40"
-                      )}>
-                        {format(day, 'd')}
-                      </span>
-                      {dayEntries.length > 0 && (
-                        <div className="flex flex-col items-end">
-                          <span className="text-[8px] font-black text-[#A3AED0] uppercase leading-none tracking-tighter">{dayEntries.length} PTS</span>
-                          <span className="text-[10px] font-black text-primary leading-none mt-1">
-                            ${dayEntries.reduce((sum, e) => sum + (e.total_price || 0), 0).toLocaleString()}
-                          </span>
+                    <Filter className="w-4 h-4" />
+                  </button>
+
+                  {isFilterMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsFilterMenuOpen(false)} />
+                      <div className="absolute right-0 mt-2 w-56 bg-white border border-[#E0E5F2] rounded-2xl shadow-xl z-50 p-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="px-3 py-2 text-[8px] font-black text-[#A3AED0] uppercase tracking-widest border-b border-[#F4F7FE] mb-1">
+                          Filter Roster
                         </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-0.5 mt-2">
-                      {dayEntries.slice(0, dayEntries.length > 2 ? 2 : 3).map((entry, idx) => {
-                        const startTime = entry.appointment_time || "09:00:00";
-                        const start = new Date(`2000-01-01T${startTime}`);
-                        const end = addMinutes(start, entry.duration_minutes || 15);
-                        return (
-                          <div key={idx} className="flex items-center gap-1 group/item cursor-pointer overflow-hidden">
-                            <div className="w-1 h-1 rounded-full bg-amber-400 group-hover/item:scale-125 transition-transform shrink-0" />
-                            <div className="flex flex-col min-w-0">
-                              <span className="text-[8px] font-black text-blue-600/60 leading-none">
-                                {format(start, 'h:mm')} - {format(end, 'h:mm a')}
-                              </span>
-                              <span className="text-[10px] font-semibold text-[#1B2559] truncate group-hover/item:text-blue-600">
-                                {entry.patients?.name || 'Unknown'}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {dayEntries.length > 2 && (
-                        <p className="text-[9px] font-black text-primary/60 pt-1 tracking-tight">
-                          +{dayEntries.length - 2} more
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              });
-
-              // Fill remaining cells to maintain grid structure (6 rows * 7 cols = 42)
-              const remainingCells = 42 - cells.length;
-              if (remainingCells > 0) {
-                for (let i = 0; i < remainingCells; i++) {
-                  cells.push(<div key={`fill-${i}`} className="border-r border-b border-[#E0E5F2] bg-slate-50/30" />);
-                }
-              }
-
-              return cells;
-            })()}
-          </div>
-        </div>
-      ) : (
-        /* Stream / List View with Minimized/Maximized behavior */
-        <div className="bg-white border border-[#E0E5F2] rounded-[1.5rem] shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="p-4 md:p-6 flex items-center justify-between border-b border-[#F4F7FE]">
-            <div className="flex items-center gap-4">
-              <h2 className="text-lg font-black text-[#1B2559]">Session Roster</h2>
-              <div className="h-4 w-px bg-[#E0E5F2]" />
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-[#A3AED0] font-bold">
-              <span className="hidden md:inline mr-2">{groupedEntries.length} Active Records</span>
-              <button className="p-2 hover:bg-[#F4F7FE] rounded-lg transition-all"><Printer className="w-4 h-4" /></button>
-              <button className="p-2 hover:bg-[#F4F7FE] rounded-lg transition-all"><Filter className="w-4 h-4" /></button>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto overflow-y-auto max-h-[600px] no-scrollbar">
-            <table className="w-full text-left ledger-table">
-              <thead>
-                <tr className="border-b border-[#F4F7FE] sticky top-0 bg-white z-10">
-                  <th className="w-[50px] text-center py-3 text-[9px] font-black text-[#A3AED0] uppercase tracking-widest bg-white">#</th>
-                  <th className="min-w-[180px] py-3 text-[9px] font-black text-[#A3AED0] uppercase tracking-widest bg-white">Client Identity</th>
-                  <th className="w-[100px] text-center py-3 text-[9px] font-black text-[#A3AED0] uppercase tracking-widest bg-white">Age/Sex</th>
-                  <th className="min-w-[220px] py-3 text-[9px] font-black text-[#A3AED0] uppercase tracking-widest bg-white">Procedure Architecture</th>
-                  <th className="text-right w-[100px] py-3 text-[9px] font-black text-[#A3AED0] uppercase tracking-widest bg-white">Valuation</th>
-                  <th className="text-right w-[100px] py-3 text-[9px] font-black text-[#A3AED0] uppercase tracking-widest bg-white">Payment</th>
-                  <th className="text-center w-[120px] py-3 text-[9px] font-black text-[#A3AED0] uppercase tracking-widest bg-white">Settlement</th>
-                  <th className="w-[60px] bg-white"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#F4F7FE]">
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={8} className="text-center py-24 text-[#A3AED0] font-black uppercase tracking-widest animate-pulse">Synchronizing Session Data...</td>
-                  </tr>
-                ) : groupedEntries.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="text-center py-24">
-                      <div className="flex flex-col items-center gap-4 opacity-30">
-                        <History className="w-16 h-16 text-[#A3AED0]" />
-                        <p className="text-sm font-black text-[#1B2559] uppercase tracking-[0.2em]">Zero Activity Encoded</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  (groupedEntries as any[]).map((group, idx) => {
-                    const isExpanded = expandedGroups.includes(group.id);
-                    return (
-                      <React.Fragment key={group.id}>
-                        {/* MINIMIZED ROW (The Parent) */}
-                        <tr
-                          onClick={() => {
-                            const params = new URLSearchParams();
-                            const docId = (group as any).treatments?.[0]?.doctor_id;
-                            if (docId) params.set('doctor', docId);
-                            router.push(`/patients/${group.patientId}${params.toString() ? '?' + params.toString() : ''}`);
-                          }}
+                        <button
+                          onClick={() => { setActiveFilter('none'); setIsFilterMenuOpen(false); }}
                           className={cn(
-                            "group cursor-pointer hover:bg-primary/5 transition-all outline-none",
-                            isExpanded ? "bg-[#F4F7FE]" : "bg-white"
+                            "w-full text-left px-4 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all",
+                            activeFilter === 'none' ? "bg-primary text-white" : "hover:bg-[#F4F7FE] text-[#1B2559]"
                           )}
                         >
-                          <td className="text-center">
-                            <span className="text-[10px] font-black text-[#A3AED0]">{idx + 1}</span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-xl bg-[#F4F7FE] flex items-center justify-center text-primary font-black shadow-inner border border-[#E0E5F2] text-xs">
-                                {group.patient?.name?.charAt(0)}
-                              </div>
-                              <div>
-                                <p className="font-black text-[#1B2559] text-sm leading-none group-hover:text-primary transition-colors">{group.patient?.name}</p>
-                                <p className="text-[8px] text-[#A3AED0] font-black uppercase tracking-widest mt-1 flex items-center gap-1.5">
-                                  ID: {group.patientId.slice(0, 8)}
-                                  <span className="w-1 h-1 rounded-full bg-[#E0E5F2]" />
-                                  {group.treatments.length} Procedure{group.treatments.length !== 1 ? 's' : ''}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="text-center">
-                            <div className="inline-flex bg-[#F4F7FE] px-2 py-1 rounded-lg border border-[#E0E5F2]/50">
-                              <span className="text-[9px] font-black text-[#1B2559] uppercase tracking-tighter">{group.patient?.gender} / {group.patient?.age}</span>
-                            </div>
-                          </td>
-                          <td className="py-3">
-                            <div className="flex flex-col gap-0.5">
-                              {group.treatments.slice(0, 1).map((t: any) => (
-                                <div key={t.id} className="flex items-center gap-2">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-primary/20 shrink-0" />
-                                  <span className="text-[11px] font-bold text-[#1B2559] truncate max-w-[200px]">{t.treatments?.name || t.description}</span>
-                                </div>
-                              ))}
-                              {group.treatments.length > 1 && (
-                                <span className="text-[8px] font-black text-primary uppercase tracking-widest pl-3.5">
-                                  + {group.treatments.length - 1} more items
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="text-right py-3 font-bold text-[#1B2559] text-sm">${group.totalVal.toFixed(2)}</td>
-                          <td className="text-right py-3 font-black text-success text-sm">${group.totalPaid.toFixed(2)}</td>
-                          <td className="text-center py-3">
-                            <div className="inline-flex items-center gap-1.5 bg-primary/5 text-primary px-3 py-1 rounded-full border border-primary/10">
-                              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                              <span className="text-[9px] font-black uppercase tracking-widest">{group.method || 'ABA Bank'}</span>
-                            </div>
-                          </td>
-                          <td className="text-center">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleGroup(group.id);
-                              }}
-                              className={cn(
-                                "p-1.5 rounded-lg hover:bg-secondary/20 transition-all",
-                                isExpanded ? "rotate-180 text-primary bg-primary/5" : "text-[#A3AED0]"
-                              )}
-                            >
-                              <ChevronDown className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
+                          Default (All Recorded)
+                        </button>
+                        <button
+                          onClick={() => { setActiveFilter('expensive'); setIsFilterMenuOpen(false); }}
+                          className={cn(
+                            "w-full text-left px-4 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all mt-1",
+                            activeFilter === 'expensive' ? "bg-primary text-white" : "hover:bg-[#F4F7FE] text-[#1B2559]"
+                          )}
+                        >
+                          Most Expensive First
+                        </button>
+                        <button
+                          onClick={() => { setActiveFilter('unpaid'); setIsFilterMenuOpen(false); }}
+                          className={cn(
+                            "w-full text-left px-4 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all mt-1",
+                            activeFilter === 'unpaid' ? "bg-primary text-white" : "hover:bg-[#F4F7FE] text-[#1B2559]"
+                          )}
+                        >
+                          Pending Balances Only
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
 
-                        {/* MAXIMIZED VIEW (Detailed rows) */}
-                        {isExpanded && group.treatments.map((entry: any, tIdx: number) => (
-                          <tr key={entry.id} className="bg-[#FBFCFF] border-l-4 border-primary">
-                            <td className="text-center py-2 opacity-0 border-r border-[#F4F7FE]">{tIdx + 1}</td>
-                            <td colSpan={2} className="px-6 py-2 border-r border-[#F4F7FE]">
-                              <div className="flex items-center gap-2 text-[#A3AED0]">
-                                <div className="w-1 h-1 rounded-full bg-primary" />
-                                <span className="text-[9px] font-black uppercase tracking-widest">DR. {entry.doctor?.name || 'Dentist'}</span>
+            <div className="overflow-x-auto overflow-y-auto max-h-[600px] no-scrollbar">
+              <table className="w-full text-left ledger-table">
+                <thead>
+                  <tr className="border-b border-[#F4F7FE] sticky top-0 bg-white z-10">
+                    <th className="w-[50px] text-center py-3 text-[9px] font-black text-[#A3AED0] uppercase tracking-widest bg-white">#</th>
+                    <th className="min-w-[180px] py-3 text-[9px] font-black text-[#A3AED0] uppercase tracking-widest bg-white">Client Identity</th>
+                    <th className="w-[100px] text-center py-3 text-[9px] font-black text-[#A3AED0] uppercase tracking-widest bg-white">Age/Sex</th>
+                    <th className="min-w-[220px] py-3 text-[9px] font-black text-[#A3AED0] uppercase tracking-widest bg-white">Procedure Architecture</th>
+                    <th className="text-right w-[100px] py-3 text-[9px] font-black text-[#A3AED0] uppercase tracking-widest bg-white">Valuation</th>
+                    <th className="text-right w-[100px] py-3 text-[9px] font-black text-[#A3AED0] uppercase tracking-widest bg-white">Payment</th>
+                    <th className="text-center w-[120px] py-3 text-[9px] font-black text-[#A3AED0] uppercase tracking-widest bg-white">Settlement</th>
+                    <th className="w-[60px] bg-white"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F4F7FE]">
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={8} className="text-center py-24 text-[#A3AED0] font-black uppercase tracking-widest animate-pulse">Synchronizing Session Data...</td>
+                    </tr>
+                  ) : groupedEntries.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="text-center py-24">
+                        <div className="flex flex-col items-center gap-4 opacity-30">
+                          <History className="w-16 h-16 text-[#A3AED0]" />
+                          <p className="text-sm font-black text-[#1B2559] uppercase tracking-[0.2em]">Zero Activity Encoded</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    (groupedEntries as any[]).map((group, idx) => {
+                      const isExpanded = expandedGroups.includes(group.id);
+                      return (
+                        <React.Fragment key={group.id}>
+                          {/* MINIMIZED ROW (The Parent) */}
+                          <tr
+                            onClick={() => {
+                              const params = new URLSearchParams();
+                              const docId = (group as any).treatments?.[0]?.doctor_id;
+                              if (docId) params.set('doctor', docId);
+                              router.push(`/patients/${group.patientId}${params.toString() ? '?' + params.toString() : ''}`);
+                            }}
+                            className={cn(
+                              "group cursor-pointer hover:bg-primary/5 transition-all outline-none",
+                              isExpanded ? "bg-[#F4F7FE]" : "bg-white"
+                            )}
+                          >
+                            <td className="text-center">
+                              <span className="text-[10px] font-black text-[#A3AED0]">{idx + 1}</span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-xl bg-[#F4F7FE] flex items-center justify-center text-primary font-black shadow-inner border border-[#E0E5F2] text-xs">
+                                  {group.patient?.name?.charAt(0)}
+                                </div>
+                                <div>
+                                  <p className="font-black text-[#1B2559] text-sm leading-none group-hover:text-primary transition-colors">{group.patient?.name}</p>
+                                  <p className="text-[8px] text-[#A3AED0] font-black uppercase tracking-widest mt-1 flex items-center gap-1.5">
+                                    ID: {group.patientId.slice(0, 8)}
+                                    <span className="w-1 h-1 rounded-full bg-[#E0E5F2]" />
+                                    {group.treatments.length} Procedure{group.treatments.length !== 1 ? 's' : ''}
+                                  </p>
+                                </div>
                               </div>
                             </td>
-                            <td className="px-4 py-2">
-                              <div className="flex flex-col">
-                                <span className="text-xs font-bold text-[#1B2559]">{entry.treatments?.name || entry.description}</span>
-                                <span className="text-[8px] font-medium text-[#A3AED0]">Qty: {entry.quantity} @ ${entry.unit_price}</span>
+                            <td className="text-center">
+                              <div className="inline-flex bg-[#F4F7FE] px-2 py-1 rounded-lg border border-[#E0E5F2]/50">
+                                <span className="text-[9px] font-black text-[#1B2559] uppercase tracking-tighter">{group.patient?.gender} / {group.patient?.age}</span>
                               </div>
                             </td>
-                            <td className="text-right py-2 font-bold text-[#1B2559] border-l border-[#F4F7FE]/50 text-xs">${Number(entry.total_price).toFixed(2)}</td>
-                            <td className="text-right py-2 font-bold text-success text-xs">${Number(entry.amount_paid).toFixed(2)}</td>
-                            <td className="text-center py-2" colSpan={2}>
-                              <div className="flex items-center justify-center gap-2">
-                                <select
-                                  className={cn(
-                                    "text-[9px] font-black px-2 py-1 rounded-lg border border-transparent uppercase tracking-widest cursor-pointer hover:scale-105 transition-all text-center outline-none",
-                                    entry.method === 'ABA' ? "bg-primary/10 text-primary" : "bg-amber-500/10 text-amber-500"
-                                  )}
-                                  value={entry.method || ""}
-                                  onChange={(e) => updateEntryMethod(entry.id, e.target.value)}
-                                >
-                                  <option value="ABA">ABA Bank</option>
-                                  <option value="CASH">Cash</option>
-                                </select>
-                                <button
-                                  onClick={() => setManagedEntry(entry)}
-                                  className="text-[8px] font-black text-primary hover:underline uppercase tracking-widest"
-                                >
-                                  Manage
-                                </button>
+                            <td className="py-3">
+                              <div className="flex flex-col gap-0.5">
+                                {group.treatments.slice(0, 1).map((t: any) => (
+                                  <div key={t.id} className="flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-primary/20 shrink-0" />
+                                    <span className="text-[11px] font-bold text-[#1B2559] truncate max-w-[200px]">{t.treatments?.name || t.description}</span>
+                                  </div>
+                                ))}
+                                {group.treatments.length > 1 && (
+                                  <span className="text-[8px] font-black text-primary uppercase tracking-widest pl-3.5">
+                                    + {group.treatments.length - 1} more items
+                                  </span>
+                                )}
                               </div>
+                            </td>
+                            <td className="text-right py-3 font-bold text-[#1B2559] text-sm">${group.totalVal.toFixed(2)}</td>
+                            <td className="text-right py-3 font-black text-success text-sm">${group.totalPaid.toFixed(2)}</td>
+                            <td className="text-center py-3">
+                              <div className="inline-flex items-center gap-1.5 bg-primary/5 text-primary px-3 py-1 rounded-full border border-primary/10">
+                                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                                <span className="text-[9px] font-black uppercase tracking-widest">{group.method || 'ABA Bank'}</span>
+                              </div>
+                            </td>
+                            <td className="text-center">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleGroup(group.id);
+                                }}
+                                className={cn(
+                                  "p-1.5 rounded-lg hover:bg-secondary/20 transition-all",
+                                  isExpanded ? "rotate-180 text-primary bg-primary/5" : "text-[#A3AED0]"
+                                )}
+                              >
+                                <ChevronDown className="w-4 h-4" />
+                              </button>
                             </td>
                           </tr>
-                        ))}
-                      </React.Fragment>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+
+                          {/* MAXIMIZED VIEW (Detailed rows) */}
+                          {isExpanded && group.treatments.map((entry: any, tIdx: number) => (
+                            <tr key={entry.id} className="bg-[#FBFCFF] border-l-4 border-primary">
+                              <td className="text-center py-2 opacity-0 border-r border-[#F4F7FE]">{tIdx + 1}</td>
+                              <td colSpan={2} className="px-6 py-2 border-r border-[#F4F7FE]">
+                                <div className="flex items-center gap-2 text-[#A3AED0]">
+                                  <div className="w-1 h-1 rounded-full bg-primary" />
+                                  <span className="text-[9px] font-black uppercase tracking-widest">DR. {entry.doctor?.name || 'Dentist'}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-2">
+                                <div className="flex flex-col">
+                                  <span className="text-xs font-bold text-[#1B2559]">{entry.treatments?.name || entry.description}</span>
+                                  <span className="text-[8px] font-medium text-[#A3AED0]">Qty: {entry.quantity} @ ${entry.unit_price}</span>
+                                </div>
+                              </td>
+                              <td className="text-right py-2 font-bold text-[#1B2559] border-l border-[#F4F7FE]/50 text-xs">${Number(entry.total_price).toFixed(2)}</td>
+                              <td className="text-right py-2 font-bold text-success text-xs">${Number(entry.amount_paid).toFixed(2)}</td>
+                              <td className="text-center py-2" colSpan={2}>
+                                <div className="flex items-center justify-center gap-2">
+                                  <select
+                                    className={cn(
+                                      "text-[9px] font-black px-2 py-1 rounded-lg border border-transparent uppercase tracking-widest cursor-pointer hover:scale-105 transition-all text-center outline-none",
+                                      entry.method === 'ABA' ? "bg-primary/10 text-primary" : "bg-amber-500/10 text-amber-500"
+                                    )}
+                                    value={entry.method || ""}
+                                    onChange={(e) => updateEntryMethod(entry.id, e.target.value)}
+                                  >
+                                    <option value="ABA">ABA Bank</option>
+                                    <option value="CASH">Cash</option>
+                                  </select>
+                                  <button
+                                    onClick={() => setManagedEntry(entry)}
+                                    className="text-[8px] font-black text-primary hover:underline uppercase tracking-widest"
+                                  >
+                                    Manage
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
 
       {/* Daily Status Bar */}
@@ -892,199 +982,200 @@ export default function LedgerPage() {
       </div>
 
       {/* Modals & Popovers */}
-      {isAddingEntry && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#1B2559]/30 p-4 animate-in fade-in duration-300">
-          <div className="bg-white border-2 border-white rounded-[2.5rem] w-full max-w-lg shadow-2xl p-10 space-y-8 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-purple-500 to-primary" />
+      {
+        isAddingEntry && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#1B2559]/30 p-4 animate-in fade-in duration-300">
+            <div className="bg-white border-2 border-white rounded-[2.5rem] w-full max-w-lg shadow-2xl p-10 space-y-8 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-purple-500 to-primary" />
 
-            <button
-              onClick={() => setIsAddingEntry(false)}
-              className="absolute top-8 right-8 p-2.5 hover:bg-[#F4F7FE] rounded-2xl text-[#A3AED0] hover:text-primary transition-all border border-[#E0E5F2]"
-            >
-              <X className="w-5 h-5" />
-            </button>
+              <button
+                onClick={() => setIsAddingEntry(false)}
+                className="absolute top-8 right-8 p-2.5 hover:bg-[#F4F7FE] rounded-2xl text-[#A3AED0] hover:text-primary transition-all border border-[#E0E5F2]"
+              >
+                <X className="w-5 h-5" />
+              </button>
 
-            <div className="flex items-center gap-5">
-              <div className="p-4 rounded-2xl bg-primary/10 text-primary shadow-inner">
-                <Plus className="w-7 h-7" />
+              <div className="flex items-center gap-5">
+                <div className="p-4 rounded-2xl bg-primary/10 text-primary shadow-inner">
+                  <Plus className="w-7 h-7" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-[#1B2559] tracking-tight">Create Patient</h3>
+                </div>
               </div>
-              <div>
-                <h3 className="text-2xl font-black text-[#1B2559] tracking-tight">Create Patient</h3>
-              </div>
-            </div>
 
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Full Name</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    className="w-full bg-[#F4F7FE] border-none rounded-xl px-12 py-4 text-sm font-bold text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all"
-                    placeholder="e.g. Som Seng"
-                    value={quickPatient.name}
-                    onChange={(e) => setQuickPatient({ ...quickPatient, name: e.target.value })}
-                  />
-                  <Search className="w-4 h-4 text-[#A3AED0] absolute left-5 top-1/2 -translate-y-1/2" />
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Full Name</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      className="w-full bg-[#F4F7FE] border-none rounded-xl px-12 py-4 text-sm font-bold text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all"
+                      placeholder="e.g. Som Seng"
+                      value={quickPatient.name}
+                      onChange={(e) => setQuickPatient({ ...quickPatient, name: e.target.value })}
+                    />
+                    <Search className="w-4 h-4 text-[#A3AED0] absolute left-5 top-1/2 -translate-y-1/2" />
 
-                  {/* High-Density Search Results Dropdown */}
-                  {intakeResults.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#E0E5F2] rounded-2xl shadow-xl z-[210] overflow-hidden p-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                      <div className="max-h-[250px] overflow-y-auto custom-scrollbar">
-                        <div className="px-3 py-2 text-[8px] font-black text-[#A3AED0] uppercase tracking-widest border-b border-[#F4F7FE] mb-1">
-                          Existing Patient Matches
-                        </div>
-                        {intakeResults.map((p) => (
-                          <button
-                            key={p.id}
-                            onClick={() => router.push(`/patients/${p.id}`)}
-                            className="w-full flex items-center justify-between p-3 hover:bg-[#F4F7FE] rounded-xl transition-all group text-left"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-black text-[10px]">
-                                {p.name[0]}
-                              </div>
-                              <div>
-                                <div className="text-xs font-black text-[#1B2559] group-hover:text-primary transition-colors">{p.name}</div>
-                                <div className="text-[8px] text-[#A3AED0] font-bold uppercase tracking-widest mt-0.5">
-                                  {p.gender} · {p.age} Yrs · {p.phone || 'No Phone'}
+                    {/* High-Density Search Results Dropdown */}
+                    {intakeResults.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#E0E5F2] rounded-2xl shadow-xl z-[210] overflow-hidden p-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="max-h-[250px] overflow-y-auto custom-scrollbar">
+                          <div className="px-3 py-2 text-[8px] font-black text-[#A3AED0] uppercase tracking-widest border-b border-[#F4F7FE] mb-1">
+                            Existing Patient Matches
+                          </div>
+                          {intakeResults.map((p) => (
+                            <button
+                              key={p.id}
+                              onClick={() => router.push(`/patients/${p.id}`)}
+                              className="w-full flex items-center justify-between p-3 hover:bg-[#F4F7FE] rounded-xl transition-all group text-left"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-black text-[10px]">
+                                  {p.name[0]}
+                                </div>
+                                <div>
+                                  <div className="text-xs font-black text-[#1B2559] group-hover:text-primary transition-colors">{p.name}</div>
+                                  <div className="text-[8px] text-[#A3AED0] font-bold uppercase tracking-widest mt-0.5">
+                                    {p.gender} · {p.age} Yrs · {p.phone || 'No Phone'}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                            <div className="text-[8px] font-black text-primary bg-primary/5 px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
-                              OPEN RECORDS
-                            </div>
-                          </button>
-                        ))}
-                        <div className="p-2 border-t border-[#F4F7FE] mt-1">
-                          <button
-                            onClick={() => setIntakeResults([])}
-                            className="w-full py-2.5 rounded-xl bg-primary text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#3311DB] transition-all shadow-lg shadow-primary/10"
-                          >
-                            Proceed as New Patient "{quickPatient.name}"
-                          </button>
+                              <div className="text-[8px] font-black text-primary bg-primary/5 px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                                OPEN RECORDS
+                              </div>
+                            </button>
+                          ))}
+                          <div className="p-2 border-t border-[#F4F7FE] mt-1">
+                            <button
+                              onClick={() => setIntakeResults([])}
+                              className="w-full py-2.5 rounded-xl bg-primary text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#3311DB] transition-all shadow-lg shadow-primary/10"
+                            >
+                              Proceed as New Patient "{quickPatient.name}"
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-5">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Contact Phone</label>
-                  <input
-                    type="text"
-                    className="w-full bg-[#F4F7FE] border-none rounded-xl px-5 py-4 text-sm font-bold text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all"
-                    placeholder="012 345 678"
-                    value={quickPatient.phone}
-                    onChange={(e) => setQuickPatient({ ...quickPatient, phone: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">DOB (DD/MM/YYYY)</label>
-                  <input
-                    type="text"
-                    className="w-full bg-[#F4F7FE] border-none rounded-xl px-5 py-4 text-sm font-bold text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all"
-                    placeholder="15/05/1995"
-                    value={quickPatient.dob}
-                    onChange={(e) => {
-                      let val = e.target.value.replace(/\D/g, '');
-                      if (val.length > 2) val = val.slice(0, 2) + '/' + val.slice(2);
-                      if (val.length > 5) val = val.slice(0, 5) + '/' + val.slice(5, 9);
-                      if (val.length > 10) val = val.slice(0, 10);
-                      setQuickPatient({ ...quickPatient, dob: val });
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Gender</label>
-                <div className="flex p-1.5 bg-[#F4F7FE] rounded-2xl gap-2">
-                  <button
-                    onClick={() => setQuickPatient({ ...quickPatient, gender: 'F' })}
-                    className={cn(
-                      "flex-1 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all",
-                      quickPatient.gender === 'F' ? "bg-white text-primary shadow-sm" : "text-[#A3AED0] hover:text-[#1B2559]"
                     )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Contact Phone</label>
+                    <input
+                      type="text"
+                      className="w-full bg-[#F4F7FE] border-none rounded-xl px-5 py-4 text-sm font-bold text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all"
+                      placeholder="012 345 678"
+                      value={quickPatient.phone}
+                      onChange={(e) => setQuickPatient({ ...quickPatient, phone: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">DOB (DD/MM/YYYY)</label>
+                    <input
+                      type="text"
+                      className="w-full bg-[#F4F7FE] border-none rounded-xl px-5 py-4 text-sm font-bold text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all"
+                      placeholder="15/05/1995"
+                      value={quickPatient.dob}
+                      onChange={(e) => {
+                        let val = e.target.value.replace(/\D/g, '');
+                        if (val.length > 2) val = val.slice(0, 2) + '/' + val.slice(2);
+                        if (val.length > 5) val = val.slice(0, 5) + '/' + val.slice(5, 9);
+                        if (val.length > 10) val = val.slice(0, 10);
+                        setQuickPatient({ ...quickPatient, dob: val });
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Gender</label>
+                  <div className="flex p-1.5 bg-[#F4F7FE] rounded-2xl gap-2">
+                    <button
+                      onClick={() => setQuickPatient({ ...quickPatient, gender: 'F' })}
+                      className={cn(
+                        "flex-1 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all",
+                        quickPatient.gender === 'F' ? "bg-white text-primary shadow-sm" : "text-[#A3AED0] hover:text-[#1B2559]"
+                      )}
+                    >
+                      Female
+                    </button>
+                    <button
+                      onClick={() => setQuickPatient({ ...quickPatient, gender: 'M' })}
+                      className={cn(
+                        "flex-1 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all",
+                        quickPatient.gender === 'M' ? "bg-white text-primary shadow-sm" : "text-[#A3AED0] hover:text-[#1B2559]"
+                      )}
+                    >
+                      Male
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Dentist</label>
+                  <select
+                    className="w-full bg-[#F4F7FE] border-none rounded-xl px-5 py-4 text-sm font-bold text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all appearance-none cursor-pointer"
+                    value={quickPatient.doctor_id || ""}
+                    onChange={(e) => setQuickPatient({ ...quickPatient, doctor_id: e.target.value })}
                   >
-                    Female
-                  </button>
-                  <button
-                    onClick={() => setQuickPatient({ ...quickPatient, gender: 'M' })}
-                    className={cn(
-                      "flex-1 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all",
-                      quickPatient.gender === 'M' ? "bg-white text-primary shadow-sm" : "text-[#A3AED0] hover:text-[#1B2559]"
-                    )}
-                  >
-                    Male
-                  </button>
+                    <option value="">Unassigned</option>
+                    {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Dentist</label>
-                <select
-                  className="w-full bg-[#F4F7FE] border-none rounded-xl px-5 py-4 text-sm font-bold text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all appearance-none cursor-pointer"
-                  value={quickPatient.doctor_id || ""}
-                  onChange={(e) => setQuickPatient({ ...quickPatient, doctor_id: e.target.value })}
-                >
-                  <option value="">Unassigned</option>
-                  {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-            </div>
+              <button
+                onClick={async () => {
+                  if (!quickPatient.name || !quickPatient.phone) {
+                    alert("Minimum identity required: Name & Phone.");
+                    return;
+                  }
 
-            <button
-              onClick={async () => {
-                if (!quickPatient.name || !quickPatient.phone) {
-                  alert("Minimum identity required: Name & Phone.");
-                  return;
-                }
-
-                let calculatedAge = 0;
-                let dobDate = null;
-                if (quickPatient.dob.includes('/')) {
-                  const parts = quickPatient.dob.split('/');
-                  if (parts.length === 3) {
-                    dobDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
-                    const birthDate = new Date(dobDate);
-                    const today = new Date();
-                    calculatedAge = today.getFullYear() - birthDate.getFullYear();
-                    const m = today.getMonth() - birthDate.getMonth();
-                    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-                      calculatedAge--;
+                  let calculatedAge = 0;
+                  let dobDate = null;
+                  if (quickPatient.dob.includes('/')) {
+                    const parts = quickPatient.dob.split('/');
+                    if (parts.length === 3) {
+                      dobDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                      const birthDate = new Date(dobDate);
+                      const today = new Date();
+                      calculatedAge = today.getFullYear() - birthDate.getFullYear();
+                      const m = today.getMonth() - birthDate.getMonth();
+                      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                        calculatedAge--;
+                      }
                     }
                   }
-                }
 
-                const { data, error } = await supabase
-                  .from('patients')
-                  .insert({
-                    name: quickPatient.name,
-                    phone: quickPatient.phone,
-                    age: calculatedAge || 0,
-                    gender: quickPatient.gender,
-                    dob: dobDate,
-                    branch_id: currentBranch?.id
-                  })
-                  .select()
-                  .single();
+                  const { data, error } = await supabase
+                    .from('patients')
+                    .insert({
+                      name: quickPatient.name,
+                      phone: quickPatient.phone,
+                      age: calculatedAge || 0,
+                      gender: quickPatient.gender,
+                      dob: dobDate,
+                      branch_id: currentBranch?.id
+                    })
+                    .select()
+                    .single();
 
-                if (!error && data) {
-                  router.push(`/patients/${data.id}`);
-                } else {
-                  console.error("Error creating quick profile:", error);
-                  alert("Failed to initialize profile. Error: " + (error?.message || "Unknown error"));
-                }
-              }}
-              className="w-full bg-primary hover:bg-[#3311DB] text-white py-5 rounded-[1.5rem] text-xs font-black transition-all shadow-xl shadow-primary/25 uppercase tracking-[0.2em]"
-            >
-              Create Profile
-            </button>
+                  if (!error && data) {
+                    router.push(`/patients/${data.id}`);
+                  } else {
+                    console.error("Error creating quick profile:", error);
+                    alert("Failed to initialize profile. Error: " + (error?.message || "Unknown error"));
+                  }
+                }}
+                className="w-full bg-primary hover:bg-[#3311DB] text-white py-5 rounded-[1.5rem] text-xs font-black transition-all shadow-xl shadow-primary/25 uppercase tracking-[0.2em]"
+              >
+                Create Profile
+              </button>
+            </div>
           </div>
-        </div>
-      )
+        )
       }
 
       {/* Managed Entry (Edit) */}
@@ -1152,239 +1243,241 @@ export default function LedgerPage() {
         )
       }
       {/* Google Calendar Style Quick Event Modal - Light Mode & Relative Position */}
-      {isQuickEventOpen && (
-        <>
-          {/* Transparent Backdrop to close on click outside */}
-          <div
-            className="fixed inset-0 z-[299] bg-transparent"
-            onClick={() => setIsQuickEventOpen(false)}
-          />
+      {
+        isQuickEventOpen && (
+          <>
+            {/* Transparent Backdrop to close on click outside */}
+            <div
+              className="fixed inset-0 z-[299] bg-transparent"
+              onClick={() => setIsQuickEventOpen(false)}
+            />
 
-          <div
-            className="fixed z-[300] bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 p-8 w-[420px] animate-in fade-in zoom-in-95 duration-200 font-sans max-h-[min(650px,90vh)] overflow-y-auto custom-scrollbar"
-            style={{ top: modalPosition.top, left: modalPosition.left }}
-          >
-            <div className="space-y-8">
-              {/* Patient Name / Title Input with Icon */}
-              <div className="flex items-center gap-4">
-                <User className="w-5 h-5 text-gray-400" />
-                <div className="flex-1 relative group border-b border-gray-100 focus-within:border-blue-600 transition-all pb-1.5 flex items-center">
-                  <input
-                    type="text"
-                    placeholder="Patient Name"
-                    className="w-full text-2xl font-semibold text-gray-800 placeholder:text-gray-300 border-none focus:ring-0 p-0 bg-transparent tracking-tight"
-                    autoFocus
-                    value={quickEventData.patientName}
-                    onChange={(e) => {
-                      setQuickEventData({ ...quickEventData, patientName: e.target.value });
-                      setQuickPatient({ ...quickPatient, name: e.target.value });
-                    }}
-                  />
-                  {/* Search Results & Force New Option */}
-                  {quickEventData.patientName.length > 1 && !quickEventData.patientId && (
-                    <div className="absolute top-full left-0 right-0 mt-3 bg-white border border-gray-100 rounded-2xl shadow-2xl z-50 overflow-hidden ring-1 ring-black/5">
-                      <div className="max-h-[220px] overflow-y-auto custom-scrollbar">
-                        {intakeResults.map(p => (
+            <div
+              className="fixed z-[300] bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 p-8 w-[420px] animate-in fade-in zoom-in-95 duration-200 font-sans max-h-[min(650px,90vh)] overflow-y-auto custom-scrollbar"
+              style={{ top: modalPosition.top, left: modalPosition.left }}
+            >
+              <div className="space-y-8">
+                {/* Patient Name / Title Input with Icon */}
+                <div className="flex items-center gap-4">
+                  <User className="w-5 h-5 text-gray-400" />
+                  <div className="flex-1 relative group border-b border-gray-100 focus-within:border-blue-600 transition-all pb-1.5 flex items-center">
+                    <input
+                      type="text"
+                      placeholder="Patient Name"
+                      className="w-full text-2xl font-semibold text-gray-800 placeholder:text-gray-300 border-none focus:ring-0 p-0 bg-transparent tracking-tight"
+                      autoFocus
+                      value={quickEventData.patientName}
+                      onChange={(e) => {
+                        setQuickEventData({ ...quickEventData, patientName: e.target.value });
+                        setQuickPatient({ ...quickPatient, name: e.target.value });
+                      }}
+                    />
+                    {/* Search Results & Force New Option */}
+                    {quickEventData.patientName.length > 1 && !quickEventData.patientId && (
+                      <div className="absolute top-full left-0 right-0 mt-3 bg-white border border-gray-100 rounded-2xl shadow-2xl z-50 overflow-hidden ring-1 ring-black/5">
+                        <div className="max-h-[220px] overflow-y-auto custom-scrollbar">
+                          {intakeResults.map(p => (
+                            <button
+                              key={p.id}
+                              onClick={() => {
+                                setQuickEventData({
+                                  ...quickEventData,
+                                  patientId: p.id,
+                                  patientName: p.name
+                                });
+                                setIntakeResults([]);
+                                setIsIntakeSearching(false);
+                              }}
+                              className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between group/item border-b border-gray-50 last:border-0"
+                            >
+                              <div>
+                                <span className="text-sm font-semibold text-gray-700 block">{p.name}</span>
+                                <span className="text-[10px] text-gray-400">{p.gender} · {p.age}y · {p.phone}</span>
+                              </div>
+                              <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium opacity-0 group-hover/item:opacity-100 transition-opacity">Select</span>
+                            </button>
+                          ))}
+
                           <button
-                            key={p.id}
                             onClick={() => {
-                              setQuickEventData({
-                                ...quickEventData,
-                                patientId: p.id,
-                                patientName: p.name
+                              // Close Quick Event and open "Create Patient" modal
+                              setIsQuickEventOpen(false);
+                              setQuickPatient({
+                                ...quickPatient,
+                                name: quickEventData.patientName,
+                                phone: "",
+                                dob: "",
+                                gender: "F",
+                                doctor_id: ""
                               });
+                              setIsAddingEntry(true);
                               setIntakeResults([]);
                               setIsIntakeSearching(false);
                             }}
-                            className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between group/item border-b border-gray-50 last:border-0"
+                            className="w-full px-4 py-3 text-left bg-gray-50/50 hover:bg-blue-50/50 flex items-center gap-3 text-blue-600 font-medium transition-colors border-t border-gray-100"
                           >
-                            <div>
-                              <span className="text-sm font-semibold text-gray-700 block">{p.name}</span>
-                              <span className="text-[10px] text-gray-400">{p.gender} · {p.age}y · {p.phone}</span>
+                            <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
+                              <span className="text-sm font-bold text-blue-600">+</span>
                             </div>
-                            <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium opacity-0 group-hover/item:opacity-100 transition-opacity">Select</span>
+                            <span className="text-sm">Create new "{quickEventData.patientName}"</span>
                           </button>
-                        ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-                        <button
-                          onClick={() => {
-                            // Close Quick Event and open "Create Patient" modal
-                            setIsQuickEventOpen(false);
-                            setQuickPatient({
-                              ...quickPatient,
-                              name: quickEventData.patientName,
-                              phone: "",
-                              dob: "",
-                              gender: "F",
-                              doctor_id: ""
-                            });
-                            setIsAddingEntry(true);
-                            setIntakeResults([]);
-                            setIsIntakeSearching(false);
-                          }}
-                          className="w-full px-4 py-3 text-left bg-gray-50/50 hover:bg-blue-50/50 flex items-center gap-3 text-blue-600 font-medium transition-colors border-t border-gray-100"
-                        >
-                          <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
-                            <span className="text-sm font-bold text-blue-600">+</span>
-                          </div>
-                          <span className="text-sm">Create new "{quickEventData.patientName}"</span>
-                        </button>
+              </div>
+
+              {/* Treatment Selection Row */}
+              <div className="flex items-center gap-4">
+                <Stethoscope className="w-5 h-5 text-gray-400" />
+                <div className="flex-1 relative">
+                  <div className="flex-1 border-b border-gray-100 focus-within:border-blue-600 transition-all pb-1.5 flex items-center">
+                    <input
+                      type="text"
+                      placeholder="Search Treatment (Optional)"
+                      className="w-full text-sm font-medium text-gray-700 placeholder:text-gray-300 border-none focus:ring-0 p-0 bg-transparent"
+                      value={treatmentSearch}
+                      onChange={(e) => setTreatmentSearch(e.target.value)}
+                      onFocus={() => {
+                        if (treatmentSearch.length === 0) {
+                          // Optionally show all or just wait for type
+                        }
+                      }}
+                    />
+                    {quickEventData.treatmentId && (
+                      <button
+                        onClick={() => {
+                          setQuickEventData({ ...quickEventData, treatmentId: "", duration: 15 });
+                          setTreatmentSearch("");
+                        }}
+                        className="text-gray-300 hover:text-gray-500"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  {treatmentSearch.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-2xl z-50 overflow-hidden ring-1 ring-black/5">
+                      <div className="max-h-[180px] overflow-y-auto custom-scrollbar">
+                        {treatments
+                          .filter(t => t.name.toLowerCase().includes(treatmentSearch.toLowerCase()))
+                          .map(t => (
+                            <button
+                              key={t.id}
+                              onClick={() => {
+                                setQuickEventData({
+                                  ...quickEventData,
+                                  treatmentId: t.id,
+                                  duration: t.duration_minutes || 15
+                                });
+                                setTreatmentSearch(t.name);
+                              }}
+                              className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 text-gray-600 hover:text-gray-900 transition-colors border-b border-gray-50 last:border-0"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold">{t.name}</span>
+                                <span className="text-[10px] text-gray-400">{t.duration_minutes || 15}m</span>
+                              </div>
+                            </button>
+                          ))}
                       </div>
                     </div>
                   )}
                 </div>
               </div>
 
-            </div>
+              {/* Date / Time / Duration Row */}
+              <div className="flex items-start gap-4">
+                <Clock className="w-5 h-5 text-gray-400 mt-2.5" />
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center gap-3">
+                    {/* Date Pill */}
+                    <div className="flex-1 h-11 bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl border border-transparent hover:border-gray-200 flex items-center">
+                      <DatePicker
+                        value={quickEventData.date}
+                        onChange={(d) => setQuickEventData({ ...quickEventData, date: format(d, 'yyyy-MM-dd') })}
+                        placeholder="Select Date"
+                        className="w-full bg-transparent border-none text-sm font-medium text-gray-700 px-3 focus:ring-0 cursor-pointer"
+                      />
+                    </div>
 
-            {/* Treatment Selection Row */}
-            <div className="flex items-center gap-4">
-              <Stethoscope className="w-5 h-5 text-gray-400" />
-              <div className="flex-1 relative">
-                <div className="flex-1 border-b border-gray-100 focus-within:border-blue-600 transition-all pb-1.5 flex items-center">
-                  <input
-                    type="text"
-                    placeholder="Search Treatment (Optional)"
-                    className="w-full text-sm font-medium text-gray-700 placeholder:text-gray-300 border-none focus:ring-0 p-0 bg-transparent"
-                    value={treatmentSearch}
-                    onChange={(e) => setTreatmentSearch(e.target.value)}
-                    onFocus={() => {
-                      if (treatmentSearch.length === 0) {
-                        // Optionally show all or just wait for type
-                      }
-                    }}
-                  />
-                  {quickEventData.treatmentId && (
-                    <button
-                      onClick={() => {
-                        setQuickEventData({ ...quickEventData, treatmentId: "", duration: 15 });
-                        setTreatmentSearch("");
-                      }}
-                      className="text-gray-300 hover:text-gray-500"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
+                    {/* Start Time Dropdown */}
+                    <div className="relative w-[130px] h-11 text-center">
+                      <div
+                        className="h-full bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl border border-transparent hover:border-gray-200 px-3 flex items-center justify-between cursor-pointer"
+                        onClick={() => {
+                          document.getElementById('time-dropdown')?.classList.toggle('hidden');
+                        }}
+                      >
+                        <span className="text-sm font-medium text-gray-700">
+                          {format(new Date(`2000-01-01T${quickEventData.time}:00`), 'h:mm a')}
+                        </span>
+                        <ChevronDown className="w-4 h-4 text-gray-400" />
+                      </div>
 
-                {treatmentSearch.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-2xl z-50 overflow-hidden ring-1 ring-black/5">
-                    <div className="max-h-[180px] overflow-y-auto custom-scrollbar">
-                      {treatments
-                        .filter(t => t.name.toLowerCase().includes(treatmentSearch.toLowerCase()))
-                        .map(t => (
+                      <div
+                        id="time-dropdown"
+                        className="absolute top-full left-0 mt-2 w-full bg-white border border-gray-100 rounded-xl shadow-2xl z-50 overflow-hidden hidden max-h-[180px] overflow-y-auto custom-scrollbar ring-1 ring-black/5"
+                      >
+                        {timeIntervals.map(t => (
                           <button
-                            key={t.id}
+                            key={t}
                             onClick={() => {
-                              setQuickEventData({
-                                ...quickEventData,
-                                treatmentId: t.id,
-                                duration: t.duration_minutes || 15
-                              });
-                              setTreatmentSearch(t.name);
+                              setQuickEventData({ ...quickEventData, time: t });
+                              document.getElementById('time-dropdown')?.classList.add('hidden');
                             }}
-                            className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 text-gray-600 hover:text-gray-900 transition-colors border-b border-gray-50 last:border-0"
+                            className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 text-gray-600 hover:text-gray-900 transition-colors"
                           >
-                            <div className="flex items-center justify-between">
-                              <span className="font-semibold">{t.name}</span>
-                              <span className="text-[10px] text-gray-400">{t.duration_minutes || 15}m</span>
-                            </div>
+                            {format(new Date(`2000-01-01T${t}:00`), 'h:mm a')}
                           </button>
                         ))}
+                      </div>
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
 
-            {/* Date / Time / Duration Row */}
-            <div className="flex items-start gap-4">
-              <Clock className="w-5 h-5 text-gray-400 mt-2.5" />
-              <div className="flex-1 space-y-3">
-                <div className="flex items-center gap-3">
-                  {/* Date Pill */}
-                  <div className="flex-1 h-11 bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl border border-transparent hover:border-gray-200 flex items-center">
-                    <DatePicker
-                      value={quickEventData.date}
-                      onChange={(d) => setQuickEventData({ ...quickEventData, date: format(d, 'yyyy-MM-dd') })}
-                      placeholder="Select Date"
-                      className="w-full bg-transparent border-none text-sm font-medium text-gray-700 px-3 focus:ring-0 cursor-pointer"
-                    />
-                  </div>
-
-                  {/* Start Time Dropdown */}
-                  <div className="relative w-[130px] h-11 text-center">
-                    <div
-                      className="h-full bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl border border-transparent hover:border-gray-200 px-3 flex items-center justify-between cursor-pointer"
-                      onClick={() => {
-                        document.getElementById('time-dropdown')?.classList.toggle('hidden');
-                      }}
-                    >
-                      <span className="text-sm font-medium text-gray-700">
-                        {format(new Date(`2000-01-01T${quickEventData.time}:00`), 'h:mm a')}
-                      </span>
-                      <ChevronDown className="w-4 h-4 text-gray-400" />
-                    </div>
-
-                    <div
-                      id="time-dropdown"
-                      className="absolute top-full left-0 mt-2 w-full bg-white border border-gray-100 rounded-xl shadow-2xl z-50 overflow-hidden hidden max-h-[180px] overflow-y-auto custom-scrollbar ring-1 ring-black/5"
-                    >
-                      {timeIntervals.map(t => (
-                        <button
-                          key={t}
-                          onClick={() => {
-                            setQuickEventData({ ...quickEventData, time: t });
-                            document.getElementById('time-dropdown')?.classList.add('hidden');
-                          }}
-                          className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 text-gray-600 hover:text-gray-900 transition-colors"
-                        >
-                          {format(new Date(`2000-01-01T${t}:00`), 'h:mm a')}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                 </div>
-
               </div>
-            </div>
 
-            {/* Dentist Select - Premium "Pillar" Look */}
-            <div className="flex items-center gap-4">
-              <Activity className="w-5 h-5 text-gray-400" />
-              <div className="relative flex-1">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)] z-10" />
-                <select
-                  className="w-full h-11 bg-gray-50 hover:bg-gray-100 border border-transparent hover:border-blue-200 rounded-xl px-9 text-sm font-semibold text-gray-700 focus:ring-0 outline-none appearance-none cursor-pointer transition-all focus:bg-white focus:border-blue-500/30 shadow-sm"
-                  value={quickEventData.doctorId}
-                  onChange={(e) => setQuickEventData({ ...quickEventData, doctorId: e.target.value })}
+              {/* Dentist Select - Premium "Pillar" Look */}
+              <div className="flex items-center gap-4">
+                <Activity className="w-5 h-5 text-gray-400" />
+                <div className="relative flex-1">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)] z-10" />
+                  <select
+                    className="w-full h-11 bg-gray-50 hover:bg-gray-100 border border-transparent hover:border-blue-200 rounded-xl px-9 text-sm font-semibold text-gray-700 focus:ring-0 outline-none appearance-none cursor-pointer transition-all focus:bg-white focus:border-blue-500/30 shadow-sm"
+                    value={quickEventData.doctorId}
+                    onChange={(e) => setQuickEventData({ ...quickEventData, doctorId: e.target.value })}
+                  >
+                    <option value="" disabled>Select Dentist</option>
+                    {staff.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-gray-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 mt-6 pt-3 border-t border-gray-50/50">
+                <button
+                  onClick={() => setIsQuickEventOpen(false)}
+                  className="px-4 py-1.5 rounded-full text-sm font-semibold text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-all"
                 >
-                  <option value="" disabled>Select Dentist</option>
-                  {staff.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-                <ChevronDown className="w-4 h-4 text-gray-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveQuickEvent}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-7 py-1.5 rounded-full text-sm font-bold shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+                >
+                  Save
+                </button>
               </div>
             </div>
-
-            <div className="flex items-center justify-end gap-3 mt-6 pt-3 border-t border-gray-50/50">
-              <button
-                onClick={() => setIsQuickEventOpen(false)}
-                className="px-4 py-1.5 rounded-full text-sm font-semibold text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveQuickEvent}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-7 py-1.5 rounded-full text-sm font-bold shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+          </>
+        )
+      }
 
       {/* Floating Bottom Button (Intelligence vs Filter) */}
       <button
@@ -1426,127 +1519,129 @@ export default function LedgerPage() {
       </button>
 
       {/* Doctor Filter Modal (Calendar Only) */}
-      {isDoctorFilterOpen && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/10 z-[400] transition-all"
-            onClick={() => setIsDoctorFilterOpen(false)}
-          />
-          <div
-            className={cn(
-              "fixed bottom-28 z-[401] bg-white rounded-[2.5rem] shadow-[0_30px_70px_rgba(0,0,0,0.3)] border border-gray-100 p-8 w-[380px] animate-in slide-in-from-bottom-5 duration-500 ease-out font-sans",
-              isCollapsed ? "left-[calc(50%+40px)]" : "left-[calc(50%+144px)]",
-              "-translate-x-1/2"
-            )}
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-[#1B2559]">Filter by Dentist</h3>
-              <button
-                onClick={() => setDoctorFilter([])}
-                className="text-[10px] font-bold text-blue-600 hover:underline"
-              >
-                Reset
-              </button>
-            </div>
-            <div className="space-y-3">
-              {staff.map(member => (
-                <label key={member.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 cursor-pointer border border-transparent transition-all overflow-hidden group">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    checked={doctorFilter.includes(member.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setDoctorFilter([...doctorFilter, member.id]);
-                      } else {
-                        setDoctorFilter(doctorFilter.filter(id => id !== member.id));
-                      }
-                    }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-700 truncate">{member.name}</p>
-                    <p className="text-[10px] text-gray-400 tracking-wider">DENTIST</p>
-                  </div>
-                </label>
-              ))}
-            </div>
-            <button
+      {
+        isDoctorFilterOpen && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/10 z-[400] transition-all"
               onClick={() => setIsDoctorFilterOpen(false)}
-              className="w-full mt-6 bg-[#1B2559] text-white py-3 rounded-2xl text-sm font-bold shadow-lg shadow-blue-500/10 active:scale-95 transition-all"
+            />
+            <div
+              className={cn(
+                "fixed bottom-28 z-[401] bg-white rounded-[2.5rem] shadow-[0_30px_70px_rgba(0,0,0,0.3)] border border-gray-100 p-8 w-[380px] animate-in slide-in-from-bottom-5 duration-500 ease-out font-sans",
+                isCollapsed ? "left-[calc(50%+40px)]" : "left-[calc(50%+144px)]",
+                "-translate-x-1/2"
+              )}
             >
-              Show Results
-            </button>
-          </div>
-        </>
-      )}
-
-      {/* Calendar Search Overlay */}
-      {isCalendarSearchOpen && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/5 backdrop-blur-[2px] z-[500]"
-            onClick={() => setIsCalendarSearchOpen(false)}
-          />
-          <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[501] w-[500px] animate-in slide-in-from-top-5 duration-300">
-            <div className="bg-white rounded-[2rem] shadow-2xl border border-gray-100 p-4 ring-1 ring-black/5">
-              <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-2xl border border-transparent focus-within:bg-white focus-within:border-blue-500/30 focus-within:ring-4 focus-within:ring-blue-500/5 transition-all">
-                <Search className="w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search appointments by patient name..."
-                  className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-gray-700"
-                  autoFocus
-                  onChange={(e) => setCalendarSearchQuery(e.target.value)}
-                />
-                <button onClick={() => setIsCalendarSearchOpen(false)}>
-                  <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-bold text-[#1B2559]">Filter by Dentist</h3>
+                <button
+                  onClick={() => setDoctorFilter([])}
+                  className="text-[10px] font-bold text-blue-600 hover:underline"
+                >
+                  Reset
                 </button>
               </div>
-
-              {calendarSearchQuery.length > 1 && (
-                <div className="mt-4 max-h-[400px] overflow-y-auto custom-scrollbar px-2 pb-2">
-                  {currentEntries
-                    .filter(e => e.patients?.name?.toLowerCase().includes(calendarSearchQuery.toLowerCase()))
-                    .reduce((acc: any[], current) => {
-                      const isDuplicate = acc.find(item =>
-                        item.patient_id === current.patient_id &&
-                        item.date === current.date
-                      );
-                      if (!isDuplicate) acc.push(current);
-                      return acc;
-                    }, [])
-                    .map((e, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => {
-                          setIsCalendarSearchOpen(false);
-                          router.push(`/patients/${e.patient_id}`);
-                        }}
-                        className="w-full flex items-center gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-all group border border-transparent hover:border-gray-100"
-                      >
-                        <div className="w-12 h-12 rounded-xl bg-indigo-50 flex flex-col items-center justify-center text-indigo-600">
-                          <span className="text-[10px] font-black uppercase">{format(new Date(e.created_at), 'MMM')}</span>
-                          <span className="text-sm font-bold leading-tight">{format(new Date(e.created_at), 'd')}</span>
-                        </div>
-                        <div className="flex-1 text-left min-w-0">
-                          <p className="text-sm font-bold text-[#1B2559] truncate group-hover:text-indigo-600 transition-colors uppercase tracking-tight">{e.patients?.name}</p>
-                          <p className="text-[10px] text-gray-400 font-medium">
-                            {format(new Date(e.created_at), 'EEEE, h:mm a')} · Dr. {e.doctor?.name || 'Assigned'}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  {monthEntries.filter(e => e.patients?.name?.toLowerCase().includes(calendarSearchQuery.toLowerCase())).length === 0 && (
-                    <div className="p-12 text-center">
-                      <p className="text-sm font-medium text-gray-400">No appointments found</p>
+              <div className="space-y-3">
+                {staff.map(member => (
+                  <label key={member.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 cursor-pointer border border-transparent transition-all overflow-hidden group">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      checked={doctorFilter.includes(member.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setDoctorFilter([...doctorFilter, member.id]);
+                        } else {
+                          setDoctorFilter(doctorFilter.filter(id => id !== member.id));
+                        }
+                      }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-700 truncate">{member.name}</p>
+                      <p className="text-[10px] text-gray-400 tracking-wider">DENTIST</p>
                     </div>
-                  )}
-                </div>
-              )}
+                  </label>
+                ))}
+              </div>
+              <button
+                onClick={() => setIsDoctorFilterOpen(false)}
+                className="w-full mt-6 bg-[#1B2559] text-white py-3 rounded-2xl text-sm font-bold shadow-lg shadow-blue-500/10 active:scale-95 transition-all"
+              >
+                Show Results
+              </button>
             </div>
-          </div>
-        </>
-      )}
-    </div>
+          </>
+        )
+      }
+
+      {/* Calendar Search Overlay */}
+      {
+        isCalendarSearchOpen && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/5 backdrop-blur-[2px] z-[500]"
+              onClick={() => setIsCalendarSearchOpen(false)}
+            />
+            <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[501] w-[500px] animate-in slide-in-from-top-5 duration-300">
+              <div className="bg-white rounded-[2rem] shadow-2xl border border-gray-100 p-4 ring-1 ring-black/5">
+                <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-2xl border border-transparent focus-within:bg-white focus-within:border-blue-500/30 focus-within:ring-4 focus-within:ring-blue-500/5 transition-all">
+                  <Search className="w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search appointments by patient name..."
+                    className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-gray-700"
+                    autoFocus
+                    onChange={(e) => setCalendarSearchQuery(e.target.value)}
+                  />
+                  <button onClick={() => setIsCalendarSearchOpen(false)}>
+                    <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                  </button>
+                </div>
+
+                {calendarSearchQuery.length > 1 && (
+                  <div className="mt-4 max-h-[400px] overflow-y-auto custom-scrollbar px-2 pb-2">
+                    {isSearching ? (
+                      <div className="p-12 text-center text-[10px] font-black text-[#A3AED0] uppercase tracking-widest animate-pulse">
+                        Searching Patient Directory...
+                      </div>
+                    ) : globalSearchResults.length > 0 ? (
+                      globalSearchResults.map((p, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            setIsCalendarSearchOpen(false);
+                            router.push(`/patients/${p.id}`);
+                          }}
+                          className="w-full flex items-center gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-all group border border-transparent hover:border-gray-100"
+                        >
+                          <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-black text-lg">
+                            {p.name[0]}
+                          </div>
+                          <div className="flex-1 text-left min-w-0">
+                            <p className="text-sm font-black text-[#1B2559] truncate group-hover:text-indigo-600 transition-colors uppercase tracking-tight">{p.name}</p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                              {p.gender} · {p.age} Yrs · {p.phone || 'No Contact'}
+                            </p>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-[#A3AED0] opacity-0 group-hover:opacity-100 transition-all" />
+                        </button>
+                      ))
+                    ) : (
+                      <div className="p-12 text-center opacity-40">
+                        <div className="flex flex-col items-center gap-3">
+                          <History className="w-12 h-12 text-[#A3AED0]" />
+                          <p className="text-[10px] font-black text-[#1B2559] uppercase tracking-widest">No Patient Profiles Found</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )
+      }
+    </div >
   );
 }

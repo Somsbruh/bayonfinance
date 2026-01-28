@@ -32,55 +32,33 @@ import Link from "next/link";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { Search } from "lucide-react";
+import DatePicker from "@/components/DatePicker";
+import OdontogramView from "@/components/OdontogramView";
 
-const CATEGORIES = [
-    "Diagnostics",
-    "Preventive",
-    "Restorative",
-    "Endodontics",
-    "Periodontics",
-    "Oral Surgery",
-    "Prosthodontics",
-    "Implant Treatment",
-    "Orthodontics",
-    "Cosmetics",
-    "Pediatrics",
-    "Emergency"
-];
+import { TREATMENT_CATEGORIES, CATEGORY_COLORS, getCategoryColor } from "@/lib/constants";
+
+const CATEGORIES = TREATMENT_CATEGORIES;
 
 const CATEGORY_MAPPING: Record<string, string> = {
-    "Diagnostics & Consultation": "Diagnostics",
+    "Diagnostics & Consultation": "Diagnostic",
+    "Diagnostics": "Diagnostic",
     "Preventive Care": "Preventive",
     "Restorative Dentistry": "Restorative",
-    "Periodontal Care": "Periodontics",
-    "Periodontics": "Periodontics", // For consistency
-    "Prosthodontics (Fixed)": "Prosthodontics",
-    "Prosthodontics (Removable)": "Prosthodontics",
-    "Pediatric Dentistry": "Pediatrics",
-    "Cosmetic Dentistry": "Cosmetics",
-    "Emergency & Pain Management": "Emergency",
+    "Periodontal Care": "Periodontic",
+    "Periodontics": "Periodontic",
+    "Endodontics": "Endodontic",
+    "Prosthodontics (Fixed)": "Prosthodontic",
+    "Prosthodontics (Removable)": "Prosthodontic",
+    "Prosthodontics": "Prosthodontic",
+    "Pediatric Dentistry": "Pediatric",
+    "Pediatrics": "Pediatric",
+    "Cosmetic Dentistry": "Cosmetic",
+    "Cosmetics": "Cosmetic",
+    "Emergency & Pain Management": "Diagnostic", // Map emergency to Diagnostic or keep separate if needed
 };
 
-const FILTER_COLORS: Record<string, string> = {
-    "Diagnostics": "#4A90E2", // Blue
-    "Preventive": "#2ECC71", // Green
-    "Restorative": "#F1C40F", // Yellow
-    "Endodontics": "#E67E22", // Orange
-    "Periodontics": "#8E44AD", // Purple
-    "Oral Surgery": "#C0392B", // Red
-    "Prosthodontics": "#16A085", // Teal
-    "Implant Treatment": "#2980B9", // Soft Blue
-    "Orthodontics": "#F39C12", // Amber
-    "Cosmetics": "#D35400", // Deep Orange
-    "Pediatrics": "#EC407A", // Pink
-    "Emergency": "#7F8C8D", // Slate
-    // Tags mapping (if distinct from categories)
-    "URGENT": "#C0392B",
-    "ESTHETIC": "#EC407A",
-    "ROUTINE": "#2ECC71",
-};
+const FILTER_COLORS = CATEGORY_COLORS;
 
-const getCategoryColor = (name: string) => FILTER_COLORS[name] || "#A3AED0";
 import { useCurrency } from "@/context/CurrencyContext";
 import { useBranch } from "@/context/BranchContext";
 
@@ -149,7 +127,7 @@ function PatientDetailsContent() {
     const [undoTimer, setUndoTimer] = useState<NodeJS.Timeout | null>(null);
     const [isDoctorSelectorExpanded, setIsDoctorSelectorExpanded] = useState(true);
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'patient-info' | 'appointment-history' | 'next-treatment' | 'medical-record'>('appointment-history');
+    const [activeTab, setActiveTab] = useState<'patient-info' | 'appointment-history' | 'odontogram' | 'medical-record'>('appointment-history');
     const [selectedBulkEntries, setSelectedBulkEntries] = useState<string[]>([]);
     const [bulkSettleData, setBulkSettleData] = useState({
         amount_aba: "",
@@ -301,6 +279,21 @@ function PatientDetailsContent() {
         }
     }
 
+    async function handleUpdateEntryDate(date: Date, originalDate: string) {
+        const dateStr = format(date, 'yyyy-MM-dd');
+        const { error } = await supabase
+            .from('ledger_entries')
+            .update({ date: dateStr })
+            .eq('patient_id', id)
+            .eq('date', originalDate);
+
+        if (!error) {
+            fetchPatientData();
+        } else {
+            alert("Error updating visit date: " + error.message);
+        }
+    }
+
     async function updateSessionStatus(date: string, doctorId: string, newStatus: string) {
         const { error } = await supabase
             .from('ledger_entries')
@@ -324,7 +317,15 @@ function PatientDetailsContent() {
 
     async function updateAppointmentPayment(originalDate: string, newDate: string, newTime: string, aba: number, cashUsd: number, cashKhr: number) {
         const appointmentEntries = history.filter(e => e.date === originalDate);
+        const totalSessionValue = appointmentEntries.reduce((sum, e) => sum + Number(e.total_price), 0);
         const totalPaidAmount = aba + cashUsd + (cashKhr / usdToKhr);
+
+        // Validation: Prevent overpayment
+        if (totalPaidAmount > totalSessionValue + 0.01) { // 0.01 margin for float errors
+            alert(`Payment exceeds session value of $${totalSessionValue.toLocaleString()}. Please adjust amounts.`);
+            return;
+        }
+
         let remainingToDistribute = totalPaidAmount;
 
         // Sort entries to distribute payment chronologically
@@ -360,21 +361,45 @@ function PatientDetailsContent() {
                 })
                 .eq('id', entry.id);
 
-            if (!updateError && i === 0) {
-                // Record in payment history for the first entry (session master)
-                // Detailed breakdown
-                const methods = [];
-                if (aba > 0) methods.push({ method: 'ABA', amount: aba, currency: 'USD' });
-                if (cashUsd > 0) methods.push({ method: 'CASH', amount: cashUsd, currency: 'USD' });
-                if (cashKhr > 0) methods.push({ method: 'CASH', amount: cashKhr, currency: 'KHR' });
+            if (!updateError) {
+                if (i === 0) {
+                    // Clear existing payment history for all entries in this session to prevent redundancy
+                    const entryIds = appointmentEntries.map(e => e.id);
+                    await supabase.from('payment_history').delete().in('entry_id', entryIds);
 
-                for (const m of methods) {
-                    await supabase.from('payment_history').insert({
-                        entry_id: entry.id,
-                        amount_paid: m.amount,
-                        payment_method: m.method,
-                        payment_currency: m.currency
-                    });
+                    // Record in payment history for the first entry (session master)
+                    const methods = [];
+                    if (aba > 0) methods.push({ method: 'ABA', amount: aba, currency: 'USD' });
+                    if (cashUsd > 0) methods.push({ method: 'CASH', amount: cashUsd, currency: 'USD' });
+                    if (cashKhr > 0) methods.push({ method: 'CASH', amount: cashKhr, currency: 'KHR' });
+
+                    for (const m of methods) {
+                        await supabase.from('payment_history').insert({
+                            entry_id: entry.id,
+                            amount_paid: m.amount,
+                            payment_method: m.method,
+                            payment_currency: m.currency
+                        });
+                    }
+                }
+
+                // Inventory Stock Deduction: Only if fully paid and is a medicine item
+                if (entry.item_type === 'medicine' && entry.inventory_id && (Number(entry.total_price) - amountForThisEntry) <= 0.01) {
+                    const { data: invData } = await supabase
+                        .from('inventory')
+                        .select('stock_level')
+                        .eq('id', entry.inventory_id)
+                        .single();
+
+                    if (invData) {
+                        await supabase
+                            .from('inventory')
+                            .update({
+                                stock_level: Math.max(0, invData.stock_level - (entry.quantity || 1)),
+                                last_stock_out: new Date().toISOString()
+                            })
+                            .eq('id', entry.inventory_id);
+                    }
                 }
             }
 
@@ -436,6 +461,14 @@ function PatientDetailsContent() {
         const cashUsd = Number(bulkSettleData.amount_cash_usd) || 0;
         const cashKhr = Number(bulkSettleData.amount_cash_khr) || 0;
         const totalPaidAmount = aba + cashUsd + (cashKhr / usdToKhr);
+        const selectedTotalValue = history
+            .filter(e => selectedBulkEntries.includes(e.id))
+            .reduce((sum, e) => sum + Number(e.amount_remaining), 0);
+
+        if (totalPaidAmount > selectedTotalValue + 0.01) {
+            alert(`Payment exceeds the selected remaining balance of $${selectedTotalValue.toLocaleString()}. Please adjust amounts.`);
+            return;
+        }
 
         let remainingToDistribute = totalPaidAmount;
 
@@ -464,6 +497,25 @@ function PatientDetailsContent() {
                     payment_method: 'Bulk Settle',
                     payment_currency: 'USD'
                 });
+
+                // Inventory Stock Deduction: Only if fully paid and is a medicine item
+                if (entry.item_type === 'medicine' && entry.inventory_id && (unpaid - amountForThisEntry) <= 0.01) {
+                    const { data: invData } = await supabase
+                        .from('inventory')
+                        .select('stock_level')
+                        .eq('id', entry.inventory_id)
+                        .single();
+
+                    if (invData) {
+                        await supabase
+                            .from('inventory')
+                            .update({
+                                stock_level: Math.max(0, invData.stock_level - (entry.quantity || 1)),
+                                last_stock_out: new Date().toISOString()
+                            })
+                            .eq('id', entry.inventory_id);
+                    }
+                }
             }
             remainingToDistribute -= amountForThisEntry;
         }
@@ -534,26 +586,25 @@ function PatientDetailsContent() {
                             <div className="flex-1 min-w-0">
                                 {/* Top Row - Name & Vital Stats */}
                                 <div className="flex items-center gap-4 flex-wrap mb-1">
-                                    <h1 className="text-2xl font-black text-[#1B2559] tracking-tight truncate max-w-[300px]">{patient.name}</h1>
+                                    <h1 className="h1-premium truncate max-w-[300px]">{patient.name}</h1>
                                     <button
                                         onClick={() => setIsEditingProfile(true)}
-                                        className="p-1.5 hover:bg-[#F4F7FE] rounded-lg text-primary transition-all"
+                                        className="btn-secondary-premium p-1.5"
                                     >
-                                        <Edit2 className="w-4 h-4" />
+                                        <Edit2 className="w-3.5 h-3.5" />
                                     </button>
                                 </div>
 
                                 <div className="flex items-center gap-4 flex-wrap">
-
                                     <div className="flex items-center gap-3">
                                         {/* Unified Vital Badge - Simplified and Smaller */}
                                         <div className="flex items-center gap-2">
                                             <div className="flex items-center gap-1.5">
                                                 <div className={cn("w-1 h-1 rounded-full", patient.gender === 'F' ? 'bg-rose-500' : 'bg-blue-500')} />
-                                                <span className="text-[9px] font-bold text-[#707EAE] uppercase tracking-wider">{patient.gender === 'F' ? 'Female' : 'Male'}</span>
+                                                <span className="caption-premium">{patient.gender === 'F' ? 'Female' : 'Male'}</span>
                                             </div>
                                             <div className="w-px h-2 bg-[#E0E5F2]" />
-                                            <span className="text-[9px] font-bold text-[#707EAE] uppercase tracking-wider">{patient.age} Yrs</span>
+                                            <span className="caption-premium">{patient.age} Yrs</span>
                                         </div>
 
                                         {/* Contact Trigger */}
@@ -564,11 +615,11 @@ function PatientDetailsContent() {
                                                 rel="noopener noreferrer"
                                                 className="flex items-center gap-2 bg-primary/5 hover:bg-primary text-primary hover:text-white px-3 py-1.5 rounded-xl border border-primary/10 transition-all group/phone"
                                             >
-                                                <Phone className="w-3.5 h-3.5" />
+                                                <Phone className="w-3 h-3" />
                                                 <span className="text-[10px] font-black uppercase tracking-widest">{patient.phone.replace(/^\+/, '')}</span>
                                             </a>
                                         ) : (
-                                            <div className="text-[9px] text-[#A3AED0] font-black uppercase tracking-widest italic flex items-center gap-2">
+                                            <div className="caption-premium italic flex items-center gap-2">
                                                 <Phone className="w-3 h-3" /> No Contact Node
                                             </div>
                                         )}
@@ -581,7 +632,7 @@ function PatientDetailsContent() {
                                                 isProfileExpanded ? "bg-primary text-white" : "hover:bg-[#F4F7FE] text-[#A3AED0]"
                                             )}
                                         >
-                                            <ChevronDown className={cn("w-4 h-4 transition-transform duration-300", isProfileExpanded && "rotate-180")} />
+                                            <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-300", isProfileExpanded && "rotate-180")} />
                                         </button>
                                     </div>
                                 </div>
@@ -610,19 +661,19 @@ function PatientDetailsContent() {
                             {/* Financial Snapshot - Premium Condensed */}
                             <div className="flex items-center gap-6 mr-4">
                                 <div className="flex flex-col items-end">
-                                    <span className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest mb-0.5">Lifetime Value</span>
-                                    <span className="text-sm font-black text-[#1B2559] tracking-tight">${Number(lifetimeValue).toLocaleString()}</span>
+                                    <p className="caption-premium opacity-60 mb-1">Lifetime Value</p>
+                                    <span className="data-premium whitespace-nowrap">${Number(lifetimeValue).toLocaleString()}</span>
                                 </div>
-                                <div className="w-px h-8 bg-[#E0E5F2]" />
+                                <div className="w-px h-6 bg-[#E0E5F2]" />
                                 <div className="flex flex-col items-end">
-                                    <span className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest mb-0.5">Total Paid</span>
-                                    <span className="text-sm font-black text-emerald-600 tracking-tight">${Number(netContributions).toLocaleString()}</span>
+                                    <p className="caption-premium opacity-60 mb-1">Total Paid</p>
+                                    <span className="text-sm font-black text-emerald-600 tracking-tight whitespace-nowrap">${Number(netContributions).toLocaleString()}</span>
                                 </div>
-                                <div className="w-px h-8 bg-[#E0E5F2]" />
+                                <div className="w-px h-6 bg-[#E0E5F2]" />
                                 <div className="flex flex-col items-end">
-                                    <span className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest mb-0.5">Outstanding</span>
+                                    <p className="caption-premium opacity-60 mb-1">Outstanding</p>
                                     <span className={cn(
-                                        "text-sm font-black tracking-tight",
+                                        "data-premium whitespace-nowrap",
                                         outstandingBalance > 0 ? "text-amber-600" : "text-[#1B2559]"
                                     )}>${Number(outstandingBalance).toLocaleString()}</span>
                                 </div>
@@ -640,7 +691,7 @@ function PatientDetailsContent() {
                                 )}
                                 <Link
                                     href={`/patients/${id}/new-appointment`}
-                                    className="bg-primary hover:bg-[#3311DB] text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 transition-all shadow-lg active:scale-95 shadow-primary/20"
+                                    className="btn-primary-premium h-[48px] px-6"
                                 >
                                     <Plus className="w-4 h-4" />
                                     New Appointment
@@ -656,7 +707,7 @@ function PatientDetailsContent() {
 
                     {/* Tabs Navigation */}
                     <div className="flex items-center flex-wrap gap-x-10 gap-y-4 border-b border-[#F4F7FE] mb-8 px-2">
-                        {(['patient-info', 'appointment-history', 'next-treatment', 'medical-record'] as const).map((tab) => (
+                        {(['patient-info', 'appointment-history', 'odontogram', 'medical-record'] as const).map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
@@ -668,7 +719,7 @@ function PatientDetailsContent() {
                                 <span className="relative z-10">
                                     {tab === 'patient-info' && "Patient Information"}
                                     {tab === 'appointment-history' && "Appointment History"}
-                                    {tab === 'next-treatment' && "Next Treatment"}
+                                    {tab === 'odontogram' && "Odontogram"}
                                     {tab === 'medical-record' && "Medical Record"}
                                 </span>
                                 {activeTab === tab && (
@@ -733,14 +784,23 @@ function PatientDetailsContent() {
                                                 <div key={date} className="card-premium overflow-hidden border border-[#F4F7FE]">
                                                     <div className="bg-[#F4F7FE]/50 px-8 py-6 border-b border-[#E0E5F2] flex items-center justify-between">
                                                         <div className="flex items-center gap-5">
-                                                            <div className="bg-white text-primary p-3 rounded-2xl shadow-sm border border-[#E0E5F2]">
-                                                                <Calendar className="w-5 h-5" />
+                                                            <div className="bg-white text-primary p-3 rounded-2xl shadow-sm border border-[#E0E5F2] hover:bg-[#F4F7FE] transition-all flex items-center justify-center">
+                                                                <DatePicker
+                                                                    value={date}
+                                                                    onChange={(newDate) => handleUpdateEntryDate(newDate, date)}
+                                                                    className="border-none p-0 group"
+                                                                    placeholder=""
+                                                                />
                                                             </div>
                                                             <div>
-                                                                <div className="text-lg font-black text-[#1B2559] tracking-tight">{(() => {
-                                                                    const d = new Date(date);
-                                                                    return !isNaN(d.getTime()) ? format(d, 'MMMM do, yyyy') : 'Invalid Date';
-                                                                })()}</div>
+                                                                <div className="text-lg font-black text-[#1B2559] tracking-tight hover:text-primary transition-colors cursor-pointer flex items-center gap-2 group" onClick={() => {
+                                                                    // The DatePicker already has its own click handler
+                                                                }}>
+                                                                    {(() => {
+                                                                        const d = new Date(date);
+                                                                        return !isNaN(d.getTime()) ? format(d, 'MMMM do, yyyy') : 'Invalid Date';
+                                                                    })()}
+                                                                </div>
                                                                 <div className="text-[10px] text-[#A3AED0] uppercase font-black tracking-widest">Appointment Session</div>
                                                             </div>
                                                         </div>
@@ -821,33 +881,6 @@ function PatientDetailsContent() {
                                                                     </td>
                                                                     <td className="px-8 py-6 text-right font-black text-[#1B2559] text-base tracking-tight">
                                                                         ${Number(entry.total_price).toLocaleString()}
-                                                                        {entry.payment_history && entry.payment_history.length > 0 && (
-                                                                            <div className="mt-2 space-y-0.5 opacity-60">
-                                                                                {entry.payment_history.map((ph: any) => (
-                                                                                    <div key={ph.id} className="text-[9px] font-bold text-[#A3AED0] uppercase tracking-widest flex items-center justify-end gap-2 group/payment">
-                                                                                        <button
-                                                                                            onClick={(e) => {
-                                                                                                e.stopPropagation();
-                                                                                                setEditPaymentData({
-                                                                                                    paymentId: ph.id,
-                                                                                                    ledgerEntryId: entry.id,
-                                                                                                    method: ph.payment_method,
-                                                                                                    currency: ph.payment_currency,
-                                                                                                    amount: ph.amount_paid.toString(),
-                                                                                                    originalAmount: ph.amount_paid
-                                                                                                });
-                                                                                                setIsEditingPayment(true);
-                                                                                            }}
-                                                                                            className="opacity-0 group-hover/payment:opacity-100 transition-opacity hover:text-primary"
-                                                                                        >
-                                                                                            <Edit2 className="w-3 h-3" />
-                                                                                        </button>
-                                                                                        <span>{ph.payment_method}</span>
-                                                                                        <span className="text-primary">{ph.payment_currency === 'USD' ? '$' : '៛'}{Number(ph.amount_paid).toLocaleString()}</span>
-                                                                                    </div>
-                                                                                ))}
-                                                                            </div>
-                                                                        )}
                                                                     </td>
                                                                     <td className="px-8 py-6 text-center">
                                                                         <select
@@ -1145,18 +1178,9 @@ function PatientDetailsContent() {
                         </div>
                     )}
 
-                    {/* Tab Content: Next Treatment */}
-                    {activeTab === 'next-treatment' && (
-                        <div className="card-premium p-16 text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <div className="flex flex-col items-center gap-6 opacity-40">
-                                <Activity className="w-20 h-20 text-primary" />
-                                <div>
-                                    <p className="text-xl font-black text-[#1B2559] tracking-tight">Next Treatment Planning</p>
-                                    <p className="text-sm font-bold text-[#A3AED0] max-w-md mx-auto mt-2">No future treatments are currently scheduled. Use the clinical menu to prepare a new session plan.</p>
-                                </div>
-                                <button className="mt-4 bg-primary text-white px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20">Schedule Next Phase</button>
-                            </div>
-                        </div>
+                    {/* Tab Content: Odontogram */}
+                    {activeTab === 'odontogram' && (
+                        <OdontogramView patientId={id as string} />
                     )}
 
 
@@ -1199,7 +1223,17 @@ function PatientDetailsContent() {
                                                         {/* Date Column */}
                                                         <div className="col-span-2">
                                                             <div className="text-[10px] font-black text-[#A3AED0] uppercase tracking-[0.2em] mb-1">{format(entryDate, 'MMM')}</div>
-                                                            <div className="text-2xl font-black text-[#1B2559] leading-none">{format(entryDate, 'dd')}</div>
+                                                            <div className="flex items-center gap-2 group relative">
+                                                                <div className="text-2xl font-black text-[#1B2559] leading-none group-hover:text-primary transition-colors">{format(entryDate, 'dd')}</div>
+                                                                <div className="absolute inset-0 opacity-0">
+                                                                    <DatePicker
+                                                                        value={date}
+                                                                        onChange={(newDate) => handleUpdateEntryDate(newDate, date)}
+                                                                        className="w-full h-full"
+                                                                        placeholder=""
+                                                                    />
+                                                                </div>
+                                                            </div>
                                                             <div className="text-[10px] font-bold text-[#A3AED0] mt-1">{format(entryDate, 'yyyy')}</div>
                                                         </div>
 
@@ -1375,8 +1409,10 @@ function PatientDetailsContent() {
                                             type="number"
                                             className="w-full bg-white border border-[#E0E5F2] focus:ring-4 ring-primary/5 rounded-2xl px-12 py-4 text-xl font-black text-[#1B2559] transition-all outline-none text-center"
                                             defaultValue={managedEntry.amount_paid}
+                                            min="0"
+                                            max={managedEntry.total_price}
                                             onBlur={(e) => {
-                                                const paid = Number(e.target.value);
+                                                const paid = Math.min(Math.max(0, Number(e.target.value)), Number(managedEntry.total_price));
                                                 handleUpdateEntry(managedEntry.id, {
                                                     amount_paid: paid,
                                                     amount_remaining: Number(managedEntry.total_price) - paid
@@ -1643,8 +1679,9 @@ function PatientDetailsContent() {
                                             type="number"
                                             className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl px-14 py-3 text-sm font-black text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all"
                                             placeholder="0.00"
+                                            min="0"
                                             value={settleData.amount_aba}
-                                            onChange={(e) => setSettleData({ ...settleData, amount_aba: e.target.value })}
+                                            onChange={(e) => setSettleData({ ...settleData, amount_aba: Math.max(0, Number(e.target.value)).toString() })}
                                         />
                                     </div>
 
@@ -1655,8 +1692,9 @@ function PatientDetailsContent() {
                                                 type="number"
                                                 className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl px-14 py-3 text-sm font-black text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all"
                                                 placeholder="0.00"
+                                                min="0"
                                                 value={settleData.amount_cash_usd}
-                                                onChange={(e) => setSettleData({ ...settleData, amount_cash_usd: e.target.value })}
+                                                onChange={(e) => setSettleData({ ...settleData, amount_cash_usd: Math.max(0, Number(e.target.value)).toString() })}
                                             />
                                         </div>
                                         <div className="relative">
@@ -1665,8 +1703,9 @@ function PatientDetailsContent() {
                                                 type="number"
                                                 className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl px-14 py-3 text-sm font-black text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all"
                                                 placeholder="0"
+                                                min="0"
                                                 value={settleData.amount_cash_khr}
-                                                onChange={(e) => setSettleData({ ...settleData, amount_cash_khr: e.target.value })}
+                                                onChange={(e) => setSettleData({ ...settleData, amount_cash_khr: Math.max(0, Number(e.target.value)).toString() })}
                                             />
                                         </div>
                                     </div>
@@ -1825,9 +1864,10 @@ function PatientDetailsContent() {
                                                 <input
                                                     type="number"
                                                     placeholder="0.00"
+                                                    min="0"
                                                     className="w-full bg-white border border-[#E0E5F2] rounded-xl px-4 py-3 text-sm font-black text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all"
                                                     value={bulkSettleData.amount_aba}
-                                                    onChange={(e) => setBulkSettleData({ ...bulkSettleData, amount_aba: e.target.value })}
+                                                    onChange={(e) => setBulkSettleData({ ...bulkSettleData, amount_aba: Math.max(0, Number(e.target.value)).toString() })}
                                                 />
                                             </div>
                                             <div className="grid grid-cols-2 gap-4">
@@ -1836,9 +1876,10 @@ function PatientDetailsContent() {
                                                     <input
                                                         type="number"
                                                         placeholder="0.00"
+                                                        min="0"
                                                         className="w-full bg-white border border-[#E0E5F2] rounded-xl px-4 py-3 text-sm font-black text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all"
                                                         value={bulkSettleData.amount_cash_usd}
-                                                        onChange={(e) => setBulkSettleData({ ...bulkSettleData, amount_cash_usd: e.target.value })}
+                                                        onChange={(e) => setBulkSettleData({ ...bulkSettleData, amount_cash_usd: Math.max(0, Number(e.target.value)).toString() })}
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
@@ -1846,9 +1887,10 @@ function PatientDetailsContent() {
                                                     <input
                                                         type="number"
                                                         placeholder="0"
+                                                        min="0"
                                                         className="w-full bg-white border border-[#E0E5F2] rounded-xl px-4 py-3 text-sm font-black text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all"
                                                         value={bulkSettleData.amount_cash_khr}
-                                                        onChange={(e) => setBulkSettleData({ ...bulkSettleData, amount_cash_khr: e.target.value })}
+                                                        onChange={(e) => setBulkSettleData({ ...bulkSettleData, amount_cash_khr: Math.max(0, Number(e.target.value)).toString() })}
                                                     />
                                                 </div>
                                             </div>
@@ -1931,9 +1973,10 @@ function PatientDetailsContent() {
                                         <input
                                             type="number"
                                             step="0.01"
+                                            min="0"
                                             className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-2xl pl-14 pr-6 py-4 text-lg font-black text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all"
                                             value={editPaymentData.amount}
-                                            onChange={(e) => setEditPaymentData({ ...editPaymentData, amount: e.target.value })}
+                                            onChange={(e) => setEditPaymentData({ ...editPaymentData, amount: Math.max(0, Number(e.target.value)).toString() })}
                                             autoFocus
                                         />
                                     </div>

@@ -1,0 +1,67 @@
+:root {
+    --dark-blue: #3e5edc;
+    --base-blue: #8a98be;
+    --light-blue: #c6ccf8;
+}
+
+.Odontogram svg {
+    color: var(--base-blue);
+    fill: none;
+    transition: all ease-in 125ms;
+}
+
+.Odontogram svg path:nth-of-type(2) {
+    opacity: 0;
+    transition: all ease-in 0.2s;
+}
+
+.Odontogram g.selected path:nth-of-type(2) {
+    fill: var(--light-blue);
+    opacity: 1;
+}
+
+.Odontogram g.selected path:first-of-type {
+    transition: stroke 1s ease;
+}
+
+.Odontogram g.selected:hover path:first-of-type {
+    stroke: currentColor;
+    stroke-width: 1;
+    stroke-linecap: round;
+    stroke-dasharray: 4 4;
+    stroke-dashoffset: 0;
+    transition: stroke 5s ease;
+    animation: dash-move 1s linear infinite;
+    animation-delay: 1s;
+    filter: drop-shadow(0 0 8px currentColor);
+    -webkit-filter: drop-shadow(0 0 8px currentColor);
+}
+
+@keyframes dash-move {
+    to {
+        stroke-dashoffset: 8;
+    }
+}
+
+.Odontogram g.selected {
+    transition: all 0.3s ease;
+    color: var(--dark-blue);
+}
+
+.Odontogram g.selected path {
+    stroke-width: 1.5;
+}
+
+g[class^="teeth-"]:hover path:nth-of-type(2) {
+    fill: var(--light-blue);
+    opacity: 1;
+}
+
+.odontogram-tooltip {
+    box-shadow: 0 2px 8px #00000026;
+    backdrop-filter: blur(4px);
+}
+
+.Odontogram g[role="option"]:focus-visible {
+    outline: 4px solid var(--dark-blue) !important;
+}
