@@ -29,6 +29,7 @@ function cn(...inputs: ClassValue[]) {
 
 export default function SettingsPage() {
     const [exchangeRate, setExchangeRate] = useState("4100");
+    const [invoiceColor, setInvoiceColor] = useState("#4318FF");
     const [isSaving, setIsSaving] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
@@ -51,9 +52,14 @@ export default function SettingsPage() {
             const { data } = await supabase
                 .from('settings')
                 .select('*')
-                .eq('key', 'usd_to_khr')
-                .single();
-            if (data && mounted) setExchangeRate(data.value);
+                .in('key', ['usd_to_khr', 'invoice_color']);
+
+            if (data && mounted) {
+                const rate = data.find(s => s.key === 'usd_to_khr');
+                const color = data.find(s => s.key === 'invoice_color');
+                if (rate) setExchangeRate(rate.value);
+                if (color) setInvoiceColor(color.value);
+            }
         }
         fetchSettings();
         return () => { mounted = false; };
@@ -133,11 +139,13 @@ export default function SettingsPage() {
 
         if (!error) {
             await refreshRate();
+            await supabase.from('settings').upsert({ key: 'invoice_color', value: invoiceColor, updated_at: new Date().toISOString() });
+
             await supabase.from('audit_logs').insert({
                 table_name: 'settings',
                 record_id: '00000000-0000-0000-0000-000000000000',
-                action: 'UPDATE_EXCHANGE_RATE',
-                new_values: { rate: exchangeRate }
+                action: 'UPDATE_SYS_CONFIG',
+                new_values: { rate: exchangeRate, invoice_color: invoiceColor }
             });
             setShowSuccess(true);
             setTimeout(() => setShowSuccess(false), 3000);
@@ -239,6 +247,26 @@ export default function SettingsPage() {
                             <h3 className="text-base font-bold text-[#1B2559]">Data Governance</h3>
                             <p className="text-xs text-[#A3AED0] font-medium">Export clinical data or manage automatic cloud backup frequency.</p>
                             <button className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline pt-2 cursor-pointer">Export Ledger (CSV)</button>
+                        </div>
+
+                        <div className="card-premium p-6 space-y-4 border border-[#E0E5F2]/50">
+                            <div className="p-3 bg-pink-500/10 rounded-xl w-fit text-pink-400 mb-2">
+                                <Printer className="w-5 h-5" />
+                            </div>
+                            <h3 className="text-base font-bold text-[#1B2559]">Invoice Theme</h3>
+                            <p className="text-xs text-[#A3AED0] font-medium">Select a brand color for printed invoices and receipts.</p>
+                            <div className="flex items-center gap-4 pt-2">
+                                <input
+                                    type="color"
+                                    value={invoiceColor}
+                                    onChange={(e) => setInvoiceColor(e.target.value)}
+                                    className="w-10 h-10 rounded-xl cursor-pointer border-none p-0 bg-transparent"
+                                />
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest">Selected Color</span>
+                                    <span className="text-sm font-bold text-[#1B2559] uppercase">{invoiceColor}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -456,7 +484,7 @@ export default function SettingsPage() {
                                                                     <div className="pt-2 flex items-center justify-between">
                                                                         <p className="text-[8px] text-slate-600 font-mono">ID: {log.id.substring(0, 8)}</p>
                                                                         <Link
-                                                                            href={`/print?patient=${encodeURIComponent(log.patients?.name || 'Patient')}&date=${log.date}&total=${log.total_price || log.amount_paid}&paid=${log.amount_paid}&balance=0`}
+                                                                            href={`/print-invoice?patientId=${log.patient_id}&type=receipt&itemIds=${log.id}`}
                                                                             className="text-[9px] font-black text-primary hover:text-blue-400 uppercase tracking-wider transition-colors flex items-center gap-1 opacity-0 group-hover:opacity-100"
                                                                         >
                                                                             <Printer className="w-3 h-3" />

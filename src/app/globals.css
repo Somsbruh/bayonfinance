@@ -233,3 +233,23 @@ body {
   border-radius: 12px;
   color: var(--primary);
 }
+
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    background-color: white;
+    height: auto;
+    overflow: visible;
+  }
+
+  html {
+    height: auto;
+    overflow: visible;
+  }
+}

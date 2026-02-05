@@ -33,6 +33,7 @@ export default function PatientsPage() {
             .from('patients')
             .select('*')
             .eq('branch_id', currentBranch?.id)
+            .neq('is_archived', true)
             .order('name');
 
         if (data) setPatients(data);

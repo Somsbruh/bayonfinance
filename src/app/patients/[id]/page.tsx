@@ -87,6 +87,7 @@ function PatientDetailsContent() {
         name: "",
         gender: "F",
         age: "",
+        dob: "",
         phone: "",
         countryCode: "+855"
     });
@@ -159,6 +160,7 @@ function PatientDetailsContent() {
                 name: pData.name,
                 gender: pData.gender,
                 age: pData.age?.toString() || "",
+                dob: pData.dob || "",
                 phone: pData.phone?.replace(/^\+\d+\s?/, "") || "",
                 countryCode: pData.phone?.match(/^\+\d+/)?.[0] || "+855"
             });
@@ -551,6 +553,7 @@ function PatientDetailsContent() {
                 name: profileForm.name,
                 gender: profileForm.gender,
                 age: parseInt(profileForm.age) || 0,
+                dob: profileForm.dob || null,
                 phone: profileForm.phone ? `${profileForm.countryCode}${profileForm.phone.startsWith('0') ? profileForm.phone.substring(1) : profileForm.phone} ` : null
             })
             .eq('id', id);
@@ -560,6 +563,21 @@ function PatientDetailsContent() {
             fetchPatientData();
         } else {
             alert("Error updating profile: " + error.message);
+        }
+    }
+
+    async function handleDeletePatient() {
+        if (!confirm("Are you sure you want to void this patient? This action will remove them from the active directory.")) return;
+
+        const { error } = await supabase
+            .from('patients')
+            .update({ is_archived: true })
+            .eq('id', id);
+
+        if (!error) {
+            router.push('/patients');
+        } else {
+            alert("Error deleting patient: " + error.message);
         }
     }
 
@@ -651,6 +669,14 @@ function PatientDetailsContent() {
                                             <Edit2 className="w-3.5 h-3.5" />
                                             Update Identity
                                         </button>
+                                        <Link
+                                            href={`/print-invoice?patientId=${id}&type=invoice`}
+                                            target="_blank"
+                                            className="flex items-center gap-2 bg-[#F4F7FE] hover:bg-primary/5 text-primary px-4 py-2 rounded-xl border border-[#E0E5F2] transition-all text-[10px] font-black uppercase tracking-widest"
+                                        >
+                                            <Printer className="w-3.5 h-3.5" />
+                                            Create Invoice
+                                        </Link>
                                     </div>
                                 )}
                             </div>
@@ -838,7 +864,8 @@ function PatientDetailsContent() {
                                                                 </button>
 
                                                                 <Link
-                                                                    href={`/print?patient=${encodeURIComponent(patient.name)}&date=${date}&total=${dateTotal}&paid=${datePaid}&balance=${dateBalance}`}
+                                                                    href={`/print-invoice?patientId=${id}&type=receipt&itemIds=${entries.map((e: any) => e.id).join(',')}`}
+                                                                    target="_blank"
                                                                     className="p-2.5 bg-white hover:bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl text-[#A3AED0] hover:text-primary transition-all shadow-sm flex items-center justify-center"
                                                                 >
                                                                     <Printer className="w-4 h-4" />
@@ -1049,7 +1076,7 @@ function PatientDetailsContent() {
                                                                 </div>
 
                                                                 <Link
-                                                                    href={`/print?patient=${encodeURIComponent(patient.name)}&date=${entry.date}&total=${entry.total_price}&paid=${entry.amount_paid}&balance=${entry.amount_remaining}`}
+                                                                    href={`/print-invoice?patientId=${id}&type=receipt&itemIds=${entry.id}`}
                                                                     className="flex items-center justify-center gap-2 bg-white hover:bg-primary hover:text-white text-primary px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border border-primary/10 shadow-sm active:scale-95"
                                                                 >
                                                                     <Printer className="w-3.5 h-3.5" />
@@ -1509,8 +1536,8 @@ function PatientDetailsContent() {
             {/* Edit Profile Modal */}
             {
                 isEditingProfile && (
-                    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#1B2559]/40 backdrop-blur-md p-4 animate-in fade-in duration-300">
-                        <div className="bg-white border-2 border-white rounded-[2.5rem] w-full max-w-lg shadow-[0_50px_100px_rgba(27,37,89,0.25)] p-8 space-y-6 relative overflow-hidden">
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#1B2559]/40 p-4 animate-in fade-in duration-300">
+                        <div className="bg-white border-2 border-white rounded-[24px] w-full max-w-lg shadow-[0_50px_100px_rgba(27,37,89,0.25)] p-8 space-y-6 relative overflow-hidden">
                             <button
                                 onClick={() => setIsEditingProfile(false)}
                                 className="absolute top-6 right-6 p-2 hover:bg-[#F4F7FE] rounded-full text-[#A3AED0] transition-all"
@@ -1523,17 +1550,18 @@ function PatientDetailsContent() {
                                     <Edit2 className="w-7 h-7" />
                                 </div>
                                 <div>
-                                    <h3 className="text-xl font-black text-[#1B2559] tracking-tight">Edit Personalia</h3>
+                                    <h3 className="text-xl font-black text-[#1B2559] tracking-tight">Edit Details</h3>
                                     <p className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest mt-1">Secure Profile Update</p>
                                 </div>
                             </div>
 
                             <div className="space-y-6">
                                 <div className="space-y-1.5">
-                                    <label className="text-[9px] font-black text-[#707EAE] uppercase tracking-widest pl-1">Full Identity Name</label>
+                                    <label className="text-[9px] font-black text-[#707EAE] uppercase tracking-widest pl-1">Full Name</label>
                                     <input
                                         type="text"
                                         className="w-full bg-[#F4F7FE] border-none rounded-xl px-5 py-3.5 text-sm font-bold text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all"
+                                        placeholder="e.g. Chea Sokdisumeth"
                                         value={profileForm.name}
                                         onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
                                     />
@@ -1541,7 +1569,7 @@ function PatientDetailsContent() {
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
-                                        <label className="text-[9px] font-black text-[#707EAE] uppercase tracking-widest pl-1">Biological Gender</label>
+                                        <label className="text-[9px] font-black text-[#707EAE] uppercase tracking-widest pl-1">Gender</label>
                                         <select
                                             className="w-full bg-[#F4F7FE] border-none rounded-xl px-5 py-3.5 text-xs font-bold text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all appearance-none cursor-pointer"
                                             value={profileForm.gender}
@@ -1553,18 +1581,27 @@ function PatientDetailsContent() {
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-[9px] font-black text-[#707EAE] uppercase tracking-widest pl-1">Date of Birth</label>
-                                        <input
-                                            type="text"
-                                            placeholder="DD/MM/YYYY"
-                                            className="w-full bg-[#F4F7FE] border-none rounded-xl px-5 py-3.5 text-sm font-bold text-[#1B2559] focus:ring-4 ring-primary/5 outline-none transition-all"
-                                            value={profileForm.age}
-                                            onChange={(e) => {
-                                                let value = e.target.value.replace(/\D/g, '');
-                                                if (value.length >= 2) value = value.slice(0, 2) + '/' + value.slice(2);
-                                                if (value.length >= 5) value = value.slice(0, 5) + '/' + value.slice(5, 9);
-                                                setProfileForm({ ...profileForm, age: value });
+                                        <DatePicker
+                                            value={profileForm.dob}
+                                            onChange={(date) => {
+                                                if (date > new Date()) {
+                                                    alert("Date of birth cannot be in the future.");
+                                                    return;
+                                                }
+                                                const ageDiff = Date.now() - date.getTime();
+                                                const ageDate = new Date(ageDiff);
+                                                const calculatedAge = Math.abs(ageDate.getUTCFullYear() - 1970);
+
+                                                setProfileForm({
+                                                    ...profileForm,
+                                                    dob: format(date, 'yyyy-MM-dd'),
+                                                    age: calculatedAge.toString()
+                                                });
                                             }}
-                                            maxLength={10}
+                                            placeholder="BP: Select Date"
+                                            format="dd MMMM yyyy"
+                                            className="w-full"
+                                            triggerClassName="h-[46px] rounded-xl border-none font-bold text-[#1B2559] text-xs bg-[#F4F7FE]"
                                         />
                                     </div>
                                 </div>
@@ -1595,12 +1632,21 @@ function PatientDetailsContent() {
                                 </div>
                             </div>
 
-                            <button
-                                onClick={handleSaveProfile}
-                                className="w-full bg-primary hover:bg-[#3311DB] text-white py-4 rounded-2xl text-xs font-black transition-all shadow-xl shadow-primary/25 uppercase tracking-widest active:scale-[0.98]"
-                            >
-                                Commit Changes
-                            </button>
+                            <div className="space-y-3 pt-2">
+                                <button
+                                    onClick={handleSaveProfile}
+                                    className="w-full bg-primary hover:bg-[#3311DB] text-white py-3 rounded-2xl text-[11px] font-black transition-all shadow-md shadow-primary/20 uppercase tracking-widest active:scale-[0.98]"
+                                >
+                                    Commit Changes
+                                </button>
+
+                                <button
+                                    onClick={handleDeletePatient}
+                                    className="w-full bg-red-50 hover:bg-red-100 text-red-500 py-3 rounded-2xl text-[11px] font-black transition-all border border-red-100 uppercase tracking-widest active:scale-[0.98]"
+                                >
+                                    Delete Patient
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )
@@ -1910,14 +1956,29 @@ function PatientDetailsContent() {
                                         </div>
                                     </div>
 
-                                    <button
-                                        onClick={handleBulkSettlement}
-                                        disabled={selectedBulkEntries.length === 0}
-                                        className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-[#A3AED0] disabled:opacity-30 text-white py-5 rounded-[2rem] text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
-                                    >
-                                        <Check className="w-4 h-4" />
-                                        Confirm Bulk Settlement
-                                    </button>
+                                    <div className="flex gap-4">
+                                        <Link
+                                            href={`/print-invoice?patientId=${id}&type=receipt&itemIds=${selectedBulkEntries.join(',')}`}
+                                            onClick={(e) => {
+                                                if (selectedBulkEntries.length === 0) e.preventDefault();
+                                            }}
+                                            className={cn(
+                                                "w-1/3 bg-[#F4F7FE] text-[#A3AED0] hover:text-[#1B2559] hover:bg-[#E0E5F2] py-5 rounded-[2rem] text-xs font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 border border-[#E0E5F2]",
+                                                selectedBulkEntries.length === 0 && "opacity-50 pointer-events-none"
+                                            )}
+                                        >
+                                            <Printer className="w-4 h-4" />
+                                            Receipts
+                                        </Link>
+                                        <button
+                                            onClick={handleBulkSettlement}
+                                            disabled={selectedBulkEntries.length === 0}
+                                            className="w-2/3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-[#A3AED0] disabled:opacity-30 text-white py-5 rounded-[2rem] text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
+                                        >
+                                            <Check className="w-4 h-4" />
+                                            Confirm Bulk Settlement
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -2003,7 +2064,7 @@ function PatientDetailsContent() {
                     </div>
                 )
             }
-        </div>
+        </div >
     );
 }
 
