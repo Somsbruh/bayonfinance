@@ -589,142 +589,70 @@ function PatientDetailsContent() {
     const outstandingBalance = history.reduce((sum, e) => sum + Number(e.amount_remaining), 0);
 
     return (
-        <div className="space-y-6 max-w-[1600px] mx-auto pb-24 px-4 overflow-x-hidden">
-            {/* Ultra-Condensed Header & Profile Hybrid */}
-            <div className="flex flex-col gap-4">
-                <div className="card-premium p-3 bg-white/80 backdrop-blur-xl border border-[#E0E5F2] hover:shadow-2xl transition-all duration-500 group/profile">
-                    <div className="flex items-center justify-between gap-6 px-1">
-                        {/* Hybrid Profile & Identifiers */}
-                        <div className="flex items-center gap-4 flex-1 min-w-0">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-[#3311DB] flex items-center justify-center text-xl font-black text-white shadow-xl shadow-primary/20 shrink-0 relative overflow-hidden">
-                                {patient.name[0]}
-                                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover/profile:opacity-100 transition-opacity" />
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                                {/* Top Row - Name & Vital Stats */}
-                                <div className="flex items-center gap-4 flex-wrap mb-1">
-                                    <h1 className="h1-premium truncate max-w-[300px]">{patient.name}</h1>
-                                    <button
-                                        onClick={() => setIsEditingProfile(true)}
-                                        className="btn-secondary-premium p-1.5"
-                                    >
-                                        <Edit2 className="w-3.5 h-3.5" />
-                                    </button>
-                                </div>
-
-                                <div className="flex items-center gap-4 flex-wrap">
-                                    <div className="flex items-center gap-3">
-                                        {/* Unified Vital Badge - Simplified and Smaller */}
-                                        <div className="flex items-center gap-2">
-                                            <div className="flex items-center gap-1.5">
-                                                <div className={cn("w-1 h-1 rounded-full", patient.gender === 'F' ? 'bg-rose-500' : 'bg-blue-500')} />
-                                                <span className="caption-premium">{patient.gender === 'F' ? 'Female' : 'Male'}</span>
-                                            </div>
-                                            <div className="w-px h-2 bg-[#E0E5F2]" />
-                                            <span className="caption-premium">{patient.age} Yrs</span>
-                                        </div>
-
-                                        {/* Contact Trigger */}
-                                        {patient.phone ? (
-                                            <a
-                                                href={formatTelegramLink(patient.phone)}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="flex items-center gap-2 bg-primary/5 hover:bg-primary text-primary hover:text-white px-3 py-1.5 rounded-xl border border-primary/10 transition-all group/phone"
-                                            >
-                                                <Phone className="w-3 h-3" />
-                                                <span className="text-[10px] font-black uppercase tracking-widest">{patient.phone.replace(/^\+/, '')}</span>
-                                            </a>
-                                        ) : (
-                                            <div className="caption-premium italic flex items-center gap-2">
-                                                <Phone className="w-3 h-3" /> No Contact Node
-                                            </div>
-                                        )}
-
-                                        {/* Expand Toggle */}
-                                        <button
-                                            onClick={() => setIsProfileExpanded(!isProfileExpanded)}
-                                            className={cn(
-                                                "p-1.5 rounded-lg transition-all",
-                                                isProfileExpanded ? "bg-primary text-white" : "hover:bg-[#F4F7FE] text-[#A3AED0]"
-                                            )}
-                                        >
-                                            <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-300", isProfileExpanded && "rotate-180")} />
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Bottom Row - Expandable Details */}
-                                {isProfileExpanded && (
-                                    <div className="mt-4 pt-4 border-t border-[#F4F7FE] flex items-center gap-8 animate-in slide-in-from-top-2 duration-300">
-                                        <div className="flex flex-col">
-                                            <span className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest leading-none mb-1">Global Register Ref</span>
-                                            <span className="text-[10px] font-black text-[#1B2559] tracking-widest">{patient.id.toUpperCase()}</span>
-                                        </div>
-                                        <button
-                                            onClick={() => setIsEditingProfile(true)}
-                                            className="flex items-center gap-2 bg-[#F4F7FE] hover:bg-primary/5 text-primary px-4 py-2 rounded-xl border border-[#E0E5F2] transition-all text-[10px] font-black uppercase tracking-widest"
-                                        >
-                                            <Edit2 className="w-3.5 h-3.5" />
-                                            Update Identity
-                                        </button>
-                                        <Link
-                                            href={`/print-invoice?patientId=${id}&type=invoice`}
-                                            target="_blank"
-                                            className="flex items-center gap-2 bg-[#F4F7FE] hover:bg-primary/5 text-primary px-4 py-2 rounded-xl border border-[#E0E5F2] transition-all text-[10px] font-black uppercase tracking-widest"
-                                        >
-                                            <Printer className="w-3.5 h-3.5" />
-                                            Create Invoice
-                                        </Link>
-                                    </div>
-                                )}
-                            </div>
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 overflow-x-hidden">
+            {/* Premium Header & Stats Banner - GEMINI.md Section 5.2 */}
+            <div className="card-premium p-6 flex flex-col lg:flex-row items-center gap-7 pt-6">
+                {/* Identity Section */}
+                <div className="flex items-center gap-4 flex-1 w-full lg:w-auto">
+                    <div className="w-11 h-11 bg-gradient-to-br from-primary to-[#3311DB] rounded-full flex items-center justify-center border border-[#E0E5F2] shadow-sm shrink-0 text-white font-black text-lg relative overflow-hidden group/icon">
+                        {patient.name[0]}
+                        <div className="absolute inset-0 bg-white/20 opacity-0 group-hover/icon:opacity-100 transition-opacity" />
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2 mb-0.5">
+                            <p className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest">PATIENT IDENTITY</p>
+                            <button onClick={() => setIsEditingProfile(true)} className="opacity-50 hover:opacity-100 transition-opacity">
+                                <Edit2 className="w-3 h-3 text-primary" />
+                            </button>
                         </div>
-
-                        {/* Global Actions Context */}
-                        <div className="flex items-center gap-3 border-l border-[#F4F7FE] pl-6 shrink-0">
-                            {/* Financial Snapshot - Premium Condensed */}
-                            <div className="flex items-center gap-6 mr-4">
-                                <div className="flex flex-col items-end">
-                                    <p className="caption-premium opacity-60 mb-1">Lifetime Value</p>
-                                    <span className="data-premium whitespace-nowrap">${Number(lifetimeValue).toLocaleString()}</span>
-                                </div>
-                                <div className="w-px h-6 bg-[#E0E5F2]" />
-                                <div className="flex flex-col items-end">
-                                    <p className="caption-premium opacity-60 mb-1">Total Paid</p>
-                                    <span className="text-sm font-black text-emerald-600 tracking-tight whitespace-nowrap">${Number(netContributions).toLocaleString()}</span>
-                                </div>
-                                <div className="w-px h-6 bg-[#E0E5F2]" />
-                                <div className="flex flex-col items-end">
-                                    <p className="caption-premium opacity-60 mb-1">Outstanding</p>
-                                    <span className={cn(
-                                        "data-premium whitespace-nowrap",
-                                        outstandingBalance > 0 ? "text-amber-600" : "text-[#1B2559]"
-                                    )}>${Number(outstandingBalance).toLocaleString()}</span>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                {outstandingBalance > 0 && (
-                                    <button
-                                        onClick={() => setIsBulkModalOpen(true)}
-                                        className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 transition-all shadow-lg active:scale-95 shadow-amber-500/20"
-                                    >
-                                        <Target className="w-4 h-4" />
-                                        Settle Balance
-                                    </button>
-                                )}
-                                <Link
-                                    href={`/patients/${id}/new-appointment`}
-                                    className="btn-primary-premium h-[48px] px-6"
-                                >
-                                    <Plus className="w-4 h-4" />
-                                    New Appointment
-                                </Link>
-                            </div>
+                        <div className="flex items-baseline gap-3">
+                            <h2 className="text-2xl font-black text-[#1B2559] tracking-tighter truncate max-w-[250px]">{patient.name}</h2>
+                            <span className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest bg-[#F4F7FE] px-2 py-1 rounded-lg">
+                                {patient.gender === 'F' ? 'Female' : 'Male'} • {patient.age} Yrs
+                            </span>
                         </div>
                     </div>
+                </div>
+
+                <div className="hidden lg:block w-[1px] h-8 bg-[#E0E5F2]" />
+
+                {/* Financial Stats Group */}
+                <div className="flex items-center gap-8 lg:gap-12 flex-1 justify-center lg:justify-start">
+                    <div>
+                        <p className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-0.5">Lifetime Value</p>
+                        <h2 className="text-xl font-black text-[#1B2559] tracking-tighter">${Number(lifetimeValue).toLocaleString()}</h2>
+                    </div>
+
+                    <div className="hidden sm:block w-[1px] h-8 bg-[#E0E5F2]" />
+
+                    <div>
+                        <p className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-0.5">Outstanding</p>
+                        <h2 className={cn("text-xl font-black tracking-tighter", outstandingBalance > 0 ? "text-amber-500" : "text-[#1B2559]")}>
+                            ${Number(outstandingBalance).toLocaleString()}
+                        </h2>
+                    </div>
+                </div>
+
+                <div className="hidden lg:block w-[1px] h-8 bg-[#E0E5F2]" />
+
+                {/* Actions */}
+                <div className="flex items-center gap-3 w-full lg:w-auto justify-end">
+                    {outstandingBalance > 0 && (
+                        <button
+                            onClick={() => setIsBulkModalOpen(true)}
+                            className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-amber-500/20 transition-all active:scale-95 flex items-center gap-2"
+                        >
+                            <Target className="w-3.5 h-3.5" />
+                            Settle
+                        </button>
+                    )}
+                    <Link
+                        href={`/patients/${id}/new-appointment`}
+                        className="bg-primary hover:bg-[#3311DB] text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-md shadow-primary/20 transition-all active:scale-95 flex items-center gap-2"
+                    >
+                        <Plus className="w-3.5 h-3.5" />
+                        New Appt
+                    </Link>
                 </div>
             </div>
 
@@ -732,13 +660,13 @@ function PatientDetailsContent() {
                 <div className="col-span-12 space-y-6">
 
                     {/* Tabs Navigation */}
-                    <div className="flex items-center flex-wrap gap-x-10 gap-y-4 border-b border-[#F4F7FE] mb-8 px-2">
+                    <div className="flex items-center gap-8 border-b border-[#E0E5F2] pt-2 mb-8">
                         {(['patient-info', 'appointment-history', 'odontogram', 'medical-record'] as const).map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
                                 className={cn(
-                                    "pb-5 text-[11px] font-black uppercase tracking-[0.15em] transition-all relative shrink-0",
+                                    "pb-3 text-[11px] font-black uppercase tracking-[0.15em] transition-all relative shrink-0",
                                     activeTab === tab ? "text-primary" : "text-[#A3AED0] hover:text-[#707EAE]"
                                 )}
                             >
@@ -807,8 +735,8 @@ function PatientDetailsContent() {
                                             const dateBalance = entries.reduce((sum: number, e: any) => sum + Number(e.amount_remaining), 0);
 
                                             return (
-                                                <div key={date} className="card-premium overflow-hidden border border-[#F4F7FE]">
-                                                    <div className="bg-[#F4F7FE]/50 px-8 py-6 border-b border-[#E0E5F2] flex items-center justify-between">
+                                                <div key={date} className="card-premium overflow-hidden border border-[#E0E5F2] p-0 shadow-sm">
+                                                    <div className="bg-[#F4F7FE]/50 px-5 py-4 border-b border-[#E0E5F2] flex items-center justify-between">
                                                         <div className="flex items-center gap-5">
                                                             <div className="bg-white text-primary p-3 rounded-2xl shadow-sm border border-[#E0E5F2] hover:bg-[#F4F7FE] transition-all flex items-center justify-center">
                                                                 <DatePicker
@@ -877,20 +805,20 @@ function PatientDetailsContent() {
                                                     <table className="w-full ledger-table">
                                                         <thead>
                                                             <tr className="bg-[#F4F7FE]/20 text-[9px] uppercase font-black tracking-widest text-[#A3AED0] border-b border-[#F4F7FE]">
-                                                                <th className="px-10 py-5 text-left">Clinical Procedure</th>
-                                                                <th className="px-8 py-5 text-right">Value</th>
-                                                                <th className="px-8 py-5 text-center">Dentist</th>
-                                                                <th className="px-8 py-5 w-[80px]"></th>
+                                                                <th className="px-5 py-5 text-left">Clinical Procedure</th>
+                                                                <th className="px-5 py-5 text-right">Value</th>
+                                                                <th className="px-5 py-5 text-center">Dentist</th>
+                                                                <th className="px-5 py-5 w-[80px]"></th>
                                                             </tr>
                                                         </thead>
                                                         <tbody className="divide-y divide-[#F4F7FE]">
                                                             {entries.map((entry: any) => (
                                                                 <tr key={entry.id} className="group hover:bg-[#F8FAFF] transition-colors">
                                                                     <td
-                                                                        className="px-10 py-6 cursor-pointer"
+                                                                        className="px-5 py-4 cursor-pointer"
                                                                         onClick={() => setManagedEntry(entry)}
                                                                     >
-                                                                        <div className="font-bold text-[#1B2559] text-base group-hover:text-primary transition-colors">{entry.treatments?.name || entry.description}</div>
+                                                                        <div className="font-bold text-[#1B2559] text-[12px] group-hover:text-primary transition-colors">{entry.treatments?.name || entry.description}</div>
                                                                         <div className="text-[10px] text-[#A3AED0] font-black uppercase tracking-widest mt-0.5 flex items-center gap-1.5">
                                                                             <Clock className="w-3 h-3 text-primary/40" />
                                                                             {(() => {
@@ -906,13 +834,13 @@ function PatientDetailsContent() {
                                                                             })()}
                                                                         </div>
                                                                     </td>
-                                                                    <td className="px-8 py-6 text-right font-black text-[#1B2559] text-base tracking-tight">
+                                                                    <td className="px-5 py-4 text-right font-black text-[#1B2559] text-[12px] tracking-tight">
                                                                         ${Number(entry.total_price).toLocaleString()}
                                                                     </td>
-                                                                    <td className="px-8 py-6 text-center">
+                                                                    <td className="px-5 py-4 text-center">
                                                                         <select
                                                                             className={cn(
-                                                                                "text-[10px] bg-[#F4F7FE] px-5 py-2 rounded-2xl font-black uppercase tracking-widest cursor-pointer hover:bg-primary/10 transition-colors border-none outline-none text-[#1B2559]",
+                                                                                "text-[9px] bg-[#F4F7FE] px-3 py-1.5 rounded-xl font-black uppercase tracking-widest cursor-pointer hover:bg-primary/10 transition-colors border-none outline-none text-[#1B2559]",
                                                                                 !entry.doctor_id && "text-destructive bg-destructive/10"
                                                                             )}
                                                                             value={entry.doctor_id || ""}
@@ -924,7 +852,7 @@ function PatientDetailsContent() {
                                                                             ))}
                                                                         </select>
                                                                     </td>
-                                                                    <td className="px-8 py-6 text-right">
+                                                                    <td className="px-5 py-4 text-right">
                                                                         <button
                                                                             onClick={() => setManagedEntry(entry)}
                                                                             className="p-3 hover:bg-white rounded-2xl text-[#A3AED0] hover:text-primary transition-all border border-transparent hover:border-[#E0E5F2] hover:shadow-sm"
@@ -999,9 +927,9 @@ function PatientDetailsContent() {
                                                     <div className="grid grid-cols-12 gap-5">
                                                         {/* Timestamp Anchor - Compact & Clear */}
                                                         <div className="col-span-12 lg:col-span-2 flex flex-col justify-center border-b lg:border-b-0 lg:border-r border-[#F4F7FE] pb-4 lg:pb-0 lg:pr-5">
-                                                            <div className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-1.5 opacity-60">Timestamp</div>
-                                                            <div className="flex lg:flex-col items-baseline lg:items-start gap-4 lg:gap-0">
-                                                                <span className="text-3xl font-black text-[#1B2559] leading-none mb-1">
+                                                            <div className="text-[9px] font-black text-primary uppercase tracking-[0.2em] mb-1.5 opacity-60">Timestamp</div>
+                                                            <div className="flex lg:flex-col items-baseline lg:items-start gap-3 lg:gap-0">
+                                                                <span className="text-xl font-black text-[#1B2559] leading-none mb-1">
                                                                     {new Date(entry.created_at).toLocaleDateString('en-US', { day: '2-digit' })}
                                                                 </span>
                                                                 <span className="text-[11px] font-black text-[#A3AED0] uppercase tracking-widest leading-none">
@@ -1019,10 +947,10 @@ function PatientDetailsContent() {
                                                         {/* Bento Core Content */}
                                                         <div className="col-span-12 lg:col-span-10 grid grid-cols-2 gap-4">
                                                             {/* Service Block */}
-                                                            <div className="col-span-2 flex flex-col sm:flex-row items-start justify-between gap-3">
+                                                            <div className="col-span-2 flex flex-col sm:flex-row items-center justify-between gap-3">
                                                                 <div>
                                                                     <div className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest mb-1">Service</div>
-                                                                    <h4 className="text-lg font-black text-[#1B2559] tracking-tight group-hover:text-primary transition-colors leading-tight">
+                                                                    <h4 className="text-[12px] font-black text-[#1B2559] tracking-tight group-hover:text-primary transition-colors leading-tight">
                                                                         {entry.treatments?.name || entry.description}
                                                                     </h4>
                                                                     <div className="flex items-center gap-2 mt-1.5">
@@ -1051,7 +979,7 @@ function PatientDetailsContent() {
                                                                 <div className="flex items-center gap-6 lg:gap-10">
                                                                     <div>
                                                                         <p className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest mb-0.5">Paid</p>
-                                                                        <p className="text-xl font-black text-[#1B2559] tracking-tighter">
+                                                                        <p className="text-[12px] font-black text-[#1B2559] tracking-tighter">
                                                                             ${Number(entry.amount_paid).toLocaleString()}
                                                                         </p>
                                                                     </div>
@@ -1118,22 +1046,22 @@ function PatientDetailsContent() {
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             {/* Summary Grid */}
                             <div className="grid grid-cols-3 gap-6">
-                                <div className="card-premium p-6 border-none bg-emerald-50/30">
-                                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">Primary Consultation</p>
-                                    <p className="text-lg font-black text-[#1B2559]">No</p>
+                                <div className="card-premium p-4 border-none bg-emerald-50/30">
+                                    <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">Primary Consultation</p>
+                                    <p className="text-sm font-black text-[#1B2559]">No</p>
                                 </div>
-                                <div className="card-premium p-6 border-none bg-primary/5">
-                                    <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-2">Special Interest</p>
-                                    <p className="text-lg font-black text-[#1B2559]">Yes <span className="text-[10px] text-[#A3AED0] font-bold">(tooth number 11,21)</span></p>
+                                <div className="card-premium p-4 border-none bg-primary/5">
+                                    <p className="text-[9px] font-black text-primary uppercase tracking-widest mb-1">Special Interest</p>
+                                    <p className="text-sm font-black text-[#1B2559]">Yes <span className="text-[9px] text-[#A3AED0] font-bold">(11, 21)</span></p>
                                 </div>
-                                <div className="card-premium p-6 border-none bg-amber-50/30">
-                                    <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2">High Risk Conditions</p>
-                                    <p className="text-lg font-black text-[#1B2559]">No</p>
+                                <div className="card-premium p-4 border-none bg-amber-50/30">
+                                    <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest mb-1">High Risk Conditions</p>
+                                    <p className="text-sm font-black text-[#1B2559]">No</p>
                                 </div>
                             </div>
 
                             {/* Oral Hygiene Habits */}
-                            <div className="card-premium p-8">
+                            <div className="card-premium p-5">
                                 <div className="flex items-center justify-between mb-8">
                                     <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-[#1B2559] flex items-center gap-3">
                                         <Activity className="w-5 h-5 text-primary" />
@@ -1214,7 +1142,7 @@ function PatientDetailsContent() {
                     {/* Tab Content: Medical Record */}
                     {activeTab === 'medical-record' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <div className="card-premium p-8">
+                            <div className="card-premium p-5">
                                 <div className="space-y-0 relative">
                                     {/* Vertical Timeline Line */}
                                     <div className="absolute left-[23px] top-4 bottom-4 w-px bg-[#E0E5F2]" />
@@ -1242,7 +1170,7 @@ function PatientDetailsContent() {
                                             });
 
                                             return (
-                                                <div key={date} className="relative pl-16 pb-12 last:pb-0 group">
+                                                <div key={date} className="relative pl-10 pb-8 last:pb-0 group">
                                                     {/* Timeline Node */}
                                                     <div className="absolute left-4 top-1 w-4 h-4 rounded-full border-4 border-white shadow-sm z-10 bg-primary transition-all group-hover:scale-125" />
 
@@ -1251,7 +1179,7 @@ function PatientDetailsContent() {
                                                         <div className="col-span-2">
                                                             <div className="text-[10px] font-black text-[#A3AED0] uppercase tracking-[0.2em] mb-1">{format(entryDate, 'MMM')}</div>
                                                             <div className="flex items-center gap-2 group relative">
-                                                                <div className="text-2xl font-black text-[#1B2559] leading-none group-hover:text-primary transition-colors">{format(entryDate, 'dd')}</div>
+                                                                <div className="text-xl font-black text-[#1B2559] leading-none group-hover:text-primary transition-colors">{format(entryDate, 'dd')}</div>
                                                                 <div className="absolute inset-0 opacity-0">
                                                                     <DatePicker
                                                                         value={date}
@@ -1267,7 +1195,7 @@ function PatientDetailsContent() {
                                                         {/* Content Cards grouped by Dentist */}
                                                         <div className="col-span-10 space-y-4">
                                                             {Object.entries(groupedByDentist).map(([dentistName, dentistEntries]) => (
-                                                                <div key={dentistName} className="bg-white rounded-3xl border border-[#F4F7FE] p-6 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500 relative">
+                                                                <div key={dentistName} className="bg-white rounded-3xl border border-[#F4F7FE] p-4 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500 relative">
                                                                     <div className="flex items-center justify-between mb-4 border-b border-[#F4F7FE] pb-4">
                                                                         <div className="flex items-center gap-3">
                                                                             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">

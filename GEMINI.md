@@ -1,7 +1,7 @@
 # Bayon Finance: Default UI Design Standards
 
 ## 1. Global Layout
-- **Page Padding:** `px-7 py-10` (Mandatory for all dashboards and listing views).
+- **Page Padding:** `px-7 py-7` (Mandatory for all dashboards and listing views).
 - **Max Width:** `max-w-[1440px]` (Defined in `LayoutWrapper.tsx`).
 - **Section Spacing:** `space-y-6` between major layout blocks.
 
@@ -73,7 +73,7 @@ Maintain a high-density premium aesthetic (~70% visual scale) using these specif
 ### 5.1. Global Page Wrapper
 All pages MUST use this entry animation and spacing.
 ```tsx
-<div className="max-w-[1440px] px-7 py-10 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+<div className="max-w-[1440px] px-7 py-7 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
     {/* Page Content */}
 </div>
 ```

@@ -23,7 +23,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
                     isCollapsed ? "ml-20" : "ml-[264px]"
                 )}
             >
-                <div className="max-w-[1440px] px-7 py-10">
+                <div className="max-w-[1440px] px-7 py-7">
                     {children}
                 </div>
             </main>
