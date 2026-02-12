@@ -20,16 +20,18 @@ import {
     LogOut,
     ChevronDown,
     Building2,
-    Package
+    Package,
+    LayoutGrid
 } from "lucide-react";
 
 const navItems = [
-    { name: "Dashboard & Ledger", href: "/", icon: Activity },
+    { name: "Dashboard", href: "/", icon: LayoutGrid },
+    { name: "Clinic Ledger", href: "/ledger", icon: Activity },
+    { name: "Reservations", href: "/reservations", icon: Stethoscope },
     { name: "Patients Overview", href: "/patients", icon: Users },
     { name: "Treatments Catalog", href: "/treatments", icon: ShieldPlus },
     { name: "Inventory", href: "/inventory", icon: Package },
     { name: "Staff Directory", href: "/staff", icon: UserSquare2 },
-    { name: "Analytics", href: "/reports", icon: BarChart3 },
     { name: "System Settings", href: "/settings", icon: Settings },
 ];
 
@@ -165,7 +167,7 @@ export default function Sidebar() {
                                     isCollapsed ? "w-12 h-12 justify-center" : "w-full pl-[27px] pr-4 py-2.5",
                                     isActive
                                         ? "bg-primary text-white shadow-xl shadow-primary/25"
-                                        : "text-[#A3AED0] hover:bg-[#F4F7FE] hover:text-primary"
+                                        : "text-[#A3AED0] hover:bg-gray-100 hover:text-[#1B2559]"
                                 )}
                             >
                                 <item.icon className={cn(

@@ -44,28 +44,24 @@ export default function PatientsPage() {
 
     return (
         <div className="space-y-10">
-            {/* Header & Quick Stats */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4">
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-[#A3AED0] font-black text-[10px] uppercase tracking-[0.2em]">
-                        <Users className="w-3.5 h-3.5" />
-                        CRM System
-                    </div>
+            {/* Header & Quick Controls */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-4">
+                <div className="space-y-0.5">
                     <h1 className="text-4xl font-black text-[#1B2559] tracking-tight">Patient Portfolio</h1>
-                    <p className="text-sm font-bold text-[#707EAE]">Comprehensive overview of lifecycle clinical records and financial standing</p>
                 </div>
-                <div className="flex items-center gap-4">
-                    <div className="hidden lg:flex flex-col items-end mr-4">
-                        <span className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest">Global Reach</span>
-                        <div className="flex items-center gap-2 mt-1">
-                            {Array.from({ length: 4 }).map((_, i) => (
-                                <div key={i} className="w-6 h-6 rounded-full border-2 border-white bg-[#F4F7FE] flex items-center justify-center -ml-2 first:ml-0 overflow-hidden shadow-sm">
-                                    <UserIcon className="w-3 h-3 text-[#A3AED0]" />
-                                </div>
-                            ))}
-                            <span className="text-xs font-black text-[#1B2559] ml-1">+{patients.length} Registered</span>
-                        </div>
-                    </div>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setFilterUnpaid(!filterUnpaid)}
+                        className={cn(
+                            "text-[10px] font-black px-6 py-3.5 rounded-[20px] border transition-all flex items-center gap-3 uppercase tracking-widest shadow-sm hover:shadow-md h-full whitespace-nowrap",
+                            filterUnpaid
+                                ? "bg-red-500 text-white border-red-400 shadow-xl shadow-red-500/20"
+                                : "text-[#1B2559] hover:bg-[#F4F7FE] border-[#E0E5F2] bg-white"
+                        )}
+                    >
+                        <Filter className="w-3.5 h-3.5" />
+                        {filterUnpaid ? "Critical Balance" : "Filter Arrears"}
+                    </button>
                     <PatientSearch />
                 </div>
             </div>
@@ -79,23 +75,7 @@ export default function PatientsPage() {
                         </div>
                         <div>
                             <span className="text-lg font-black text-[#1B2559] block tracking-tight">Clinical Directory</span>
-                            <span className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest">{patients.length} Active Records Linked</span>
                         </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => setFilterUnpaid(!filterUnpaid)}
-                            className={cn(
-                                "text-[10px] font-black px-6 py-3 rounded-2xl border transition-all flex items-center gap-3 uppercase tracking-widest shadow-sm hover:shadow-md",
-                                filterUnpaid
-                                    ? "bg-red-500 text-white border-red-400 shadow-xl shadow-red-500/20"
-                                    : "text-[#1B2559] hover:bg-[#F4F7FE] border-[#E0E5F2] bg-white"
-                            )}
-                        >
-                            <Filter className="w-3.5 h-3.5" />
-                            {filterUnpaid ? `Critical Balance Only (${unpaidCount})` : "Filter Arrears"}
-                        </button>
                     </div>
                 </div>
 

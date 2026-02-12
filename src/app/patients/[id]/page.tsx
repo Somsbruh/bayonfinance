@@ -23,7 +23,8 @@ import {
     Clock,
     CheckCircle2,
     AlertCircle,
-    XCircle
+    XCircle,
+    Wallet
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { format } from "date-fns";
@@ -106,6 +107,7 @@ function PatientDetailsContent() {
         { code: "+49", label: "🇩🇪 DE", name: "Germany" }
     ];
 
+    const [paymentPlans, setPaymentPlans] = useState<any[]>([]);
     const [isSettlingPayment, setIsSettlingPayment] = useState(false);
     const [settleData, setSettleData] = useState({
         originalDate: "", // To track which session we are updating
@@ -128,7 +130,7 @@ function PatientDetailsContent() {
     const [undoTimer, setUndoTimer] = useState<NodeJS.Timeout | null>(null);
     const [isDoctorSelectorExpanded, setIsDoctorSelectorExpanded] = useState(true);
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'patient-info' | 'appointment-history' | 'odontogram' | 'medical-record'>('appointment-history');
+    const [activeTab, setActiveTab] = useState<'patient-info' | 'appointment-history' | 'payment-plans' | 'odontogram' | 'medical-record'>('appointment-history');
     const [selectedBulkEntries, setSelectedBulkEntries] = useState<string[]>([]);
     const [bulkSettleData, setBulkSettleData] = useState({
         amount_aba: "",
@@ -164,6 +166,13 @@ function PatientDetailsContent() {
                 phone: pData.phone?.replace(/^\+\d+\s?/, "") || "",
                 countryCode: pData.phone?.match(/^\+\d+/)?.[0] || "+855"
             });
+
+            // Fetch Plans
+            const { data: plansData } = await supabase
+                .from('payment_plans')
+                .select('*')
+                .eq('patient_id', id);
+            if (plansData) setPaymentPlans(plansData);
 
             const { data: hData, error: hError } = await supabase
                 .from('ledger_entries')
@@ -591,25 +600,22 @@ function PatientDetailsContent() {
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 overflow-x-hidden">
             {/* Premium Header & Stats Banner - GEMINI.md Section 5.2 */}
-            <div className="card-premium p-6 flex flex-col lg:flex-row items-center gap-7 pt-6">
+            <div className="card-premium p-5 flex flex-col lg:flex-row items-center gap-4 pt-5">
                 {/* Identity Section */}
-                <div className="flex items-center gap-4 flex-1 w-full lg:w-auto">
-                    <div className="w-11 h-11 bg-gradient-to-br from-primary to-[#3311DB] rounded-full flex items-center justify-center border border-[#E0E5F2] shadow-sm shrink-0 text-white font-black text-lg relative overflow-hidden group/icon">
+                <div className="flex items-center gap-3 flex-1 w-full lg:w-auto">
+                    <div className="w-10 h-10 bg-gradient-to-br from-primary to-[#3311DB] rounded-full flex items-center justify-center border border-[#E0E5F2] shadow-sm shrink-0 text-white font-black text-base relative overflow-hidden group/icon">
                         {patient.name[0]}
                         <div className="absolute inset-0 bg-white/20 opacity-0 group-hover/icon:opacity-100 transition-opacity" />
                     </div>
                     <div>
-                        <div className="flex items-center gap-2 mb-0.5">
-                            <p className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest">PATIENT IDENTITY</p>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-xl font-black text-[#1B2559] tracking-tighter" style={{ whiteSpace: 'nowrap' }}>{patient.name}</h2>
+                            <span className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest bg-[#F4F7FE] px-2 py-1 rounded-lg">
+                                {patient.gender} {patient.age}
+                            </span>
                             <button onClick={() => setIsEditingProfile(true)} className="opacity-50 hover:opacity-100 transition-opacity">
                                 <Edit2 className="w-3 h-3 text-primary" />
                             </button>
-                        </div>
-                        <div className="flex items-baseline gap-3">
-                            <h2 className="text-2xl font-black text-[#1B2559] tracking-tighter truncate max-w-[250px]">{patient.name}</h2>
-                            <span className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest bg-[#F4F7FE] px-2 py-1 rounded-lg">
-                                {patient.gender === 'F' ? 'Female' : 'Male'} • {patient.age} Yrs
-                            </span>
                         </div>
                     </div>
                 </div>
@@ -617,17 +623,17 @@ function PatientDetailsContent() {
                 <div className="hidden lg:block w-[1px] h-8 bg-[#E0E5F2]" />
 
                 {/* Financial Stats Group */}
-                <div className="flex items-center gap-8 lg:gap-12 flex-1 justify-center lg:justify-start">
-                    <div>
-                        <p className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-0.5">Lifetime Value</p>
-                        <h2 className="text-xl font-black text-[#1B2559] tracking-tighter">${Number(lifetimeValue).toLocaleString()}</h2>
+                <div className="flex items-center gap-6 lg:gap-8 flex-1 justify-center lg:justify-start">
+                    <div className="flex flex-col gap-0.5">
+                        <p className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest">LIFETIME VALUE</p>
+                        <h2 className="text-lg font-black text-[#1B2559] tracking-tighter">${Number(lifetimeValue).toLocaleString()}</h2>
                     </div>
 
-                    <div className="hidden sm:block w-[1px] h-8 bg-[#E0E5F2]" />
+                    <div className="hidden sm:block w-[1px] h-6 bg-[#E0E5F2]" />
 
-                    <div>
-                        <p className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-0.5">Outstanding</p>
-                        <h2 className={cn("text-xl font-black tracking-tighter", outstandingBalance > 0 ? "text-amber-500" : "text-[#1B2559]")}>
+                    <div className="flex flex-col gap-0.5">
+                        <p className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest">OUTSTANDING</p>
+                        <h2 className={cn("text-lg font-black tracking-tighter", outstandingBalance > 0 ? "text-amber-500" : "text-[#1B2559]")}>
                             ${Number(outstandingBalance).toLocaleString()}
                         </h2>
                     </div>
@@ -636,11 +642,11 @@ function PatientDetailsContent() {
                 <div className="hidden lg:block w-[1px] h-8 bg-[#E0E5F2]" />
 
                 {/* Actions */}
-                <div className="flex items-center gap-3 w-full lg:w-auto justify-end">
+                <div className="flex items-center gap-2 w-full lg:w-auto justify-end">
                     {outstandingBalance > 0 && (
                         <button
                             onClick={() => setIsBulkModalOpen(true)}
-                            className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-amber-500/20 transition-all active:scale-95 flex items-center gap-2"
+                            className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] shadow-lg shadow-amber-500/20 transition-all active:scale-95 flex items-center gap-2 whitespace-nowrap"
                         >
                             <Target className="w-3.5 h-3.5" />
                             Settle
@@ -648,7 +654,7 @@ function PatientDetailsContent() {
                     )}
                     <Link
                         href={`/patients/${id}/new-appointment`}
-                        className="bg-primary hover:bg-[#3311DB] text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-md shadow-primary/20 transition-all active:scale-95 flex items-center gap-2"
+                        className="bg-primary hover:bg-[#3311DB] text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] shadow-md shadow-primary/20 transition-all active:scale-95 flex items-center gap-2 whitespace-nowrap"
                     >
                         <Plus className="w-3.5 h-3.5" />
                         New Appt
@@ -661,7 +667,7 @@ function PatientDetailsContent() {
 
                     {/* Tabs Navigation */}
                     <div className="flex items-center gap-8 border-b border-[#E0E5F2] pt-2 mb-8">
-                        {(['patient-info', 'appointment-history', 'odontogram', 'medical-record'] as const).map((tab) => (
+                        {(['patient-info', 'appointment-history', 'payment-plans', 'odontogram', 'medical-record'] as const).map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
@@ -673,6 +679,7 @@ function PatientDetailsContent() {
                                 <span className="relative z-10">
                                     {tab === 'patient-info' && "Patient Information"}
                                     {tab === 'appointment-history' && "Appointment History"}
+                                    {tab === 'payment-plans' && "Payment Plans"}
                                     {tab === 'odontogram' && "Odontogram"}
                                     {tab === 'medical-record' && "Medical Record"}
                                 </span>
@@ -723,12 +730,14 @@ function PatientDetailsContent() {
                                 historyView === 'clinical' && (
                                     <>
                                         {Object.entries(
-                                            history.reduce((acc: any, entry: any) => {
-                                                const date = entry.date;
-                                                if (!acc[date]) acc[date] = [];
-                                                acc[date].push(entry);
-                                                return acc;
-                                            }, {})
+                                            history
+                                                .filter(e => e.item_type !== 'installment') // Filter out installments from clinical progress
+                                                .reduce((acc: any, entry: any) => {
+                                                    const date = entry.date;
+                                                    if (!acc[date]) acc[date] = [];
+                                                    acc[date].push(entry);
+                                                    return acc;
+                                                }, {})
                                         ).map(([date, entries]: [string, any]) => {
                                             const dateTotal = entries.reduce((sum: number, e: any) => sum + Number(e.total_price), 0);
                                             const datePaid = entries.reduce((sum: number, e: any) => sum + Number(e.amount_paid), 0);
@@ -1992,7 +2001,7 @@ function PatientDetailsContent() {
                     </div>
                 )
             }
-        </div >
+        </div>
     );
 }
 

@@ -19,13 +19,18 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
             <Sidebar />
             <main
                 className={cn(
-                    "flex-1 relative pb-24 transition-all duration-500 ease-in-out print:ml-0 print:p-0 overflow-x-hidden",
-                    isCollapsed ? "ml-20" : "ml-[264px]"
+                    "flex-1 relative transition-all duration-500 ease-in-out print:ml-0 print:p-0 overflow-x-hidden",
+                    isCollapsed ? "ml-20" : "ml-[264px]",
+                    pathname === "/reservations" ? "pb-0" : "pb-24"
                 )}
             >
-                <div className="max-w-[1440px] px-7 py-7">
-                    {children}
-                </div>
+                {pathname === "/reservations" ? (
+                    children
+                ) : (
+                    <div className="max-w-[1440px] px-7 py-7">
+                        {children}
+                    </div>
+                )}
             </main>
         </div>
     );
