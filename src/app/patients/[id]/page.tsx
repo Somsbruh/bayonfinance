@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
     ArrowLeft,
@@ -128,6 +129,7 @@ function PatientDetailsContent() {
     const [managedEntry, setManagedEntry] = useState<any>(null);
     const [undoItem, setUndoItem] = useState<any>(null);
     const [undoTimer, setUndoTimer] = useState<NodeJS.Timeout | null>(null);
+    const [activePaymentEdit, setActivePaymentEdit] = useState<string | null>(null);
     const [isDoctorSelectorExpanded, setIsDoctorSelectorExpanded] = useState(true);
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'patient-info' | 'appointment-history' | 'payment-plans' | 'odontogram' | 'medical-record'>('appointment-history');
@@ -816,6 +818,7 @@ function PatientDetailsContent() {
                                                             <tr className="bg-[#F4F7FE]/20 text-[9px] uppercase font-black tracking-widest text-[#A3AED0] border-b border-[#F4F7FE]">
                                                                 <th className="px-5 py-5 text-left">Clinical Procedure</th>
                                                                 <th className="px-5 py-5 text-right">Value</th>
+                                                                <th className="px-5 py-5 text-right">Paid</th>
                                                                 <th className="px-5 py-5 text-center">Dentist</th>
                                                                 <th className="px-5 py-5 w-[80px]"></th>
                                                             </tr>
@@ -845,6 +848,121 @@ function PatientDetailsContent() {
                                                                     </td>
                                                                     <td className="px-5 py-4 text-right font-black text-[#1B2559] text-[12px] tracking-tight">
                                                                         ${Number(entry.total_price).toLocaleString()}
+                                                                    </td>
+                                                                    {/* Paid cell with inline edit dropdown */}
+                                                                    <td className="px-5 py-4 text-right">
+                                                                        <button
+                                                                            data-patient-payment-trigger={entry.id}
+                                                                            onClick={() => setActivePaymentEdit(prev => prev === entry.id ? null : entry.id)}
+                                                                            className={cn(
+                                                                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[12px] font-black transition-all cursor-pointer",
+                                                                                Number(entry.amount_paid) > 0 ? "text-[#19D5C5] hover:bg-[#19D5C5]/10" : "text-[#A3AED0] hover:bg-[#F4F7FE]"
+                                                                            )}
+                                                                        >
+                                                                            ${Number(entry.amount_paid).toLocaleString()}
+                                                                        </button>
+                                                                        {activePaymentEdit === entry.id && (() => {
+                                                                            const triggerEl = document.querySelector(`[data-patient-payment-trigger="${entry.id}"]`);
+                                                                            const rect = triggerEl?.getBoundingClientRect();
+                                                                            if (!rect) return null;
+                                                                            const entryAba = Number(entry.paid_aba) || 0;
+                                                                            const entryCashUsd = Number(entry.paid_cash_usd) || 0;
+                                                                            const entryCashKhr = Number(entry.paid_cash_khr) || 0;
+                                                                            const applyPaymentEdit = async (field: 'paid_aba' | 'paid_cash_usd' | 'paid_cash_khr', value: number) => {
+                                                                                const exchangeRate = Number(entry.applied_exchange_rate) || usdToKhr;
+                                                                                const newAba = field === 'paid_aba' ? value : (Number(entry.paid_aba) || 0);
+                                                                                const newCashUsd = field === 'paid_cash_usd' ? value : (Number(entry.paid_cash_usd) || 0);
+                                                                                const newCashKhr = field === 'paid_cash_khr' ? value : (Number(entry.paid_cash_khr) || 0);
+                                                                                const khrInUsd = Math.round((newCashKhr / exchangeRate) * 100) / 100;
+                                                                                const totalPaid = newAba + newCashUsd + khrInUsd;
+                                                                                await supabase.from('ledger_entries').update({
+                                                                                    [field]: value,
+                                                                                    amount_paid: totalPaid,
+                                                                                    amount_remaining: Number(entry.total_price) - totalPaid,
+                                                                                    applied_exchange_rate: exchangeRate
+                                                                                }).eq('id', entry.id);
+                                                                                fetchPatientData();
+                                                                            };
+                                                                            const remaining = Number(entry.amount_remaining) || 0;
+                                                                            const exchangeRate = Number(entry.applied_exchange_rate) || usdToKhr;
+                                                                            return createPortal(
+                                                                                <>
+                                                                                    <div className="fixed inset-0 z-[9998]" onClick={() => setActivePaymentEdit(null)} />
+                                                                                    <div
+                                                                                        className="fixed bg-white border border-[#E0E5F2] rounded-2xl shadow-2xl z-[9999] p-4 w-[240px] animate-in fade-in slide-in-from-top-2 duration-150"
+                                                                                        style={{ top: rect.bottom + 4, left: rect.left - 80 }}
+                                                                                    >
+                                                                                        {/* ABA */}
+                                                                                        <div className="mb-2">
+                                                                                            <div className="flex items-center gap-2 mb-1">
+                                                                                                <div className="w-2 h-2 rounded-full bg-[#4318FF]" />
+                                                                                                <span className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest">ABA Bank</span>
+                                                                                            </div>
+                                                                                            <div className="relative">
+                                                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#A3AED0]">$</span>
+                                                                                                <input
+                                                                                                    type="text" inputMode="numeric"
+                                                                                                    className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl pl-7 pr-3 py-2 text-[11px] font-black text-[#4318FF] outline-none focus:border-[#4318FF]/30 text-right"
+                                                                                                    defaultValue={entryAba || ''}
+                                                                                                    onBlur={(e) => applyPaymentEdit('paid_aba', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
+                                                                                                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                                                                                />
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        {/* Cash USD */}
+                                                                                        <div className="mb-2">
+                                                                                            <div className="flex items-center gap-2 mb-1">
+                                                                                                <div className="w-2 h-2 rounded-full bg-[#19D5C5]" />
+                                                                                                <span className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest">Cash USD</span>
+                                                                                            </div>
+                                                                                            <div className="relative">
+                                                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#A3AED0]">$</span>
+                                                                                                <input
+                                                                                                    type="text" inputMode="numeric"
+                                                                                                    className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl pl-7 pr-3 py-2 text-[11px] font-black text-[#19D5C5] outline-none focus:border-[#19D5C5]/30 text-right"
+                                                                                                    defaultValue={entryCashUsd || ''}
+                                                                                                    onBlur={(e) => applyPaymentEdit('paid_cash_usd', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
+                                                                                                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                                                                                />
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        {/* Cash KHR */}
+                                                                                        <div className="mb-2">
+                                                                                            <div className="flex items-center gap-2 mb-1">
+                                                                                                <div className="w-2 h-2 rounded-full bg-[#FFB547]" />
+                                                                                                <span className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest">Cash KHR</span>
+                                                                                            </div>
+                                                                                            <div className="relative">
+                                                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#A3AED0]">៛</span>
+                                                                                                <input
+                                                                                                    type="text" inputMode="numeric"
+                                                                                                    className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl pl-7 pr-3 py-2 text-[11px] font-black text-[#FFB547] outline-none focus:border-[#FFB547]/30 text-right"
+                                                                                                    defaultValue={entryCashKhr || ''}
+                                                                                                    onBlur={(e) => applyPaymentEdit('paid_cash_khr', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
+                                                                                                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                                                                                />
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        {/* Remaining */}
+                                                                                        {(() => {
+                                                                                            const khrRemaining = Math.round(remaining * exchangeRate);
+                                                                                            return (
+                                                                                                <div className="border-t border-[#E0E5F2] pt-2 mt-3 flex justify-between items-center">
+                                                                                                    <span className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest">Remaining</span>
+                                                                                                    <div className="text-right">
+                                                                                                        <span className={`text-[12px] font-black ${remaining > 0 ? 'text-[#EE5D50]' : 'text-[#19D5C5]'}`}>${remaining.toLocaleString()}</span>
+                                                                                                        {remaining > 0 && (
+                                                                                                            <p className="text-[9px] font-bold text-[#A3AED0] mt-0.5">ឬ ៛{khrRemaining.toLocaleString()}</p>
+                                                                                                        )}
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            );
+                                                                                        })()}
+                                                                                    </div>
+                                                                                </>,
+                                                                                document.body
+                                                                            );
+                                                                        })()}
                                                                     </td>
                                                                     <td className="px-5 py-4 text-center">
                                                                         <select
