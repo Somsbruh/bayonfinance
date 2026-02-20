@@ -75,6 +75,8 @@ export default function LedgerPage() {
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [isDailyReportOpen, setIsDailyReportOpen] = useState(false);
   const [globalSearchResults, setGlobalSearchResults] = useState<any[]>([]);
+  const [activeQtyDropdown, setActiveQtyDropdown] = useState<string | null>(null);
+  const [qtyDropdownRect, setQtyDropdownRect] = useState<DOMRect | null>(null);
 
   const { isCollapsed, showSummary, setShowSummary } = useSidebar();
   const { usdToKhr } = useCurrency();
@@ -1178,22 +1180,62 @@ export default function LedgerPage() {
                                           />
                                         </td>
 
-                                        {/* Qty - INDIVIDUAL */}
-                                        <td className="px-2 py-3 border-r border-[#E0E5F2] text-[11px] font-black text-[#A3AED0] text-center bg-[#F4F7FE]/5">
-                                          <input
-                                            type="text"
-                                            inputMode="numeric"
-                                            className="w-full bg-transparent outline-none focus:bg-[#F4F7FE] px-1 rounded transition-all text-center font-black"
-                                            value={entry.quantity || 1}
-                                            onChange={(e) => {
-                                              const q = Number(e.target.value.replace(/[^0-9]/g, ''));
-                                              handleUpdateEntry(entry.id, {
-                                                quantity: q,
-                                                total_price: q * (entry.unit_price || 0),
-                                                amount_remaining: (q * (entry.unit_price || 0)) - (entry.amount_paid || 0)
-                                              });
+                                        {/* Qty - INDIVIDUAL (Custom Dropdown) */}
+                                        <td className="px-2 py-3 border-r border-[#E0E5F2] text-[11px] font-black text-[#A3AED0] text-center bg-[#F4F7FE]/5 relative">
+                                          <button
+                                            data-qty-btn={entry.id}
+                                            onClick={(e) => {
+                                              const rect = e.currentTarget.getBoundingClientRect();
+                                              setQtyDropdownRect(rect);
+                                              setActiveQtyDropdown(activeQtyDropdown === entry.id ? null : entry.id);
                                             }}
-                                          />
+                                            className="w-full flex items-center justify-center gap-1 hover:text-[#1B2559] transition-colors group/qty"
+                                          >
+                                            <span className="text-[13px] font-black text-[#1B2559]">{entry.quantity || 1}</span>
+                                            <ChevronDown className="w-2.5 h-2.5 text-[#A3AED0] opacity-0 group-hover/qty:opacity-100 transition-opacity" />
+                                          </button>
+                                          {activeQtyDropdown === entry.id && qtyDropdownRect && createPortal(
+                                            <>
+                                              {/* Backdrop */}
+                                              <div className="fixed inset-0 z-[9998]" onClick={() => setActiveQtyDropdown(null)} />
+                                              {/* Dropdown */}
+                                              <div
+                                                className="fixed z-[9999] bg-white border border-[#E0E5F2] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+                                                style={{
+                                                  top: qtyDropdownRect.bottom + 4,
+                                                  left: qtyDropdownRect.left + qtyDropdownRect.width / 2 - 40,
+                                                  width: 80,
+                                                  maxHeight: 260,
+                                                  overflowY: 'auto'
+                                                }}
+                                              >
+                                                <div className="py-1">
+                                                  {Array.from({ length: 50 }, (_, i) => i + 1).map(qty => (
+                                                    <button
+                                                      key={qty}
+                                                      onClick={() => {
+                                                        handleUpdateEntry(entry.id, {
+                                                          quantity: qty,
+                                                          total_price: qty * (entry.unit_price || 0),
+                                                          amount_remaining: (qty * (entry.unit_price || 0)) - (entry.amount_paid || 0)
+                                                        });
+                                                        setActiveQtyDropdown(null);
+                                                      }}
+                                                      className={cn(
+                                                        "w-full text-center py-2 text-[11px] font-black transition-colors",
+                                                        (entry.quantity || 1) === qty
+                                                          ? "bg-primary text-white"
+                                                          : "text-[#1B2559] hover:bg-[#F4F7FE]"
+                                                      )}
+                                                    >
+                                                      {qty}
+                                                    </button>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            </>,
+                                            document.body
+                                          )}
                                         </td>
 
                                         {/* Total / Paid / Remaining - MERGED per visit */}
