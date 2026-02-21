@@ -15,23 +15,24 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
     }
 
     return (
-        <div className="flex min-h-screen">
-            <Sidebar />
-            <main
-                className={cn(
-                    "flex-1 relative transition-all duration-500 ease-in-out print:ml-0 print:p-0 overflow-x-hidden",
-                    isCollapsed ? "ml-20" : "ml-[264px]",
-                    pathname === "/reservations" ? "pb-0" : "pb-24"
-                )}
-            >
-                {pathname === "/reservations" ? (
-                    children
-                ) : (
-                    <div className="max-w-[1440px] px-7 py-7">
-                        {children}
-                    </div>
-                )}
-            </main>
+        <div className="flex justify-center min-h-screen bg-[#F4F7FE] w-full">
+            <div className="flex w-full max-w-[1440px] 2xl:max-w-[2560px] relative mx-auto transition-all duration-500">
+                <Sidebar />
+                <main
+                    className={cn(
+                        "flex-1 relative transition-all duration-500 ease-in-out print:p-0 overflow-x-hidden min-w-0 bg-[#F4F7FE]",
+                        pathname === "/reservations" ? "pb-0" : "pb-24"
+                    )}
+                >
+                    {pathname === "/reservations" ? (
+                        children
+                    ) : (
+                        <div className="w-full px-7 py-7">
+                            {children}
+                        </div>
+                    )}
+                </main>
+            </div>
         </div>
     );
 }

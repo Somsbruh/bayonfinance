@@ -44,7 +44,7 @@ export default function Sidebar() {
     return (
         <div
             className={cn(
-                "h-screen bg-white border-r border-[#E0E5F2] flex flex-col fixed left-0 top-0 z-[100] transition-all duration-500 ease-in-out shadow-[14px_17px_40px_4px_rgba(112,144,176,0.08)] print:hidden no-scrollbar overflow-hidden",
+                "h-screen bg-white border-r border-[#E0E5F2] flex flex-col sticky top-0 shrink-0 z-[100] transition-all duration-500 ease-in-out shadow-[14px_17px_40px_4px_rgba(112,144,176,0.08)] print:hidden no-scrollbar overflow-hidden",
                 isCollapsed ? "w-20" : "w-[264px]"
             )}
         >
