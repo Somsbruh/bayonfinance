@@ -51,9 +51,16 @@ import {
   Stethoscope
 } from "lucide-react";
 
+let globalLedgerDate: Date | null = null;
+
 export default function LedgerPage() {
   const { currentBranch } = useBranch();
-  const [date, setDate] = useState<Date>(new Date());
+  const [date, setDate] = useState<Date>(globalLedgerDate || new Date());
+
+  useEffect(() => {
+    globalLedgerDate = date;
+  }, [date]);
+
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [entries, setEntries] = useState<any[]>([]);
@@ -377,11 +384,23 @@ export default function LedgerPage() {
   }
 
   async function handleUpdateEntry(id: string, updates: any) {
+    if (viewMode === 'list') {
+      setEntries(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+    } else {
+      setMonthEntries(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+    }
+
     const { error } = await supabase.from('ledger_entries').update(updates).eq('id', id);
     if (!error) {
       setManagedEntry(null);
-      fetchDailyEntries();
-      fetchMonthlyEntries();
+      // We no longer trigger a full data re-fetch directly. The local state update handles it instantly.
+    } else {
+      // Revert if error
+      if (viewMode === 'list') {
+        fetchDailyEntries();
+      } else {
+        fetchMonthlyEntries();
+      }
     }
   }
 
@@ -897,13 +916,13 @@ export default function LedgerPage() {
                       <th className="px-2 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-12 text-center">No.</th>
                       <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2]">Patient</th>
                       <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2]">Medical Service</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-20 text-right">Price</th>
+                      <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-20 text-center">Price</th>
                       <th className="px-2 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-12 text-center">Qty</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-24 text-right">Total</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-24 text-right">Paid</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-24 text-right text-[#EE5D50]">Remaining</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-[120px]">Dentist</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase w-[120px]">Cashier</th>
+                      <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-24 text-center">Total</th>
+                      <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-24 text-center">Paid</th>
+                      <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-24 text-center text-[#EE5D50]">Remaining</th>
+                      <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-[120px] text-center">Dentist</th>
+                      <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase w-[120px] text-center">Cashier</th>
                     </tr>
                   </thead>
                   {isLoading ? (
@@ -983,92 +1002,92 @@ export default function LedgerPage() {
 
                                         {/* Patient Name + Gender/Age - Merged */}
                                         {isFirstOfGroup && (
-                                          <td rowSpan={group.length} className="px-4 py-2 border-r border-[#E0E5F2] relative">
-                                            <div className="relative">
-                                              <User
-                                                className={cn(
-                                                  "absolute left-2 top-[10px] w-3 h-3 transition-colors",
-                                                  firstEntry.patient_id ? "text-primary cursor-pointer hover:text-[#3311DB]" : "text-[#A3AED0]"
-                                                )}
-                                                onClick={() => {
-                                                  if (firstEntry.patient_id) router.push(`/patients/${firstEntry.patient_id}`);
-                                                }}
-                                              />
-                                              <input
-                                                data-patient-input={firstEntry.id}
-                                                className={cn(
-                                                  "w-full bg-transparent outline-none focus:bg-[#F4F7FE] pl-7 pr-2 py-1 rounded transition-all text-[11px] font-black text-[#1B2559] placeholder:text-[#A3AED0]/70",
-                                                  !firstEntry.patient_id && "text-primary"
-                                                )}
-                                                placeholder="Search Patient..."
-                                                value={activePatientLookup && activePatientLookup.id === firstEntry.id ? activePatientLookup.query : (firstEntry.patients?.name || firstEntry.manual_patient_name || "")}
-                                                onChange={(e) => {
-                                                  setActivePatientLookup({ id: firstEntry.id, query: e.target.value });
-                                                }}
-                                                onFocus={() => setActivePatientLookup({ id: firstEntry.id, query: firstEntry.patients?.name || firstEntry.manual_patient_name || "" })}
-                                                onBlur={() => setTimeout(() => setActivePatientLookup(null), 200)}
-                                              />
-                                              {/* Gender / Age inline */}
-                                              <div className="flex items-center gap-1.5 pl-7 -mt-0.5">
-                                                <span className="text-[9px] font-bold text-[#A3AED0] uppercase">{firstEntry.patients?.gender || firstEntry.manual_gender || '—'}</span>
-                                                <span className="text-[8px] text-[#E0E5F2]">·</span>
-                                                <span className="text-[9px] font-bold text-[#A3AED0]">{firstEntry.patients?.age || firstEntry.manual_age || '—'} yrs</span>
+                                          <td rowSpan={group.length} className="px-4 py-3 border-r border-[#E0E5F2] align-middle">
+                                            <div className="flex items-center gap-3 w-full max-w-[220px]">
+                                              <div
+                                                className="w-10 h-10 rounded-full bg-[#E2E8F0] flex flex-col items-center justify-end shrink-0 overflow-hidden shadow-sm cursor-pointer border border-[#cbd5e1]"
+                                                onClick={() => { if (firstEntry.patient_id) router.push(`/patients/${firstEntry.patient_id}`); }}
+                                              >
+                                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[85%] h-[85%] text-[#94A3B8]">
+                                                  <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" fill="currentColor" />
+                                                  <path d="M12 13C7.58172 13 4 16.5817 4 21H20C20 16.5817 16.4183 13 12 13Z" fill="currentColor" />
+                                                </svg>
                                               </div>
-                                              {/* (Patient Lookup Dropdown via Portal) */}
-                                              {activePatientLookup?.id === firstEntry.id && (() => {
-                                                const inputEl = document.querySelector(`[data-patient-input="${firstEntry.id}"]`);
-                                                const rect = inputEl?.getBoundingClientRect();
-                                                if (!rect) return null;
-                                                return createPortal(
-                                                  <div
-                                                    className="fixed bg-white border border-[#E0E5F2] rounded-2xl shadow-2xl z-[9999] overflow-hidden py-1 max-h-[300px] overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-150"
-                                                    style={{ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width + 60, 250) }}
-                                                  >
-                                                    {patientSearchResults.map(p => (
-                                                      <button
-                                                        key={p.id}
-                                                        onMouseDown={(e) => {
-                                                          e.preventDefault();
-                                                          group.forEach(g => {
-                                                            handleUpdateEntry(g.id, {
-                                                              patient_id: p.id,
-                                                              manual_patient_name: p.name,
-                                                              manual_gender: p.gender,
-                                                              manual_age: p.age
-                                                            });
-                                                          });
-                                                          setActivePatientLookup(null);
-                                                        }}
-                                                        className="w-full text-left px-4 py-3 hover:bg-[#F4F7FE] flex flex-col gap-0.5 border-b border-[#F4F7FE] last:border-0 transition-all"
-                                                      >
-                                                        <span className="text-[11px] font-black text-[#1B2559]">{p.name}</span>
-                                                        <div className="flex items-center gap-2 text-[9px] font-bold text-[#A3AED0]">
-                                                          <span>{p.phone}</span>
-                                                          <span className="w-1 h-1 rounded-full bg-[#E0E5F2]" />
-                                                          <span>{p.gender}</span>
-                                                        </div>
-                                                      </button>
-                                                    ))}
-                                                    {activePatientLookup?.query && (
-                                                      <button
-                                                        onMouseDown={(e) => {
-                                                          e.preventDefault();
-                                                          setQuickPatient({ ...quickPatient, name: activePatientLookup?.query || "" });
-                                                          setSelectedEntryIdForIdentity(firstEntry.id);
-                                                          setIsAddingEntry(true);
-                                                          setActivePatientLookup(null);
-                                                        }}
-                                                        className="w-full text-left px-4 py-3 bg-primary/5 hover:bg-primary/10 text-primary transition-colors flex items-center gap-2"
-                                                      >
-                                                        <UserPlus className="w-3.5 h-3.5" />
-                                                        <span className="text-[10px] font-black uppercase tracking-widest">New: {activePatientLookup?.query}</span>
-                                                      </button>
-                                                    )}
-                                                  </div>,
-                                                  document.body
-                                                );
-                                              })()}
+                                              <div className="min-w-0 w-full relative">
+                                                <input
+                                                  data-patient-input={firstEntry.id}
+                                                  className={cn(
+                                                    "w-full bg-transparent outline-none focus:bg-[#F4F7FE] px-1 py-0.5 rounded transition-all text-[12px] font-black uppercase placeholder:text-[#A3AED0]/70",
+                                                    firstEntry.patient_id ? "text-[#1B2559] group-hover:text-primary cursor-pointer hover:underline decoration-[2px] underline-offset-4" : "text-[#1B2559]"
+                                                  )}
+                                                  placeholder="Search Patient..."
+                                                  value={activePatientLookup && activePatientLookup.id === firstEntry.id ? activePatientLookup.query : (firstEntry.patients?.name || firstEntry.manual_patient_name || "")}
+                                                  onChange={(e) => setActivePatientLookup({ id: firstEntry.id, query: e.target.value })}
+                                                  onFocus={() => setActivePatientLookup({ id: firstEntry.id, query: firstEntry.patients?.name || firstEntry.manual_patient_name || "" })}
+                                                  onBlur={() => setTimeout(() => setActivePatientLookup(null), 200)}
+                                                  onClick={() => { if (firstEntry.patient_id) window.open(`/patients/${firstEntry.patient_id}`, '_blank'); }}
+                                                />
+                                                <div className="flex items-center gap-1.5 px-1 uppercase tracking-widest text-[#1B2559]">
+                                                  <span className="text-[10px] font-black">{firstEntry.patients?.gender === 'Male' ? 'M' : firstEntry.patients?.gender === 'Female' ? 'F' : firstEntry.manual_gender || '—'}</span>
+                                                  <span className="text-[10px] text-[#1B2559] opacity-80 font-black px-0.5">•</span>
+                                                  <span className="text-[10px] font-black">{firstEntry.patients?.age || firstEntry.manual_age || '—'} YRS</span>
+                                                </div>
+                                              </div>
                                             </div>
+                                            {/* (Patient Lookup Dropdown via Portal) */}
+                                            {activePatientLookup?.id === firstEntry.id && (() => {
+                                              const inputEl = document.querySelector(`[data-patient-input="${firstEntry.id}"]`);
+                                              const rect = inputEl?.getBoundingClientRect();
+                                              if (!rect) return null;
+                                              return createPortal(
+                                                <div
+                                                  className="fixed bg-white border border-[#E0E5F2] rounded-2xl shadow-2xl z-[9999] overflow-hidden py-1 max-h-[300px] overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-150"
+                                                  style={{ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width + 60, 250) }}
+                                                >
+                                                  {patientSearchResults.map(p => (
+                                                    <button
+                                                      key={p.id}
+                                                      onMouseDown={(e) => {
+                                                        e.preventDefault();
+                                                        group.forEach(g => {
+                                                          handleUpdateEntry(g.id, {
+                                                            patient_id: p.id,
+                                                            manual_patient_name: p.name,
+                                                            manual_gender: p.gender,
+                                                            manual_age: p.age
+                                                          });
+                                                        });
+                                                        setActivePatientLookup(null);
+                                                      }}
+                                                      className="w-full text-left px-4 py-3 hover:bg-[#F4F7FE] flex flex-col gap-0.5 border-b border-[#F4F7FE] last:border-0 transition-all"
+                                                    >
+                                                      <span className="text-[11px] font-black text-[#1B2559]">{p.name}</span>
+                                                      <div className="flex items-center gap-2 text-[9px] font-bold text-[#A3AED0]">
+                                                        <span>{p.phone}</span>
+                                                        <span className="w-1 h-1 rounded-full bg-[#E0E5F2]" />
+                                                        <span>{p.gender}</span>
+                                                      </div>
+                                                    </button>
+                                                  ))}
+                                                  {activePatientLookup?.query && (
+                                                    <button
+                                                      onMouseDown={(e) => {
+                                                        e.preventDefault();
+                                                        setQuickPatient({ ...quickPatient, name: activePatientLookup?.query || "" });
+                                                        setSelectedEntryIdForIdentity(firstEntry.id);
+                                                        setIsAddingEntry(true);
+                                                        setActivePatientLookup(null);
+                                                      }}
+                                                      className="w-full text-left px-4 py-3 bg-primary/5 hover:bg-primary/10 text-primary transition-colors flex items-center gap-2"
+                                                    >
+                                                      <UserPlus className="w-3.5 h-3.5" />
+                                                      <span className="text-[10px] font-black uppercase tracking-widest">New: {activePatientLookup?.query}</span>
+                                                    </button>
+                                                  )}
+                                                </div>,
+                                                document.body
+                                              );
+                                            })()}
                                           </td>
                                         )}
 
@@ -1130,7 +1149,7 @@ export default function LedgerPage() {
                                                         description: t.name,
                                                         unit_price: t.price,
                                                         total_price: t.price * (entry.quantity || 1),
-                                                        amount_remaining: (t.price * (entry.quantity || 1)) - (entry.amount_paid || 0)
+                                                        amount_remaining: (entry.amount_remaining || 0) + ((t.price * (entry.quantity || 1)) - (entry.total_price || 0))
                                                       });
                                                       setActiveTreatmentLookup(null);
                                                     }}
@@ -1162,22 +1181,28 @@ export default function LedgerPage() {
                                         </td>
 
 
-                                        {/* Unit Price - INDIVIDUAL */}
-                                        <td className="px-4 py-3 border-r border-[#E0E5F2] text-[11px] font-black text-[#1B2559] text-right">
-                                          <input
-                                            type="text"
-                                            inputMode="numeric"
-                                            className="w-full bg-transparent outline-none focus:bg-[#F4F7FE] px-1 rounded transition-all text-right font-black"
-                                            value={entry.unit_price}
-                                            onChange={(e) => {
-                                              const up = Number(e.target.value.replace(/[^0-9.]/g, ''));
-                                              handleUpdateEntry(entry.id, {
-                                                unit_price: up,
-                                                total_price: up * (entry.quantity || 1),
-                                                amount_remaining: (up * (entry.quantity || 1)) - (entry.amount_paid || 0)
-                                              });
-                                            }}
-                                          />
+                                        <td className="px-4 py-3 border-r border-[#E0E5F2] text-[11px] font-black text-[#1B2559] text-center">
+                                          <div className="flex items-center justify-center w-full group/input relative text-[#1B2559] gap-[1px]">
+                                            <span className="text-[10px] font-black pointer-events-none transition-transform duration-200 group-hover/input:-translate-x-1">$</span>
+                                            <input
+                                              type="text"
+                                              inputMode="numeric"
+                                              style={{ width: `${Math.max(String(entry.unit_price ?? '').length, 1)}ch` }}
+                                              className={cn(
+                                                "bg-transparent outline-none focus:bg-[#F4F7FE] rounded transition-transform duration-200 text-left font-black p-0",
+                                                "group-hover/input:translate-x-1 inline-block"
+                                              )}
+                                              value={entry.unit_price}
+                                              onChange={(e) => {
+                                                const up = Number(e.target.value.replace(/[^0-9.]/g, ''));
+                                                handleUpdateEntry(entry.id, {
+                                                  unit_price: up,
+                                                  total_price: up * (entry.quantity || 1),
+                                                  amount_remaining: (entry.amount_remaining || 0) + ((up * (entry.quantity || 1)) - (entry.total_price || 0))
+                                                });
+                                              }}
+                                            />
+                                          </div>
                                         </td>
 
                                         {/* Qty - INDIVIDUAL (Custom Dropdown) */}
@@ -1189,10 +1214,12 @@ export default function LedgerPage() {
                                               setQtyDropdownRect(rect);
                                               setActiveQtyDropdown(activeQtyDropdown === entry.id ? null : entry.id);
                                             }}
-                                            className="w-full flex items-center justify-center gap-1 hover:text-[#1B2559] transition-colors group/qty"
+                                            className="w-full text-center text-[10px] font-black uppercase text-[#1B2559] hover:bg-[#F4F7FE] rounded-lg py-1.5 px-2 transition-all group/qty relative flex items-center justify-center overflow-hidden"
                                           >
-                                            <span className="text-[13px] font-black text-[#1B2559]">{entry.quantity || 1}</span>
-                                            <ChevronDown className="w-2.5 h-2.5 text-[#A3AED0] opacity-0 group-hover/qty:opacity-100 transition-opacity" />
+                                            <span className="text-[13px] font-black text-[#1B2559] transition-transform duration-200 block z-10 group-hover/qty:-translate-x-2">
+                                              {entry.quantity || 1}
+                                            </span>
+                                            <ChevronDown className="w-2.5 h-2.5 text-[#A3AED0] opacity-0 group-hover/qty:opacity-100 transition-all duration-200 absolute right-1/2 translate-x-3" />
                                           </button>
                                           {activeQtyDropdown === entry.id && qtyDropdownRect && createPortal(
                                             <>
@@ -1217,7 +1244,7 @@ export default function LedgerPage() {
                                                         handleUpdateEntry(entry.id, {
                                                           quantity: qty,
                                                           total_price: qty * (entry.unit_price || 0),
-                                                          amount_remaining: (qty * (entry.unit_price || 0)) - (entry.amount_paid || 0)
+                                                          amount_remaining: (entry.amount_remaining || 0) + ((qty * (entry.unit_price || 0)) - (entry.total_price || 0))
                                                         });
                                                         setActiveQtyDropdown(null);
                                                       }}
@@ -1239,254 +1266,287 @@ export default function LedgerPage() {
                                         </td>
 
                                         {/* Total / Paid / Remaining - MERGED per visit */}
-                                        {isFirstOfGroup && (() => {
-                                          const groupTotal = group.reduce((sum, g) => sum + (g.total_price || 0), 0);
-                                          const groupPaid = group.reduce((sum, g) => sum + (g.amount_paid || 0), 0);
-                                          const groupRemaining = groupTotal - groupPaid;
-                                          return (
-                                            <>
-                                              <td rowSpan={group.length} className="px-4 py-3 border-r border-[#E0E5F2] text-[11px] font-black text-[#1B2559] text-right bg-[#F4F7FE]/10 align-middle">
-                                                ${groupTotal.toLocaleString()}
-                                              </td>
-                                              <td rowSpan={group.length} className="px-4 py-3 border-r border-[#E0E5F2] text-[11px] font-black text-[#19D5C5] text-right align-middle">
-                                                <button
-                                                  data-payment-trigger={firstEntry.id}
-                                                  onClick={() => setActivePaymentDropdown(prev => prev === firstEntry.id ? null : firstEntry.id)}
-                                                  className="w-full text-right hover:bg-[#F4F7FE] rounded-lg py-1 px-2 transition-all font-black text-[#19D5C5] cursor-pointer"
-                                                >
-                                                  {groupPaid > 0 ? `$${groupPaid.toLocaleString()}` : <span className="text-[#A3AED0]">$0</span>}
-                                                </button>
-                                                {activePaymentDropdown === firstEntry.id && (() => {
-                                                  const triggerEl = document.querySelector(`[data-payment-trigger="${firstEntry.id}"]`);
-                                                  const rect = triggerEl?.getBoundingClientRect();
-                                                  if (!rect) return null;
+                                        {
+                                          isFirstOfGroup && (() => {
+                                            const groupTotal = group.reduce((sum, g) => sum + (g.total_price || 0), 0);
+                                            const groupPaid = group.reduce((sum, g) => sum + (g.amount_paid || 0), 0);
+                                            const groupRemaining = groupTotal - groupPaid;
+                                            return (
+                                              <>
+                                                <td rowSpan={group.length} className="px-4 py-3 border-r border-[#E0E5F2] text-[11px] font-black text-[#1B2559] text-center bg-[#F4F7FE]/10 align-middle">
+                                                  ${groupTotal.toLocaleString()}
+                                                </td>
+                                                <td rowSpan={group.length} className="px-4 py-3 border-r border-[#E0E5F2] text-[11px] font-black text-[#19D5C5] text-center align-middle">
+                                                  <button
+                                                    data-payment-trigger={firstEntry.id}
+                                                    onClick={() => setActivePaymentDropdown(prev => prev === firstEntry.id ? null : firstEntry.id)}
+                                                    className="w-full text-center hover:bg-[#F4F7FE] rounded-lg py-1 px-2 transition-all font-black text-[#19D5C5] cursor-pointer"
+                                                  >
+                                                    {groupPaid > 0 ? `$${groupPaid.toLocaleString()}` : <span className="text-[#A3AED0]">$0</span>}
+                                                  </button>
+                                                  {activePaymentDropdown === firstEntry.id && (() => {
+                                                    const triggerEl = document.querySelector(`[data-payment-trigger="${firstEntry.id}"]`);
+                                                    const rect = triggerEl?.getBoundingClientRect();
+                                                    if (!rect) return null;
 
-                                                  const groupAba = group.reduce((s, g) => s + (Number(g.paid_aba) || 0), 0);
-                                                  const groupCashUsd = group.reduce((s, g) => s + (Number(g.paid_cash_usd) || 0), 0);
-                                                  const groupCashKhr = group.reduce((s, g) => s + (Number(g.paid_cash_khr) || 0), 0);
+                                                    const groupAba = group.reduce((s, g) => s + (Number(g.paid_aba) || 0), 0);
+                                                    const groupCashUsd = group.reduce((s, g) => s + (Number(g.paid_cash_usd) || 0), 0);
+                                                    const groupCashKhr = group.reduce((s, g) => s + (Number(g.paid_cash_khr) || 0), 0);
 
-                                                  const applyPayment = (field: 'paid_aba' | 'paid_cash_usd' | 'paid_cash_khr', value: number) => {
-                                                    const exchangeRate = Number(firstEntry.applied_exchange_rate) || 4100;
-                                                    // Capture previous state for undo
-                                                    const prevState = {
-                                                      paid_aba: Number(firstEntry.paid_aba) || 0,
-                                                      paid_cash_usd: Number(firstEntry.paid_cash_usd) || 0,
-                                                      paid_cash_khr: Number(firstEntry.paid_cash_khr) || 0,
-                                                      amount_paid: Number(firstEntry.amount_paid) || 0,
-                                                      amount_remaining: Number(firstEntry.amount_remaining) || 0,
+                                                    const applyPayment = (field: 'paid_aba' | 'paid_cash_usd' | 'paid_cash_khr', value: number) => {
+                                                      const exchangeRate = Number(firstEntry.applied_exchange_rate) || 4100;
+                                                      // Capture previous state for undo
+                                                      const prevState = {
+                                                        paid_aba: Number(firstEntry.paid_aba) || 0,
+                                                        paid_cash_usd: Number(firstEntry.paid_cash_usd) || 0,
+                                                        paid_cash_khr: Number(firstEntry.paid_cash_khr) || 0,
+                                                        amount_paid: Number(firstEntry.amount_paid) || 0,
+                                                        amount_remaining: Number(firstEntry.amount_remaining) || 0,
+                                                      };
+                                                      const updates: any = { [field]: value };
+                                                      // Recalc total paid for this entry (convert KHR to USD)
+                                                      const newAba = field === 'paid_aba' ? value : prevState.paid_aba;
+                                                      const newCashUsd = field === 'paid_cash_usd' ? value : prevState.paid_cash_usd;
+                                                      const newCashKhr = field === 'paid_cash_khr' ? value : prevState.paid_cash_khr;
+                                                      const khrInUsd = Math.round((newCashKhr / exchangeRate) * 100) / 100;
+                                                      const totalPaidOnFirst = newAba + newCashUsd + khrInUsd;
+
+                                                      // Add or subtract from the existing remaining amount based on payment difference
+                                                      const paymentDiff = totalPaidOnFirst - prevState.amount_paid;
+
+                                                      updates.amount_paid = totalPaidOnFirst;
+                                                      updates.amount_remaining = prevState.amount_remaining - paymentDiff;
+                                                      handleUpdateEntry(firstEntry.id, updates);
+                                                      // Set undo
+                                                      if (paymentUndoTimer) clearTimeout(paymentUndoTimer);
+                                                      setPaymentUndo({ entryId: firstEntry.id, prev: prevState });
+                                                      const timer = setTimeout(() => { setPaymentUndo(null); setPaymentUndoTimer(null); }, 6000);
+                                                      setPaymentUndoTimer(timer);
                                                     };
-                                                    const updates: any = { [field]: value };
-                                                    // Recalc total paid for this entry (convert KHR to USD)
-                                                    const newAba = field === 'paid_aba' ? value : prevState.paid_aba;
-                                                    const newCashUsd = field === 'paid_cash_usd' ? value : prevState.paid_cash_usd;
-                                                    const newCashKhr = field === 'paid_cash_khr' ? value : prevState.paid_cash_khr;
-                                                    const khrInUsd = Math.round((newCashKhr / exchangeRate) * 100) / 100;
-                                                    const totalPaidOnFirst = newAba + newCashUsd + khrInUsd;
-                                                    // Sum paid from other entries in group
-                                                    const otherPaid = group.filter(g => g.id !== firstEntry.id).reduce((s, g) => s + (Number(g.amount_paid) || 0), 0);
-                                                    const totalGroupPaid = totalPaidOnFirst + otherPaid;
-                                                    updates.amount_paid = totalPaidOnFirst;
-                                                    updates.amount_remaining = groupTotal - totalGroupPaid;
-                                                    handleUpdateEntry(firstEntry.id, updates);
-                                                    // Set undo
-                                                    if (paymentUndoTimer) clearTimeout(paymentUndoTimer);
-                                                    setPaymentUndo({ entryId: firstEntry.id, prev: prevState });
-                                                    const timer = setTimeout(() => { setPaymentUndo(null); setPaymentUndoTimer(null); }, 6000);
-                                                    setPaymentUndoTimer(timer);
-                                                  };
 
-                                                  return createPortal(
-                                                    <>
-                                                      <div className="fixed inset-0 z-[9998]" onClick={() => setActivePaymentDropdown(null)} />
-                                                      <div
-                                                        className="fixed bg-white border border-[#E0E5F2] rounded-2xl shadow-2xl z-[9999] p-4 w-[240px] animate-in fade-in slide-in-from-top-2 duration-150"
-                                                        style={{ top: rect.bottom + 4, left: rect.left - 80 }}
-                                                      >
+                                                    return createPortal(
+                                                      <>
+                                                        <div className="fixed inset-0 z-[9998]" onClick={() => setActivePaymentDropdown(null)} />
+                                                        <div
+                                                          className="fixed bg-white border border-[#E0E5F2] rounded-2xl shadow-2xl z-[9999] p-4 w-[240px] animate-in fade-in slide-in-from-top-2 duration-150"
+                                                          style={{ top: rect.bottom + 4, left: rect.left - 80 }}
+                                                        >
 
-                                                        {/* ABA */}
-                                                        <div className="mb-2">
-                                                          <div className="flex items-center gap-2 mb-1">
-                                                            <div className="w-2 h-2 rounded-full bg-[#4318FF]" />
-                                                            <span className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest">ABA Bank</span>
-                                                          </div>
-                                                          <div className="relative">
-                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#A3AED0]">$</span>
-                                                            <input
-                                                              type="text"
-                                                              inputMode="numeric"
-                                                              className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl pl-7 pr-3 py-2 text-[11px] font-black text-[#4318FF] outline-none focus:border-[#4318FF]/30 text-right"
-                                                              defaultValue={groupAba || ''}
-                                                              onBlur={(e) => applyPayment('paid_aba', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
-                                                              onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                                                            />
-                                                          </div>
-                                                        </div>
-
-                                                        {/* Cash USD */}
-                                                        <div className="mb-2">
-                                                          <div className="flex items-center gap-2 mb-1">
-                                                            <div className="w-2 h-2 rounded-full bg-[#19D5C5]" />
-                                                            <span className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest">Cash USD</span>
-                                                          </div>
-                                                          <div className="relative">
-                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#A3AED0]">$</span>
-                                                            <input
-                                                              type="text"
-                                                              inputMode="numeric"
-                                                              className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl pl-7 pr-3 py-2 text-[11px] font-black text-[#19D5C5] outline-none focus:border-[#19D5C5]/30 text-right"
-                                                              defaultValue={groupCashUsd || ''}
-                                                              onBlur={(e) => applyPayment('paid_cash_usd', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
-                                                              onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                                                            />
-                                                          </div>
-                                                        </div>
-
-                                                        {/* Cash KHR */}
-                                                        <div className="mb-2">
-                                                          <div className="flex items-center gap-2 mb-1">
-                                                            <div className="w-2 h-2 rounded-full bg-[#FFB547]" />
-                                                            <span className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest">Cash KHR</span>
-                                                          </div>
-                                                          <div className="relative">
-                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#A3AED0]">៛</span>
-                                                            <input
-                                                              type="text"
-                                                              inputMode="numeric"
-                                                              className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl pl-7 pr-3 py-2 text-[11px] font-black text-[#FFB547] outline-none focus:border-[#FFB547]/30 text-right"
-                                                              defaultValue={groupCashKhr || ''}
-                                                              onBlur={(e) => applyPayment('paid_cash_khr', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
-                                                              onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                                                            />
-                                                          </div>
-                                                        </div>
-
-                                                        {/* Divider + Remaining */}
-                                                        {(() => {
-                                                          const exchangeRate = Number(firstEntry.applied_exchange_rate) || 4100;
-                                                          const khrRemaining = Math.round(groupRemaining * exchangeRate);
-                                                          return (
-                                                            <div className="border-t border-[#E0E5F2] pt-2 mt-3 flex justify-between items-center">
-                                                              <span className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest">Remaining</span>
-                                                              <div className="text-right">
-                                                                <span className={`text-[12px] font-black ${groupRemaining > 0 ? 'text-[#EE5D50]' : 'text-[#19D5C5]'}`}>${groupRemaining.toLocaleString()}</span>
-                                                                {groupRemaining > 0 && (
-                                                                  <p className="text-[9px] font-bold text-[#A3AED0] mt-0.5">ឬ ៛{khrRemaining.toLocaleString()}</p>
-                                                                )}
-                                                              </div>
+                                                          {/* ABA */}
+                                                          <div className="mb-2">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                              <div className="w-2 h-2 rounded-full bg-[#4318FF]" />
+                                                              <span className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest">ABA Bank</span>
                                                             </div>
-                                                          );
-                                                        })()}
-                                                      </div>
-                                                    </>,
-                                                    document.body
-                                                  );
-                                                })()}
-                                              </td>
-                                              <td rowSpan={group.length} className="px-4 py-3 border-r border-[#E0E5F2] text-[11px] font-black text-[#EE5D50] text-right align-middle">
-                                                ${groupRemaining.toLocaleString()}
-                                              </td>
-                                            </>
-                                          );
-                                        })()}
+                                                            <div className="relative">
+                                                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#A3AED0]">$</span>
+                                                              <input
+                                                                type="text"
+                                                                inputMode="numeric"
+                                                                className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl pl-7 pr-3 py-2 text-[11px] font-black text-[#4318FF] outline-none focus:border-[#4318FF]/30 text-right"
+                                                                defaultValue={groupAba || ''}
+                                                                onBlur={(e) => applyPayment('paid_aba', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
+                                                                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                                              />
+                                                            </div>
+                                                          </div>
+
+                                                          {/* Cash USD */}
+                                                          <div className="mb-2">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                              <div className="w-2 h-2 rounded-full bg-[#19D5C5]" />
+                                                              <span className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest">Cash USD</span>
+                                                            </div>
+                                                            <div className="relative">
+                                                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#A3AED0]">$</span>
+                                                              <input
+                                                                type="text"
+                                                                inputMode="numeric"
+                                                                className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl pl-7 pr-3 py-2 text-[11px] font-black text-[#19D5C5] outline-none focus:border-[#19D5C5]/30 text-right"
+                                                                defaultValue={groupCashUsd || ''}
+                                                                onBlur={(e) => applyPayment('paid_cash_usd', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
+                                                                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                                              />
+                                                            </div>
+                                                          </div>
+
+                                                          {/* Cash KHR */}
+                                                          <div className="mb-2">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                              <div className="w-2 h-2 rounded-full bg-[#FFB547]" />
+                                                              <span className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest">Cash KHR</span>
+                                                            </div>
+                                                            <div className="relative">
+                                                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#A3AED0]">៛</span>
+                                                              <input
+                                                                type="text"
+                                                                inputMode="numeric"
+                                                                className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl pl-7 pr-3 py-2 text-[11px] font-black text-[#FFB547] outline-none focus:border-[#FFB547]/30 text-right"
+                                                                defaultValue={groupCashKhr || ''}
+                                                                onBlur={(e) => applyPayment('paid_cash_khr', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
+                                                                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                                              />
+                                                            </div>
+                                                          </div>
+
+                                                          {/* Divider + Remaining */}
+                                                          {(() => {
+                                                            const exchangeRate = Number(firstEntry.applied_exchange_rate) || 4100;
+                                                            const khrRemaining = Math.round(groupRemaining * exchangeRate);
+                                                            return (
+                                                              <div className="border-t border-[#E0E5F2] pt-2 mt-3 flex justify-between items-center">
+                                                                <span className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest">Remaining</span>
+                                                                <div className="text-right">
+                                                                  <span className={`text-[12px] font-black ${groupRemaining > 0 ? 'text-[#EE5D50]' : 'text-[#19D5C5]'}`}>${groupRemaining.toLocaleString()}</span>
+                                                                  {groupRemaining > 0 && (
+                                                                    <p className="text-[9px] font-bold text-[#A3AED0] mt-0.5">ឬ ៛{khrRemaining.toLocaleString()}</p>
+                                                                  )}
+                                                                </div>
+                                                              </div>
+                                                            );
+                                                          })()}
+                                                        </div>
+                                                      </>,
+                                                      document.body
+                                                    );
+                                                  })()}
+                                                </td>
+                                                <td rowSpan={group.length} className="px-4 py-3 border-r border-[#E0E5F2] text-[11px] font-black text-[#EE5D50] text-center align-middle">
+                                                  <div className="flex items-center justify-center w-full group/input relative text-[#EE5D50] gap-[1px]">
+                                                    <span className="text-[10px] font-black pointer-events-none transition-transform duration-200 group-hover/input:-translate-x-1">$</span>
+                                                    <input
+                                                      type="text"
+                                                      inputMode="numeric"
+                                                      style={{ width: `${Math.max(String(firstEntry.amount_remaining ?? '').length, 1)}ch` }}
+                                                      className={cn(
+                                                        "bg-transparent outline-none focus:bg-[#F4F7FE] border border-transparent focus:border-[#E0E5F2] rounded-lg py-1 transition-transform duration-200 text-left font-black p-0",
+                                                        "group-hover/input:translate-x-1 text-[#EE5D50] inline-block"
+                                                      )}
+                                                      value={firstEntry.amount_remaining ?? ''}
+                                                      onChange={(e) => {
+                                                        const newRemaining = Number(e.target.value.replace(/[^0-9.]/g, ''));
+                                                        handleUpdateEntry(firstEntry.id, {
+                                                          amount_remaining: newRemaining
+                                                        });
+                                                      }}
+                                                    />
+                                                  </div>
+                                                </td>
+                                              </>
+                                            );
+                                          })()
+                                        }
 
                                         {/* Doctor - Merged */}
-                                        {isFirstOfGroup && (
-                                          <td rowSpan={group.length} className="px-4 py-3 border-r border-[#E0E5F2]">
-                                            <button
-                                              data-staff-trigger={`doctor-${firstEntry.id}`}
-                                              onClick={() => setActiveStaffDropdown(prev => prev?.groupKey === firstEntry.id && prev?.type === 'doctor' ? null : { groupKey: firstEntry.id, type: 'doctor' })}
-                                              className="w-full text-left text-[10px] font-black uppercase text-[#1B2559] hover:bg-[#F4F7FE] rounded-lg py-1.5 px-2 transition-all flex items-center justify-between gap-1 group/btn"
-                                            >
-                                              <span className={firstEntry.doctor_id ? 'text-[#1B2559]' : 'text-[#A3AED0]'}>
-                                                {firstEntry.doctor_id ? (staff.find(s => s.id === firstEntry.doctor_id)?.name || 'Unknown') : 'Select'}
-                                              </span>
-                                              <ChevronDown className="w-3 h-3 text-[#A3AED0] opacity-0 group-hover/btn:opacity-100 transition-opacity" />
-                                            </button>
-                                            {activeStaffDropdown?.groupKey === firstEntry.id && activeStaffDropdown?.type === 'doctor' && (() => {
-                                              const triggerEl = document.querySelector(`[data-staff-trigger="doctor-${firstEntry.id}"]`);
-                                              const rect = triggerEl?.getBoundingClientRect();
-                                              if (!rect) return null;
-                                              return createPortal(
-                                                <>
-                                                  <div className="fixed inset-0 z-[9998]" onClick={() => setActiveStaffDropdown(null)} />
-                                                  <div
-                                                    className="fixed bg-white border border-[#E0E5F2] rounded-2xl shadow-2xl z-[9999] overflow-hidden py-1 max-h-[200px] overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-150"
-                                                    style={{ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 160) }}
-                                                  >
-                                                    {staff.filter(s => s.role === 'Doctor').map(s => (
-                                                      <button
-                                                        key={s.id}
-                                                        onClick={() => {
-                                                          group.forEach(g => handleUpdateEntry(g.id, { doctor_id: s.id }));
-                                                          setActiveStaffDropdown(null);
-                                                        }}
-                                                        className={`w-full text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-wide flex items-center gap-2.5 transition-colors border-b border-[#F4F7FE] last:border-0 ${firstEntry.doctor_id === s.id ? 'bg-[#F4F7FE] text-[#4318FF]' : 'text-[#1B2559] hover:bg-[#F4F7FE]'
-                                                          }`}
-                                                      >
-                                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black text-white ${firstEntry.doctor_id === s.id ? 'bg-[#4318FF]' : 'bg-[#A3AED0]'
-                                                          }`}>
-                                                          {s.name?.charAt(0)}
-                                                        </div>
-                                                        {s.name}
-                                                      </button>
-                                                    ))}
-                                                  </div>
-                                                </>,
-                                                document.body
-                                              );
-                                            })()}
-                                          </td>
-                                        )}
+                                        {
+                                          isFirstOfGroup && (
+                                            <td rowSpan={group.length} className="px-4 py-3 align-middle border-r border-[#E0E5F2]">
+                                              <button
+                                                data-staff-trigger={`doctor-${firstEntry.id}`}
+                                                onClick={() => setActiveStaffDropdown(prev => prev?.groupKey === firstEntry.id && prev?.type === 'doctor' ? null : { groupKey: firstEntry.id, type: 'doctor' })}
+                                                className="w-full text-center text-[10px] font-black uppercase text-[#1B2559] hover:bg-[#F4F7FE] rounded-lg py-1.5 px-2 transition-all group/btn relative flex items-center justify-center overflow-hidden"
+                                              >
+                                                <span className={cn(
+                                                  "transition-transform duration-200 block z-10",
+                                                  firstEntry.doctor_id ? 'text-[#1B2559]' : 'text-[#A3AED0]',
+                                                  "group-hover/btn:-translate-x-2"
+                                                )}>
+                                                  {firstEntry.doctor_id ? (staff.find(s => s.id === firstEntry.doctor_id)?.name || 'Unknown') : 'Select'}
+                                                </span>
+                                                <ChevronDown className="w-3 h-3 text-[#A3AED0] opacity-0 group-hover/btn:opacity-100 transition-all duration-200 absolute right-1/2 translate-x-12" />
+                                              </button>
+                                              {activeStaffDropdown?.groupKey === firstEntry.id && activeStaffDropdown?.type === 'doctor' && (() => {
+                                                const triggerEl = document.querySelector(`[data-staff-trigger="doctor-${firstEntry.id}"]`);
+                                                const rect = triggerEl?.getBoundingClientRect();
+                                                if (!rect) return null;
+                                                return createPortal(
+                                                  <>
+                                                    <div className="fixed inset-0 z-[9998]" onClick={() => setActiveStaffDropdown(null)} />
+                                                    <div
+                                                      className="fixed bg-white border border-[#E0E5F2] rounded-2xl shadow-2xl z-[9999] overflow-hidden py-1 max-h-[200px] overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-150"
+                                                      style={{ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 160) }}
+                                                    >
+                                                      {staff.filter(s => s.role === 'Doctor').map(s => (
+                                                        <button
+                                                          key={s.id}
+                                                          onClick={() => {
+                                                            group.forEach(g => handleUpdateEntry(g.id, { doctor_id: s.id }));
+                                                            setActiveStaffDropdown(null);
+                                                          }}
+                                                          className={`w-full text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-wide flex items-center gap-2.5 transition-colors border-b border-[#F4F7FE] last:border-0 ${firstEntry.doctor_id === s.id ? 'bg-[#F4F7FE] text-[#4318FF]' : 'text-[#1B2559] hover:bg-[#F4F7FE]'
+                                                            }`}
+                                                        >
+                                                          <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black text-white ${firstEntry.doctor_id === s.id ? 'bg-[#4318FF]' : 'bg-[#A3AED0]'
+                                                            }`}>
+                                                            {s.name?.charAt(0)}
+                                                          </div>
+                                                          {s.name}
+                                                        </button>
+                                                      ))}
+                                                    </div>
+                                                  </>,
+                                                  document.body
+                                                );
+                                              })()}
+                                            </td>
+                                          )
+                                        }
 
                                         {/* Cashier - Merged */}
-                                        {isFirstOfGroup && (
-                                          <td rowSpan={group.length} className="px-4 py-3">
-                                            <button
-                                              data-staff-trigger={`cashier-${firstEntry.id}`}
-                                              onClick={() => setActiveStaffDropdown(prev => prev?.groupKey === firstEntry.id && prev?.type === 'cashier' ? null : { groupKey: firstEntry.id, type: 'cashier' })}
-                                              className="w-full text-left text-[10px] font-black uppercase text-[#19D5C5] hover:bg-[#F4F7FE] rounded-lg py-1.5 px-2 transition-all flex items-center justify-between gap-1 group/btn"
-                                            >
-                                              <span className={firstEntry.cashier_id ? 'text-[#19D5C5]' : 'text-[#A3AED0]'}>
-                                                {firstEntry.cashier_id ? (staff.find(s => s.id === firstEntry.cashier_id)?.name || 'Unknown') : 'Select'}
-                                              </span>
-                                              <ChevronDown className="w-3 h-3 text-[#A3AED0] opacity-0 group-hover/btn:opacity-100 transition-opacity" />
-                                            </button>
-                                            {activeStaffDropdown?.groupKey === firstEntry.id && activeStaffDropdown?.type === 'cashier' && (() => {
-                                              const triggerEl = document.querySelector(`[data-staff-trigger="cashier-${firstEntry.id}"]`);
-                                              const rect = triggerEl?.getBoundingClientRect();
-                                              if (!rect) return null;
-                                              return createPortal(
-                                                <>
-                                                  <div className="fixed inset-0 z-[9998]" onClick={() => setActiveStaffDropdown(null)} />
-                                                  <div
-                                                    className="fixed bg-white border border-[#E0E5F2] rounded-2xl shadow-2xl z-[9999] overflow-hidden py-1 max-h-[200px] overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-150"
-                                                    style={{ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 160) }}
-                                                  >
-                                                    {staff.filter(s => s.role === 'Receptionist').map(s => (
-                                                      <button
-                                                        key={s.id}
-                                                        onClick={() => {
-                                                          group.forEach(g => handleUpdateEntry(g.id, { cashier_id: s.id }));
-                                                          setActiveStaffDropdown(null);
-                                                        }}
-                                                        className={`w-full text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-wide flex items-center gap-2.5 transition-colors border-b border-[#F4F7FE] last:border-0 ${firstEntry.cashier_id === s.id ? 'bg-[#F4F7FE] text-[#19D5C5]' : 'text-[#1B2559] hover:bg-[#F4F7FE]'
-                                                          }`}
-                                                      >
-                                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black text-white ${firstEntry.cashier_id === s.id ? 'bg-[#19D5C5]' : 'bg-[#A3AED0]'
-                                                          }`}>
-                                                          {s.name?.charAt(0)}
-                                                        </div>
-                                                        {s.name}
-                                                      </button>
-                                                    ))}
-                                                  </div>
-                                                </>,
-                                                document.body
-                                              );
-                                            })()}
-                                          </td>
-                                        )}
-                                      </tr>
+                                        {
+                                          isFirstOfGroup && (
+                                            <td rowSpan={group.length} className="px-4 py-3 align-middle border-r border-[#E0E5F2]">
+                                              <button
+                                                data-staff-trigger={`cashier-${firstEntry.id}`}
+                                                onClick={() => setActiveStaffDropdown(prev => prev?.groupKey === firstEntry.id && prev?.type === 'cashier' ? null : { groupKey: firstEntry.id, type: 'cashier' })}
+                                                className="w-full text-center text-[10px] font-black uppercase text-[#19D5C5] hover:bg-[#F4F7FE] rounded-lg py-1.5 px-2 transition-all group/btn relative flex items-center justify-center overflow-hidden"
+                                              >
+                                                <span className={cn(
+                                                  "transition-transform duration-200 block z-10",
+                                                  firstEntry.cashier_id ? 'text-[#19D5C5]' : 'text-[#A3AED0]',
+                                                  "group-hover/btn:-translate-x-2"
+                                                )}>
+                                                  {firstEntry.cashier_id ? (staff.find(s => s.id === firstEntry.cashier_id)?.name || 'Unknown') : 'Select'}
+                                                </span>
+                                                <ChevronDown className="w-3 h-3 text-[#A3AED0] opacity-0 group-hover/btn:opacity-100 transition-all duration-200 absolute right-1/2 translate-x-12" />
+                                              </button>
+                                              {activeStaffDropdown?.groupKey === firstEntry.id && activeStaffDropdown?.type === 'cashier' && (() => {
+                                                const triggerEl = document.querySelector(`[data-staff-trigger="cashier-${firstEntry.id}"]`);
+                                                const rect = triggerEl?.getBoundingClientRect();
+                                                if (!rect) return null;
+                                                return createPortal(
+                                                  <>
+                                                    <div className="fixed inset-0 z-[9998]" onClick={() => setActiveStaffDropdown(null)} />
+                                                    <div
+                                                      className="fixed bg-white border border-[#E0E5F2] rounded-2xl shadow-2xl z-[9999] overflow-hidden py-1 max-h-[200px] overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-150"
+                                                      style={{ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 160) }}
+                                                    >
+                                                      {staff.filter(s => s.role === 'Receptionist').map(s => (
+                                                        <button
+                                                          key={s.id}
+                                                          onClick={() => {
+                                                            group.forEach(g => handleUpdateEntry(g.id, { cashier_id: s.id }));
+                                                            setActiveStaffDropdown(null);
+                                                          }}
+                                                          className={`w-full text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-wide flex items-center gap-2.5 transition-colors border-b border-[#F4F7FE] last:border-0 ${firstEntry.cashier_id === s.id ? 'bg-[#F4F7FE] text-[#19D5C5]' : 'text-[#1B2559] hover:bg-[#F4F7FE]'
+                                                            }`}
+                                                        >
+                                                          <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black text-white ${firstEntry.cashier_id === s.id ? 'bg-[#19D5C5]' : 'bg-[#A3AED0]'
+                                                            }`}>
+                                                            {s.name?.charAt(0)}
+                                                          </div>
+                                                          {s.name}
+                                                        </button>
+                                                      ))}
+                                                    </div>
+                                                  </>,
+                                                  document.body
+                                                );
+                                              })()}
+                                            </td>
+                                          )
+                                        }
+                                      </tr >
                                     );
                                   })}
                                 </tbody>
@@ -1516,7 +1576,7 @@ export default function LedgerPage() {
                 </table>
               </div>
             </div>
-          </div>
+          </div >
         ) : (
           /* Stream / List View with Minimized/Maximized behavior */
           <div className="bg-white border border-[#E0E5F2] rounded-[1.5rem] shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -2156,7 +2216,7 @@ export default function LedgerPage() {
                       const val = Number(e.target.value);
                       handleUpdateEntry(managedEntry.id, {
                         amount_paid: val,
-                        amount_remaining: Number(managedEntry.total_price) - val
+                        amount_remaining: (managedEntry.amount_remaining || 0) - (val - (managedEntry.amount_paid || 0))
                       });
                     }}
                   />
