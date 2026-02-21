@@ -89,6 +89,8 @@ export default function LedgerPage() {
   const { isCollapsed, showSummary, setShowSummary } = useSidebar();
   const { usdToKhr } = useCurrency();
   const [treatments, setTreatments] = useState<any[]>([]);
+  const [inventory, setInventory] = useState<any[]>([]);
+  const [activePricePrompt, setActivePricePrompt] = useState<{ entryId: string, itemId: string, name: string, type: 'treatment' | 'medicine', price?: string } | null>(null);
   const [staff, setStaff] = useState<any[]>([]);
   const [quickPatient, setQuickPatient] = useState({
     name: "",
@@ -152,6 +154,9 @@ export default function LedgerPage() {
     const { data: treatmentsData } = await supabase.from('treatments').select('*').eq('branch_id', currentBranch.id);
     if (treatmentsData) setTreatments(treatmentsData);
 
+    const { data: inventoryData } = await supabase.from('inventory').select('*').eq('branch_id', currentBranch.id);
+    if (inventoryData) setInventory(inventoryData);
+
     const { data: staffData } = await supabase.from('staff').select('*').eq('branch_id', currentBranch.id);
     if (staffData) {
       setStaff(staffData);
@@ -174,6 +179,7 @@ export default function LedgerPage() {
         *,
         patients (name, gender, age),
         treatments (name),
+        inventory (name),
         doctor:staff!doctor_id (name)
       `)
       .eq('branch_id', currentBranch?.id)
@@ -195,6 +201,7 @@ export default function LedgerPage() {
         *,
         patients (name, phone, gender, age),
         treatments (name),
+        inventory (name),
         doctor:staff!doctor_id (name),
         cashier:staff!cashier_id (name)
       `)
@@ -385,6 +392,8 @@ export default function LedgerPage() {
   }
 
   async function handleUpdateEntry(id: string, updates: any) {
+    const prevEntry = viewMode === 'list' ? entries.find(e => e.id === id) : monthEntries.find(e => e.id === id);
+
     if (viewMode === 'list') {
       setEntries(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
     } else {
@@ -392,9 +401,37 @@ export default function LedgerPage() {
     }
 
     const { error } = await supabase.from('ledger_entries').update(updates).eq('id', id);
+
     if (!error) {
       setManagedEntry(null);
       // We no longer trigger a full data re-fetch directly. The local state update handles it instantly.
+
+      // --- STOCK DEDUCTION LOGIC ---
+      if (prevEntry) {
+        const itemType = updates.item_type !== undefined ? updates.item_type : prevEntry.item_type;
+
+        if (itemType === 'medicine') {
+          const oldAmountRemaining = typeof prevEntry.amount_remaining === 'number' ? prevEntry.amount_remaining : Number(prevEntry.amount_remaining) || 0;
+          const newAmountRemaining = updates.amount_remaining !== undefined ? Number(updates.amount_remaining) || 0 : oldAmountRemaining;
+
+          const wasAlreadyPaid = oldAmountRemaining <= 0;
+          const isNowPaid = newAmountRemaining <= 0;
+          const inventoryId = updates.inventory_id !== undefined ? updates.inventory_id : prevEntry.inventory_id;
+          const qty = updates.quantity !== undefined ? updates.quantity : (prevEntry.quantity || 1);
+
+          if (isNowPaid && !wasAlreadyPaid && inventoryId) {
+            // Medicine is fully paid just now. Deduct stock.
+            const { data: invData } = await supabase.from('inventory').select('stock_level').eq('id', inventoryId).single();
+            if (invData) {
+              const newStock = Math.max((invData.stock_level || 0) - qty, 0);
+              await supabase.from('inventory').update({ stock_level: newStock }).eq('id', inventoryId);
+              fetchStaticData(); // refresh UI local state
+            }
+          }
+        }
+      }
+      // ----------------------------
+
     } else {
       // Revert if error
       if (viewMode === 'list') {
@@ -1104,9 +1141,9 @@ export default function LedgerPage() {
                                               ref={(el) => { if (el && activeTreatmentLookup?.id === entry.id) el.setAttribute('data-treatment-input', entry.id); }}
                                               className="flex-1 bg-transparent outline-none focus:bg-[#F4F7FE] px-1 rounded-lg transition-all"
                                               placeholder="Select Treatment..."
-                                              value={(activeTreatmentLookup && activeTreatmentLookup.id === entry.id) ? activeTreatmentLookup.query : (entry.description || entry.treatments?.name || "")}
+                                              value={(activeTreatmentLookup && activeTreatmentLookup.id === entry.id) ? activeTreatmentLookup.query : (entry.description || entry.treatments?.name || entry.inventory?.name || "")}
                                               onChange={(e) => setActiveTreatmentLookup({ id: entry.id, query: e.target.value })}
-                                              onFocus={() => setActiveTreatmentLookup({ id: entry.id, query: entry.description || entry.treatments?.name || "" })}
+                                              onFocus={() => setActiveTreatmentLookup({ id: entry.id, query: entry.description || entry.treatments?.name || entry.inventory?.name || "" })}
                                               onBlur={() => {
                                                 setTimeout(() => setActiveTreatmentLookup(null), 200);
                                               }}
@@ -1134,6 +1171,15 @@ export default function LedgerPage() {
                                             const inputEl = document.querySelector(`[data-treatment-input="${entry.id}"]`);
                                             const rect = inputEl?.getBoundingClientRect();
                                             if (!rect) return null;
+
+                                            const searchStr = activeTreatmentLookup?.query?.toLowerCase() || "";
+                                            const filteredTreatments = treatments.filter(t => t.name.toLowerCase().includes(searchStr))
+                                              .map(t => ({ ...t, item_type: 'treatment' }));
+                                            const filteredInventory = inventory.filter(i => i.name.toLowerCase().includes(searchStr))
+                                              .map(i => ({ ...i, item_type: 'medicine', price: i.sell_price || 0 }));
+
+                                            const combinedOptions = [...filteredTreatments, ...filteredInventory];
+
                                             return createPortal(
                                               <div
                                                 className="fixed bg-white border border-[#E0E5F2] rounded-2xl shadow-2xl z-[9999] overflow-hidden py-1 max-h-[160px] overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2"
@@ -1143,40 +1189,85 @@ export default function LedgerPage() {
                                                   width: Math.max(rect.width + 100, 280),
                                                 }}
                                               >
-                                                {treatments.filter(t => t.name.toLowerCase().includes(activeTreatmentLookup?.query?.toLowerCase() || "")).map(t => (
+                                                {combinedOptions.map(t => (
                                                   <button
-                                                    key={t.id}
+                                                    key={t.item_type + t.id}
                                                     onMouseDown={(e) => {
                                                       e.preventDefault();
-                                                      handleUpdateEntry(entry.id, {
-                                                        treatment_id: t.id,
-                                                        description: t.name,
-                                                        unit_price: t.price,
-                                                        total_price: t.price * (entry.quantity || 1),
-                                                        amount_remaining: (entry.amount_remaining || 0) + ((t.price * (entry.quantity || 1)) - (entry.total_price || 0))
-                                                      });
-                                                      setActiveTreatmentLookup(null);
+                                                      if (t.price === 0) {
+                                                        setActivePricePrompt({ entryId: entry.id, itemId: t.id, name: t.name, type: t.item_type as 'treatment' | 'medicine' });
+                                                        setActiveTreatmentLookup(null);
+                                                      } else {
+                                                        const updateData: any = {
+                                                          description: t.name,
+                                                          unit_price: t.price,
+                                                          item_type: t.item_type,
+                                                          total_price: t.price * (entry.quantity || 1),
+                                                        };
+                                                        if (t.item_type === 'treatment') {
+                                                          updateData.treatment_id = t.id;
+                                                          updateData.inventory_id = null;
+                                                        } else {
+                                                          updateData.inventory_id = t.id;
+                                                          updateData.treatment_id = null;
+                                                        }
+                                                        updateData.amount_remaining = (entry.amount_remaining || 0) + ((t.price * (entry.quantity || 1)) - (entry.total_price || 0));
+                                                        handleUpdateEntry(entry.id, updateData);
+                                                        setActiveTreatmentLookup(null);
+                                                      }
                                                     }}
                                                     className="w-full text-left px-4 py-2 hover:bg-[#F4F7FE] text-[10px] font-black text-[#1B2559] flex justify-between items-center transition-colors border-b border-[#F4F7FE] last:border-0"
                                                   >
-                                                    <span>{t.name}</span>
+                                                    <div className="flex items-center gap-2">
+                                                      <span>{t.name}</span>
+                                                      {t.item_type === 'treatment' ? (
+                                                        <span className="text-[8px] font-black uppercase bg-[#19D5C5]/10 text-[#19D5C5] px-1.5 py-0.5 rounded-md tracking-widest">TRT</span>
+                                                      ) : (
+                                                        <span className="text-[8px] font-black uppercase bg-[#FFB547]/10 text-[#FFB547] px-1.5 py-0.5 rounded-md tracking-widest">MED</span>
+                                                      )}
+                                                    </div>
                                                     <span className="text-primary font-black">${t.price}</span>
                                                   </button>
                                                 ))}
-                                                {activeTreatmentLookup?.query && !treatments.some(t => t.name.toLowerCase() === activeTreatmentLookup.query.toLowerCase()) && (
-                                                  <button
-                                                    onMouseDown={(e) => {
-                                                      e.preventDefault();
-                                                      setQuickTreatment({ name: activeTreatmentLookup.query, duration: 15, price: 0 });
-                                                      setSelectedEntryIdForTreatment(entry.id);
-                                                      setIsAddingTreatment(true);
-                                                      setActiveTreatmentLookup(null);
-                                                    }}
-                                                    className="w-full text-left px-4 py-2 bg-primary/5 hover:bg-primary/10 text-primary transition-colors flex items-center gap-2 border-t border-[#E0E5F2]"
-                                                  >
-                                                    <Plus className="w-3.5 h-3.5" />
-                                                    <span className="text-[9px] font-black uppercase tracking-widest">Create New: {activeTreatmentLookup.query}</span>
-                                                  </button>
+                                                {activeTreatmentLookup?.query && combinedOptions.length === 0 && (
+                                                  <div className="flex flex-col border-t border-[#E0E5F2]">
+                                                    <button
+                                                      onMouseDown={(e) => {
+                                                        e.preventDefault();
+                                                        setQuickTreatment({ name: activeTreatmentLookup.query, duration: 15, price: 0 });
+                                                        setSelectedEntryIdForTreatment(entry.id);
+                                                        setIsAddingTreatment(true);
+                                                        setActiveTreatmentLookup(null);
+                                                      }}
+                                                      className="w-full text-left px-4 py-2 bg-primary/5 hover:bg-primary/10 text-primary transition-colors flex items-center gap-2 border-b border-[#F4F7FE]"
+                                                    >
+                                                      <Plus className="w-3.5 h-3.5" />
+                                                      <span className="text-[9px] font-black uppercase tracking-widest">Add as Treatment</span>
+                                                    </button>
+                                                    <button
+                                                      onMouseDown={async (e) => {
+                                                        e.preventDefault();
+                                                        if (!currentBranch) return;
+                                                        const name = activeTreatmentLookup.query;
+                                                        const { data } = await supabase.from('inventory').insert({
+                                                          name,
+                                                          category: 'Uncategorized',
+                                                          stock_level: 0,
+                                                          sell_price: 0,
+                                                          branch_id: currentBranch.id
+                                                        }).select().single();
+                                                        if (data) {
+                                                          setInventory(prev => [...prev, data]);
+                                                          setActivePricePrompt({ entryId: entry.id, itemId: data.id, name: data.name, type: 'medicine' });
+                                                        }
+                                                        setActiveTreatmentLookup(null);
+                                                      }}
+                                                      className="w-full text-left px-4 py-2 bg-[#FFB547]/5 hover:bg-[#FFB547]/10 text-[#FFB547] transition-colors flex items-center gap-2"
+                                                    >
+                                                      <Plus className="w-3.5 h-3.5" />
+                                                      <span className="text-[9px] font-black uppercase tracking-widest">Add as Medicine</span>
+                                                    </button>
+                                                  </div>
                                                 )}
                                               </div>,
                                               document.body
