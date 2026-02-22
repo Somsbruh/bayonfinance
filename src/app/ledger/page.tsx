@@ -131,6 +131,8 @@ export default function LedgerPage() {
   const [activePatientLookup, setActivePatientLookup] = useState<{ id: string, query: string } | null>(null);
   const [patientSearchResults, setPatientSearchResults] = useState<any[]>([]);
   const [selectedEntries, setSelectedEntries] = useState<string[]>([]);
+  const [isAddingNewMedicine, setIsAddingNewMedicine] = useState<{ entryId: string, name: string } | null>(null);
+  const [newMedicineForm, setNewMedicineForm] = useState({ name: '', price: '', unit: 'Piece' });
 
   useEffect(() => {
     setMounted(true);
@@ -1089,7 +1091,8 @@ export default function LedgerPage() {
                                               if (!rect) return null;
                                               return createPortal(
                                                 <div
-                                                  className="fixed bg-white border border-[#E0E5F2] rounded-2xl shadow-2xl z-[9999] overflow-hidden py-1 max-h-[300px] overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-150"
+                                                  data-treatment-portal="true"
+                                                  className="fixed bg-white border border-[#E0E5F2] rounded-2xl shadow-2xl z-[9999] overflow-hidden py-1 max-h-[160px] overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-150"
                                                   style={{ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width + 60, 250) }}
                                                 >
                                                   {patientSearchResults.map(p => (
@@ -1151,8 +1154,16 @@ export default function LedgerPage() {
                                               value={(activeTreatmentLookup && activeTreatmentLookup.id === entry.id) ? activeTreatmentLookup.query : (entry.description || entry.treatments?.name || entry.inventory?.name || "")}
                                               onChange={(e) => setActiveTreatmentLookup({ id: entry.id, query: e.target.value })}
                                               onFocus={() => setActiveTreatmentLookup({ id: entry.id, query: entry.description || entry.treatments?.name || entry.inventory?.name || "" })}
-                                              onBlur={() => {
-                                                setTimeout(() => setActiveTreatmentLookup(null), 200);
+                                              onBlur={(e) => {
+                                                setTimeout(() => {
+                                                  if (
+                                                    document.activeElement?.hasAttribute('data-price-input') ||
+                                                    document.activeElement?.closest('[data-treatment-portal="true"]')
+                                                  ) {
+                                                    return;
+                                                  }
+                                                  setActiveTreatmentLookup(null);
+                                                }, 200);
                                               }}
                                             />
                                             {/* Add + Delete buttons on hover */}
@@ -1240,6 +1251,7 @@ export default function LedgerPage() {
                                                     >
                                                       <span className="text-[12px] text-primary font-black pointer-events-none transition-transform duration-200 group-hover/price:-translate-x-1">$</span>
                                                       <input
+                                                        data-price-input="true"
                                                         type="text"
                                                         inputMode="numeric"
                                                         style={{ width: `${Math.max(String(t.price ?? '').length, 1) + 0.5}ch` }}
@@ -1285,21 +1297,11 @@ export default function LedgerPage() {
                                                       <span className="text-[9px] font-black uppercase tracking-widest">Add as Treatment</span>
                                                     </button>
                                                     <button
-                                                      onMouseDown={async (e) => {
+                                                      onMouseDown={(e) => {
                                                         e.preventDefault();
                                                         if (!currentBranch) return;
-                                                        const name = activeTreatmentLookup.query;
-                                                        const { data } = await supabase.from('inventory').insert({
-                                                          name,
-                                                          category: 'Uncategorized',
-                                                          stock_level: 0,
-                                                          sell_price: 0,
-                                                          branch_id: currentBranch.id
-                                                        }).select().single();
-                                                        if (data) {
-                                                          setInventory(prev => [...prev, data]);
-                                                          setActivePricePrompt({ entryId: entry.id, itemId: data.id, name: data.name, type: 'medicine' });
-                                                        }
+                                                        setIsAddingNewMedicine({ entryId: entry.id, name: activeTreatmentLookup.query });
+                                                        setNewMedicineForm({ name: activeTreatmentLookup.query, price: '', unit: 'Piece' });
                                                         setActiveTreatmentLookup(null);
                                                       }}
                                                       className="w-full text-left px-4 py-2 bg-[#FFB547]/5 hover:bg-[#FFB547]/10 text-[#FFB547] transition-colors flex items-center gap-2"
@@ -2885,6 +2887,106 @@ export default function LedgerPage() {
           </>
         )
       }
+
+      {isAddingNewMedicine && (
+        <>
+          <div className="fixed inset-0 z-[100] bg-[#1B2559]/20 backdrop-blur-sm" onClick={() => setIsAddingNewMedicine(null)} />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-[2rem] shadow-2xl z-[101] border border-[#E0E5F2] p-8 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-xl font-black text-[#1B2559] tracking-tight">Add New Medicine</h3>
+              <button
+                onClick={() => setIsAddingNewMedicine(null)}
+                className="w-10 h-10 flex items-center justify-center bg-[#F4F7FE] rounded-xl text-[#A3AED0] hover:text-[#EE5D50] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-5">
+              <div>
+                <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-[0.2em] mb-2 block">Medicine Name</label>
+                <input
+                  type="text"
+                  value={newMedicineForm.name}
+                  onChange={e => setNewMedicineForm({ ...newMedicineForm, name: e.target.value })}
+                  className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-2xl px-5 py-3.5 text-[12px] font-bold text-[#1B2559] focus:bg-white focus:border-primary/30 outline-none transition-all placeholder:text-[#A3AED0]/50"
+                  placeholder="e.g. Paracetamol 500mg"
+                  autoFocus
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-[0.2em] mb-2 block">Sell Price ($)</label>
+                  <div className="relative">
+                    <DollarIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A3AED0]" />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={newMedicineForm.price}
+                      onChange={e => setNewMedicineForm({ ...newMedicineForm, price: e.target.value.replace(/[^0-9.]/g, '') })}
+                      className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-2xl pl-10 pr-4 py-3.5 text-[12px] font-bold text-[#1B2559] focus:bg-white focus:border-primary/30 outline-none transition-all"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-[#A3AED0] uppercase tracking-[0.2em] mb-2 block">Selling Unit</label>
+                  <input
+                    type="text"
+                    value={newMedicineForm.unit}
+                    onChange={e => setNewMedicineForm({ ...newMedicineForm, unit: e.target.value })}
+                    className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-2xl px-5 py-3.5 text-[12px] font-bold text-[#1B2559] focus:bg-white focus:border-primary/30 outline-none transition-all"
+                    placeholder="e.g. Pill, Box, Card"
+                    list="unit-options"
+                  />
+                  <datalist id="unit-options">
+                    <option value="Piece" />
+                    <option value="Pill" />
+                    <option value="Box" />
+                    <option value="Card" />
+                    <option value="Bottle" />
+                  </datalist>
+                </div>
+              </div>
+            </div>
+            <div className="mt-8 pt-6 border-t border-[#F4F7FE] flex justify-end gap-3">
+              <button
+                onClick={() => setIsAddingNewMedicine(null)}
+                className="px-6 py-3.5 rounded-2xl text-[11px] font-black text-[#A3AED0] hover:bg-[#F4F7FE] hover:text-[#1B2559] uppercase tracking-widest transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!currentBranch || !newMedicineForm.name) return;
+                  const { data } = await supabase.from('inventory').insert({
+                    name: newMedicineForm.name,
+                    category: 'Uncategorized',
+                    stock_level: 0,
+                    sell_price: Number(newMedicineForm.price) || 0,
+                    unit: newMedicineForm.unit || 'Piece',
+                    branch_id: currentBranch.id
+                  }).select().single();
+                  if (data) {
+                    setInventory(prev => [...prev, data]);
+                    const currentEntry = monthEntries.find(e => e.id === isAddingNewMedicine.entryId) || { quantity: 1 };
+                    handleUpdateEntry(isAddingNewMedicine.entryId, {
+                      description: data.name,
+                      unit_price: data.sell_price,
+                      inventory_id: data.id,
+                      item_type: 'medicine',
+                      total_price: data.sell_price * (currentEntry.quantity || 1)
+                    });
+                  }
+                  setIsAddingNewMedicine(null);
+                }}
+                className="px-8 py-3.5 rounded-2xl bg-primary text-white text-[11px] font-black uppercase tracking-widest hover:bg-[#3311E0] shadow-md shadow-primary/20 transition-all"
+              >
+                Add Medicine
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       <DailyReportModal
         isOpen={isDailyReportOpen}
