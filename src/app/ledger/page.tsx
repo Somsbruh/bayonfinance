@@ -1044,7 +1044,7 @@ export default function LedgerPage() {
                                         {/* Patient Name + Gender/Age - Merged */}
                                         {isFirstOfGroup && (
                                           <td rowSpan={group.length} className="px-4 py-1.5 border-r border-[#E0E5F2] align-middle">
-                                            <div className="flex items-center gap-3 w-full max-w-[260px]">
+                                            <div className="flex items-center gap-2 w-full max-w-[260px]">
                                               {(firstEntry.patient_id || firstEntry.manual_patient_name) && (
                                                 <div
                                                   className="w-6 h-6 rounded-full bg-[#E2E8F0] flex flex-col items-center justify-center shrink-0 overflow-hidden shadow-sm cursor-pointer border border-[#cbd5e1]"
@@ -1060,7 +1060,7 @@ export default function LedgerPage() {
                                                 <input
                                                   data-patient-input={firstEntry.id}
                                                   className={cn(
-                                                    "w-full bg-transparent outline-none focus:bg-[#F4F7FE] px-1 py-0.5 rounded transition-all text-[11px] font-bold placeholder:text-[#A3AED0]/70",
+                                                    "w-full bg-transparent outline-none focus:bg-[#F4F7FE] py-0.5 rounded transition-all text-[11px] font-bold placeholder:text-[#A3AED0]/70",
                                                     firstEntry.patient_id ? "text-[#1B2559] group-hover:text-primary cursor-pointer hover:underline decoration-[2px] underline-offset-4" : "text-[#1B2559]"
                                                   )}
                                                   placeholder="Search Patient..."
@@ -1072,7 +1072,7 @@ export default function LedgerPage() {
                                                 />
                                                 {/* Gender & Age - Only show if data exists */}
                                                 {(firstEntry.patients?.gender || firstEntry.manual_gender || firstEntry.patients?.age || firstEntry.manual_age) ? (
-                                                  <div className="flex items-center gap-1.5 px-1 text-[#1B2559] mt-0.5 min-h-[14px]">
+                                                  <div className="flex items-center gap-1.5 text-[#1B2559] mt-0.5 min-h-[14px]">
                                                     <span className="text-[10px] font-bold">{firstEntry.patients?.gender === 'Male' ? 'M' : firstEntry.patients?.gender === 'Female' ? 'F' : firstEntry.manual_gender || ''}</span>
                                                     {(firstEntry.patients?.gender || firstEntry.manual_gender) && (firstEntry.patients?.age || firstEntry.manual_age) && (
                                                       <span className="text-[10px] text-[#1B2559] opacity-80 font-bold px-0.5">•</span>
@@ -1146,7 +1146,7 @@ export default function LedgerPage() {
                                           <div className="flex items-center gap-1">
                                             <input
                                               ref={(el) => { if (el && activeTreatmentLookup?.id === entry.id) el.setAttribute('data-treatment-input', entry.id); }}
-                                              className="flex-1 bg-transparent outline-none focus:bg-[#F4F7FE] px-1 rounded-lg transition-all"
+                                              className="flex-1 bg-transparent outline-none focus:bg-[#F4F7FE] rounded-lg transition-all"
                                               placeholder="Select Treatment..."
                                               value={(activeTreatmentLookup && activeTreatmentLookup.id === entry.id) ? activeTreatmentLookup.query : (entry.description || entry.treatments?.name || entry.inventory?.name || "")}
                                               onChange={(e) => setActiveTreatmentLookup({ id: entry.id, query: e.target.value })}
