@@ -919,7 +919,7 @@ export default function LedgerPage() {
               </div>
             </div>
 
-            <div className="bg-white border border-[#E0E5F2] rounded-[1.5rem] shadow-sm">
+            <div className="bg-white border border-[#E0E5F2] rounded-[1.5rem] shadow-sm overflow-hidden">
               <div className="overflow-x-auto custom-scrollbar">
                 <table className="w-full text-left border-collapse manual-spreadsheet">
                   <thead className="sticky top-0 z-10">
