@@ -1045,15 +1045,17 @@ export default function LedgerPage() {
                                         {isFirstOfGroup && (
                                           <td rowSpan={group.length} className="px-4 py-1.5 border-r border-[#E0E5F2] align-middle">
                                             <div className="flex items-center gap-3 w-full max-w-[260px]">
-                                              <div
-                                                className="w-6 h-6 rounded-full bg-[#E2E8F0] flex flex-col items-center justify-center shrink-0 overflow-hidden shadow-sm cursor-pointer border border-[#cbd5e1]"
-                                                onClick={() => { if (firstEntry.patient_id) router.push(`/patients/${firstEntry.patient_id}`); }}
-                                              >
-                                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[85%] h-[85%] text-[#94A3B8] translate-y-[2px]">
-                                                  <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" fill="currentColor" />
-                                                  <path d="M12 13C7.58172 13 4 16.5817 4 21H20C20 16.5817 16.4183 13 12 13Z" fill="currentColor" />
-                                                </svg>
-                                              </div>
+                                              {(firstEntry.patient_id || firstEntry.manual_patient_name) && (
+                                                <div
+                                                  className="w-6 h-6 rounded-full bg-[#E2E8F0] flex flex-col items-center justify-center shrink-0 overflow-hidden shadow-sm cursor-pointer border border-[#cbd5e1]"
+                                                  onClick={() => { if (firstEntry.patient_id) router.push(`/patients/${firstEntry.patient_id}`); }}
+                                                >
+                                                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[85%] h-[85%] text-[#94A3B8] translate-y-[2px]">
+                                                    <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" fill="currentColor" />
+                                                    <path d="M12 13C7.58172 13 4 16.5817 4 21H20C20 16.5817 16.4183 13 12 13Z" fill="currentColor" />
+                                                  </svg>
+                                                </div>
+                                              )}
                                               <div className="min-w-[120px] w-full relative">
                                                 <input
                                                   data-patient-input={firstEntry.id}
@@ -1077,9 +1079,7 @@ export default function LedgerPage() {
                                                     )}
                                                     <span className="text-[10px] font-bold">{firstEntry.patients?.age || firstEntry.manual_age ? `${firstEntry.patients?.age || firstEntry.manual_age} YRS` : ''}</span>
                                                   </div>
-                                                ) : (
-                                                  <div className="min-h-[14px] mt-0.5"></div>
-                                                )}
+                                                ) : null}
                                               </div>
                                             </div>
                                             {/* (Patient Lookup Dropdown via Portal) */}
@@ -1664,7 +1664,7 @@ export default function LedgerPage() {
                             >
                               <td className="px-3 py-1.5 border-r border-[#E0E5F2] text-center w-[40px]"></td>
                               <td className="px-3 py-1.5 border-r border-[#E0E5F2] text-center w-[40px] text-[#A3AED0]/50"><Plus className="w-4 h-4 mx-auto group-hover:text-primary transition-colors" /></td>
-                              <td className="px-4 py-1.5 border-r border-[#E0E5F2]"><span className="text-[11px] font-bold text-[#A3AED0]/50">Enter Patient...</span></td>
+                              <td className="px-4 py-1.5 border-r border-[#E0E5F2] align-middle"><span className="text-[11px] font-bold text-[#A3AED0]/50 block mt-[0.5px]">Enter Patient...</span></td>
                               <td className="px-4 py-1.5 border-r border-[#E0E5F2]"><span className="text-[11px] font-bold text-[#A3AED0]/50">Select Treatment...</span></td>
                               <td className="px-4 py-1.5 border-r border-[#E0E5F2] text-center"><span className="text-[11px] font-bold text-[#A3AED0]/50">$0</span></td>
                               <td className="px-2 py-1.5 border-r border-[#E0E5F2] text-center"><span className="text-[11px] font-bold text-[#A3AED0]/50">1</span></td>
