@@ -1068,15 +1068,22 @@ export default function LedgerPage() {
                                                   onBlur={() => setTimeout(() => setActivePatientLookup(null), 200)}
                                                   onClick={() => { if (firstEntry.patient_id) window.open(`/patients/${firstEntry.patient_id}`, '_blank'); }}
                                                 />
-                                                <div className="flex items-center gap-1.5 px-1 text-[#1B2559] mt-0.5">
-                                                  <span className="text-[10px] font-bold">{firstEntry.patients?.gender === 'Male' ? 'M' : firstEntry.patients?.gender === 'Female' ? 'F' : firstEntry.manual_gender || '—'}</span>
-                                                  <span className="text-[10px] text-[#1B2559] opacity-80 font-bold px-0.5">•</span>
-                                                  <span className="text-[10px] font-bold">{firstEntry.patients?.age || firstEntry.manual_age || '—'} YRS</span>
-                                                </div>
+                                                {/* Gender & Age - Only show if data exists */}
+                                                {(firstEntry.patients?.gender || firstEntry.manual_gender || firstEntry.patients?.age || firstEntry.manual_age) ? (
+                                                  <div className="flex items-center gap-1.5 px-1 text-[#1B2559] mt-0.5 min-h-[14px]">
+                                                    <span className="text-[10px] font-bold">{firstEntry.patients?.gender === 'Male' ? 'M' : firstEntry.patients?.gender === 'Female' ? 'F' : firstEntry.manual_gender || ''}</span>
+                                                    {(firstEntry.patients?.gender || firstEntry.manual_gender) && (firstEntry.patients?.age || firstEntry.manual_age) && (
+                                                      <span className="text-[10px] text-[#1B2559] opacity-80 font-bold px-0.5">•</span>
+                                                    )}
+                                                    <span className="text-[10px] font-bold">{firstEntry.patients?.age || firstEntry.manual_age ? `${firstEntry.patients?.age || firstEntry.manual_age} YRS` : ''}</span>
+                                                  </div>
+                                                ) : (
+                                                  <div className="min-h-[14px] mt-0.5"></div>
+                                                )}
                                               </div>
                                             </div>
                                             {/* (Patient Lookup Dropdown via Portal) */}
-                                            {activePatientLookup?.id === firstEntry.id && (() => {
+                                            {activePatientLookup?.id === firstEntry.id && (activePatientLookup?.query?.trim()?.length ?? 0) > 0 && (() => {
                                               const inputEl = document.querySelector(`[data-patient-input="${firstEntry.id}"]`);
                                               const rect = inputEl?.getBoundingClientRect();
                                               if (!rect) return null;
@@ -1114,7 +1121,7 @@ export default function LedgerPage() {
                                                     <button
                                                       onMouseDown={(e) => {
                                                         e.preventDefault();
-                                                        setQuickPatient({ ...quickPatient, name: activePatientLookup?.query || "" });
+                                                        setQuickPatient({ ...quickPatient, name: activePatientLookup.query || "" });
                                                         setSelectedEntryIdForIdentity(firstEntry.id);
                                                         setIsAddingEntry(true);
                                                         setActivePatientLookup(null);
@@ -1122,7 +1129,7 @@ export default function LedgerPage() {
                                                       className="w-full text-left px-4 py-3 bg-primary/5 hover:bg-primary/10 text-primary transition-colors flex items-center gap-2"
                                                     >
                                                       <UserPlus className="w-3.5 h-3.5" />
-                                                      <span className="text-[10px] font-black uppercase tracking-widest">New: {activePatientLookup?.query}</span>
+                                                      <span className="text-[10px] font-black uppercase tracking-widest">New: {activePatientLookup.query}</span>
                                                     </button>
                                                   )}
                                                 </div>,
