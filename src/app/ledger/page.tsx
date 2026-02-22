@@ -1046,10 +1046,10 @@ export default function LedgerPage() {
                                           <td rowSpan={group.length} className="px-4 py-1.5 border-r border-[#E0E5F2] align-middle">
                                             <div className="flex items-center gap-3 w-full max-w-[260px]">
                                               <div
-                                                className="w-8 h-8 rounded-full bg-[#E2E8F0] flex flex-col items-center justify-end shrink-0 overflow-hidden shadow-sm cursor-pointer border border-[#cbd5e1]"
+                                                className="w-6 h-6 rounded-full bg-[#E2E8F0] flex flex-col items-center justify-center shrink-0 overflow-hidden shadow-sm cursor-pointer border border-[#cbd5e1]"
                                                 onClick={() => { if (firstEntry.patient_id) router.push(`/patients/${firstEntry.patient_id}`); }}
                                               >
-                                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[85%] h-[85%] text-[#94A3B8]">
+                                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[85%] h-[85%] text-[#94A3B8] translate-y-[2px]">
                                                   <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" fill="currentColor" />
                                                   <path d="M12 13C7.58172 13 4 16.5817 4 21H20C20 16.5817 16.4183 13 12 13Z" fill="currentColor" />
                                                 </svg>
@@ -1068,10 +1068,10 @@ export default function LedgerPage() {
                                                   onBlur={() => setTimeout(() => setActivePatientLookup(null), 200)}
                                                   onClick={() => { if (firstEntry.patient_id) window.open(`/patients/${firstEntry.patient_id}`, '_blank'); }}
                                                 />
-                                                <div className="flex items-center gap-1.5 px-1 uppercase tracking-widest text-[#1B2559] mt-0.5">
-                                                  <span className="text-[9px] font-bold">{firstEntry.patients?.gender === 'Male' ? 'M' : firstEntry.patients?.gender === 'Female' ? 'F' : firstEntry.manual_gender || '—'}</span>
-                                                  <span className="text-[9px] text-[#1B2559] opacity-80 font-bold px-0.5">•</span>
-                                                  <span className="text-[9px] font-bold">{firstEntry.patients?.age || firstEntry.manual_age || '—'} YRS</span>
+                                                <div className="flex items-center gap-1.5 px-1 text-[#1B2559] mt-0.5">
+                                                  <span className="text-[10px] font-bold">{firstEntry.patients?.gender === 'Male' ? 'M' : firstEntry.patients?.gender === 'Female' ? 'F' : firstEntry.manual_gender || '—'}</span>
+                                                  <span className="text-[10px] text-[#1B2559] opacity-80 font-bold px-0.5">•</span>
+                                                  <span className="text-[10px] font-bold">{firstEntry.patients?.age || firstEntry.manual_age || '—'} YRS</span>
                                                 </div>
                                               </div>
                                             </div>
@@ -1309,9 +1309,9 @@ export default function LedgerPage() {
                                               setQtyDropdownRect(rect);
                                               setActiveQtyDropdown(activeQtyDropdown === entry.id ? null : entry.id);
                                             }}
-                                            className="w-full text-center text-[10px] font-black uppercase text-[#1B2559] hover:bg-[#F4F7FE] rounded-lg py-1.5 px-2 transition-all group/qty relative flex items-center justify-center overflow-hidden"
+                                            className="w-full text-center text-[11px] font-bold text-[#1B2559] hover:bg-[#F4F7FE] rounded-lg py-1.5 px-2 transition-all group/qty relative flex items-center justify-center overflow-hidden"
                                           >
-                                            <span className="text-[13px] font-black text-[#1B2559] transition-transform duration-200 block z-10 group-hover/qty:-translate-x-2">
+                                            <span className="text-[11px] font-bold text-[#1B2559] transition-transform duration-200 block z-10 group-hover/qty:-translate-x-2">
                                               {entry.quantity || 1}
                                             </span>
                                             <ChevronDown className="w-2.5 h-2.5 text-[#A3AED0] opacity-0 group-hover/qty:opacity-100 transition-all duration-200 absolute right-1/2 translate-x-3" />
@@ -1539,7 +1539,7 @@ export default function LedgerPage() {
                                               <button
                                                 data-staff-trigger={`doctor-${firstEntry.id}`}
                                                 onClick={() => setActiveStaffDropdown(prev => prev?.groupKey === firstEntry.id && prev?.type === 'doctor' ? null : { groupKey: firstEntry.id, type: 'doctor' })}
-                                                className="w-full text-center text-[10px] font-bold uppercase text-[#1B2559] hover:bg-[#F4F7FE] rounded-lg py-1 px-2 transition-all group/btn relative flex items-center justify-center overflow-hidden"
+                                                className="w-full text-center text-[11px] font-bold text-[#1B2559] hover:bg-[#F4F7FE] rounded-lg py-1 px-2 transition-all group/btn relative flex items-center justify-center overflow-hidden"
                                               >
                                                 <span className={cn(
                                                   "transition-transform duration-200 block z-10",
@@ -1594,7 +1594,7 @@ export default function LedgerPage() {
                                               <button
                                                 data-staff-trigger={`cashier-${firstEntry.id}`}
                                                 onClick={() => setActiveStaffDropdown(prev => prev?.groupKey === firstEntry.id && prev?.type === 'cashier' ? null : { groupKey: firstEntry.id, type: 'cashier' })}
-                                                className="w-full text-center text-[10px] font-bold uppercase text-[#19D5C5] hover:bg-[#F4F7FE] rounded-lg py-1 px-2 transition-all group/btn relative flex items-center justify-center overflow-hidden"
+                                                className="w-full text-center text-[11px] font-bold text-[#19D5C5] hover:bg-[#F4F7FE] rounded-lg py-1 px-2 transition-all group/btn relative flex items-center justify-center overflow-hidden"
                                               >
                                                 <span className={cn(
                                                   "transition-transform duration-200 block z-10",
@@ -1658,14 +1658,14 @@ export default function LedgerPage() {
                               <td className="px-3 py-1.5 border-r border-[#E0E5F2] text-center w-[40px]"></td>
                               <td className="px-3 py-1.5 border-r border-[#E0E5F2] text-center w-[40px] text-[#A3AED0]/50"><Plus className="w-4 h-4 mx-auto group-hover:text-primary transition-colors" /></td>
                               <td className="px-4 py-1.5 border-r border-[#E0E5F2]"><span className="text-[11px] font-bold text-[#A3AED0]/50">Enter Patient...</span></td>
-                              <td className="px-4 py-1.5 border-r border-[#E0E5F2]"><span className="text-[10px] font-bold uppercase text-[#A3AED0]/50 tracking-widest">Select Treatment</span></td>
+                              <td className="px-4 py-1.5 border-r border-[#E0E5F2]"><span className="text-[11px] font-bold text-[#A3AED0]/50">Select Treatment...</span></td>
                               <td className="px-4 py-1.5 border-r border-[#E0E5F2] text-center"><span className="text-[11px] font-bold text-[#A3AED0]/50">$0</span></td>
-                              <td className="px-2 py-1.5 border-r border-[#E0E5F2] text-center"><span className="text-[10px] font-bold text-[#A3AED0]/50">1</span></td>
+                              <td className="px-2 py-1.5 border-r border-[#E0E5F2] text-center"><span className="text-[11px] font-bold text-[#A3AED0]/50">1</span></td>
                               <td className="px-4 py-1.5 border-r border-[#E0E5F2] text-center"><span className="text-[11px] font-bold text-[#A3AED0]/50">$0</span></td>
                               <td className="px-4 py-1.5 border-r border-[#E0E5F2] text-center"><span className="text-[11px] font-bold text-[#A3AED0]/50">$0</span></td>
                               <td className="px-4 py-1.5 border-r border-[#E0E5F2] text-center"><span className="text-[11px] font-bold text-[#A3AED0]/50">$0</span></td>
-                              <td className="px-4 py-1.5 border-r border-[#E0E5F2] text-center"><span className="text-[10px] font-bold uppercase text-[#A3AED0]/50 tracking-widest">Select Dentist</span></td>
-                              <td className="px-4 py-1.5 text-center"><span className="text-[10px] font-bold uppercase text-[#A3AED0]/50 tracking-widest">Select Cashier</span></td>
+                              <td className="px-4 py-1.5 border-r border-[#E0E5F2] text-center"><span className="text-[11px] font-bold text-[#A3AED0]/50">Select</span></td>
+                              <td className="px-4 py-1.5 text-center"><span className="text-[11px] font-bold text-[#A3AED0]/50">Select</span></td>
                             </tr>
                           </tbody>
 
