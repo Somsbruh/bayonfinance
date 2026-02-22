@@ -678,7 +678,7 @@ export default function LedgerPage() {
       {/* Intake / Stats Summary - Hidden in Calendar View for Full Screen experience */}
       {
         viewMode !== 'calendar' && (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-7 animate-in fade-in slide-in-from-top-2 duration-500">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-1.5 animate-in fade-in slide-in-from-top-2 duration-500">
             {/* Main Portfolio Card - Total Earnings (Highlighted) */}
             <div className="md:col-span-4 bg-gradient-to-br from-[#1B2559] to-[#3311DB] rounded-[1.25rem] p-5 text-white flex flex-col justify-between relative overflow-hidden group hover:shadow-xl hover:shadow-primary/20 transition-all">
               <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-bl-full -mr-6 -mt-6 transition-transform group-hover:scale-110" />
