@@ -1233,7 +1233,40 @@ export default function LedgerPage() {
                                                         <span className="text-[8px] font-black uppercase bg-[#FFB547]/10 text-[#FFB547] px-1.5 py-0.5 rounded-md tracking-widest">MED</span>
                                                       )}
                                                     </div>
-                                                    <span className="text-primary font-black">${t.price}</span>
+                                                    <div
+                                                      className="flex items-center gap-[1px] group/price relative"
+                                                      onMouseDown={(e) => e.stopPropagation()}
+                                                      onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                      <span className="text-[12px] text-primary font-black pointer-events-none transition-transform duration-200 group-hover/price:-translate-x-1">$</span>
+                                                      <input
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        style={{ width: `${Math.max(String(t.price ?? '').length, 1) + 0.5}ch` }}
+                                                        className={cn(
+                                                          "bg-transparent outline-none focus:bg-white border border-transparent focus:border-[#E0E5F2] rounded transition-all duration-200 text-left font-black p-0 text-primary text-[12px]",
+                                                          "group-hover/price:translate-x-1 inline-block"
+                                                        )}
+                                                        defaultValue={t.price}
+                                                        onBlur={async (e) => {
+                                                          const newPrice = Number(e.target.value.replace(/[^0-9.]/g, ''));
+                                                          if (newPrice !== t.price && newPrice >= 0) {
+                                                            if (t.item_type === 'treatment') {
+                                                              await supabase.from('treatments').update({ price: newPrice }).eq('id', t.id);
+                                                              setTreatments(prev => prev.map(trt => trt.id === t.id ? { ...trt, price: newPrice } : trt));
+                                                            } else {
+                                                              await supabase.from('inventory').update({ sell_price: newPrice }).eq('id', t.id);
+                                                              setInventory(prev => prev.map(inv => inv.id === t.id ? { ...inv, sell_price: newPrice } : inv));
+                                                            }
+                                                          }
+                                                        }}
+                                                        onKeyDown={(e) => {
+                                                          if (e.key === 'Enter') {
+                                                            (e.target as HTMLInputElement).blur();
+                                                          }
+                                                        }}
+                                                      />
+                                                    </div>
                                                   </button>
                                                 ))}
                                                 {activeTreatmentLookup?.query && combinedOptions.length === 0 && (
