@@ -1519,7 +1519,7 @@ export default function LedgerPage() {
                                                     <input
                                                       type="text"
                                                       inputMode="numeric"
-                                                      style={{ width: `${Math.max(String(firstEntry.amount_remaining ?? '').length, 1)}ch` }}
+                                                      style={{ width: `${Math.max(String(firstEntry.amount_remaining ?? '').length, 1) + 0.5}ch` }}
                                                       className={cn(
                                                         "bg-transparent outline-none focus:bg-[#F4F7FE] border border-transparent focus:border-[#E0E5F2] rounded-lg transition-transform duration-200 text-left font-bold p-0",
                                                         "group-hover/input:translate-x-1 text-[#EE5D50] inline-block"
