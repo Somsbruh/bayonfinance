@@ -154,7 +154,7 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="max-w-6xl mx-auto space-y-8 pb-32">
+        <div className="max-w-6xl mx-auto space-y-8 pb-8">
             {/* Header */}
             <div className="flex items-center gap-6">
                 <div className="p-5 bg-primary/10 rounded-[2rem] text-primary shadow-[0_0_40px_rgba(59,130,246,0.1)]">

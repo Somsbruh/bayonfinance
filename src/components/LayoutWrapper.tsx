@@ -20,8 +20,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
                 <Sidebar />
                 <main
                     className={cn(
-                        "flex-1 relative transition-all duration-500 ease-in-out print:p-0 overflow-x-hidden overflow-y-auto min-w-0 bg-[#F4F7FE] h-full custom-scrollbar",
-                        pathname === "/reservations" ? "pb-0" : "pb-24"
+                        "flex-1 relative transition-all duration-500 ease-in-out print:p-0 overflow-x-hidden overflow-y-auto min-w-0 bg-[#F4F7FE] h-full custom-scrollbar"
                     )}
                 >
                     {pathname === "/reservations" ? (

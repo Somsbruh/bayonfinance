@@ -190,7 +190,7 @@ export default function StaffPage() {
 
 
     return (
-        <div className="space-y-6 pb-24 px-4 lg:px-0 relative">
+        <div className="space-y-6 pb-6 px-4 lg:px-0 relative">
             {/* Onboard Personnel Modal */}
             {isAdding && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#1B2559]/30 backdrop-blur-md p-4 animate-in fade-in duration-300">
