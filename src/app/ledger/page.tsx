@@ -587,7 +587,7 @@ export default function LedgerPage() {
   return (
     <div className={cn(
       "relative transition-all",
-      viewMode === 'list' ? "space-y-6 pb-24 block" : "flex flex-col h-[calc(100vh-3rem)] gap-4"
+      viewMode === 'list' ? "space-y-6 block" : "flex flex-col h-[calc(100vh-3rem)] gap-4"
     )}>
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-4">
