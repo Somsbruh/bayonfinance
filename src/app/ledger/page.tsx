@@ -1650,16 +1650,22 @@ export default function LedgerPage() {
                           })()}
 
                           <tbody className="divide-y divide-[#E0E5F2]">
-                            {/* Minimized Subtle centered "Add New" Row */}
+                            {/* Persistent Blank Add Row */}
                             <tr
-                              className="h-8 hover:bg-[#D1D9E6]/50 bg-[#F4F7FE]/40 cursor-pointer transition-all border-b border-[#E0E5F2] group"
+                              className="h-12 hover:bg-[#F4F7FE]/60 bg-[#F4F7FE]/30 cursor-text transition-all border-b border-[#E0E5F2] group"
                               onClick={handleInitializeManualRow}
                             >
-                              <td colSpan={12} className="py-0">
-                                <div className="flex items-center justify-center">
-                                  <Plus className="w-4 h-4 text-[#A3AED0] opacity-40 group-hover:opacity-100 group-hover:scale-110 transition-all" />
-                                </div>
-                              </td>
+                              <td className="px-3 py-3 border-r border-[#E0E5F2] text-center w-[40px]"></td>
+                              <td className="px-3 py-3 border-r border-[#E0E5F2] text-center w-[40px] text-[#A3AED0]/50"><Plus className="w-4 h-4 mx-auto group-hover:text-primary transition-colors" /></td>
+                              <td className="px-4 py-3 border-r border-[#E0E5F2]"><span className="text-[12px] font-black uppercase text-[#A3AED0]/50">Enter Patient...</span></td>
+                              <td className="px-4 py-3 border-r border-[#E0E5F2]"><span className="text-[10px] font-black uppercase text-[#A3AED0]/50 tracking-widest">Select Treatment</span></td>
+                              <td className="px-4 py-3 border-r border-[#E0E5F2] text-center"><span className="text-[11px] font-black text-[#A3AED0]/50">$0</span></td>
+                              <td className="px-2 py-3 border-r border-[#E0E5F2] text-center"><span className="text-[10px] font-black text-[#A3AED0]/50">1</span></td>
+                              <td className="px-4 py-3 border-r border-[#E0E5F2] text-center"><span className="text-[11px] font-black text-[#A3AED0]/50">$0</span></td>
+                              <td className="px-4 py-3 border-r border-[#E0E5F2] text-center"><span className="text-[11px] font-black text-[#A3AED0]/50">$0</span></td>
+                              <td className="px-4 py-3 border-r border-[#E0E5F2] text-center"><span className="text-[11px] font-black text-[#A3AED0]/50">$0</span></td>
+                              <td className="px-4 py-3 border-r border-[#E0E5F2] text-center"><span className="text-[10px] font-black uppercase text-[#A3AED0]/50 tracking-widest">Select Doctor</span></td>
+                              <td className="px-4 py-3 text-center"><span className="text-[10px] font-black uppercase text-[#A3AED0]/50 tracking-widest">Select Cashier</span></td>
                             </tr>
                           </tbody>
 
