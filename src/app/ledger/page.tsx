@@ -589,7 +589,7 @@ export default function LedgerPage() {
       "relative transition-all",
       viewMode === 'list' ? "space-y-6 pb-24 block" : "flex flex-col h-[calc(100vh-3rem)] gap-4"
     )}>
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+      <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-4">
           {/* View Toggle - Compact - Now on the left */}
           <div className="bg-[#F4F7FE] p-1 rounded-xl border border-[#E0E5F2] flex items-center gap-1 shrink-0">
@@ -612,7 +612,7 @@ export default function LedgerPage() {
           <div className="h-6 w-px bg-[#E0E5F2] mx-2 hidden xl:block" />
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-3">
           {/* Date Picker / Month Selector Placeholder */}
           <div className="bg-white border border-[#E0E5F2] rounded-xl p-1 flex items-center shadow-sm shrink-0">
             <button
