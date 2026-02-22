@@ -209,7 +209,7 @@ export default function Sidebar() {
             <button
                 onClick={toggleSidebar}
                 className={cn(
-                    "absolute -right-4 top-7 w-8 h-8 bg-white border border-[#E0E5F2] rounded-full flex items-center justify-center text-[#A3AED0] hover:text-primary hover:border-primary transition-all shadow-md z-[120]"
+                    "absolute -right-4 top-6 w-8 h-8 bg-white border border-[#E0E5F2] rounded-full flex items-center justify-center text-[#A3AED0] hover:text-primary hover:border-primary transition-all shadow-md z-[120]"
                 )}
             >
                 {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}

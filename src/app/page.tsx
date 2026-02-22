@@ -265,9 +265,7 @@ export default function ReportsPage() {
         <div className="space-y-8 max-w-6xl mx-auto">
             <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                    <p className="caption-premium">System Command Cluster</p>
-                    <h1 className="h1-premium">Clinic Dashboard</h1>
-                    <p className="text-[10px] font-bold text-[#A3AED0] uppercase tracking-widest">Financial logic and installment tracking</p>
+                    <h1 className="h1-premium border-b border-transparent">Clinic Dashboard</h1>
                 </div>
                 <div className="flex items-center gap-3">
                     {timeframe === '365' && (
