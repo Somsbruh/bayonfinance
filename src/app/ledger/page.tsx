@@ -924,7 +924,7 @@ export default function LedgerPage() {
                 <table className="w-full text-left border-collapse manual-spreadsheet">
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-[#F4F7FE] border-b border-[#E0E5F2]">
-                      <th className="px-4 py-3 border-r border-[#E0E5F2] w-12 text-center align-middle relative">
+                      <th className="px-4 py-2 border-r border-[#E0E5F2] w-12 text-center align-middle relative">
                         <div className="inline-flex items-center justify-center">
                           <button
                             className={cn("p-1.5 rounded-lg transition-colors cursor-pointer outline-none", isFilterMenuOpen ? "bg-white text-primary border border-primary/20 shadow-sm" : "hover:bg-white text-[#A3AED0] hover:text-primary")}
@@ -954,16 +954,16 @@ export default function LedgerPage() {
                         </div>
                       </th>
 
-                      <th className="px-2 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-12 text-center">No.</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2]">Patient</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2]">Medical Service</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-20 text-center">Price</th>
-                      <th className="px-2 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-12 text-center">Qty</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-24 text-center">Total</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-24 text-center">Paid</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-24 text-center text-[#EE5D50]">Remaining</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-[120px] text-center">Dentist</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-[#1B2559] uppercase w-[120px] text-center">Cashier</th>
+                      <th className="px-2 py-2 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-12 text-center">No.</th>
+                      <th className="px-4 py-2 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2]">Patient</th>
+                      <th className="px-4 py-2 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2]">Medical Service</th>
+                      <th className="px-4 py-2 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-20 text-center">Price</th>
+                      <th className="px-2 py-2 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-12 text-center">Qty</th>
+                      <th className="px-4 py-2 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-24 text-center">Total</th>
+                      <th className="px-4 py-2 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-24 text-center">Paid</th>
+                      <th className="px-4 py-2 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-24 text-center text-[#EE5D50]">Remaining</th>
+                      <th className="px-4 py-2 text-[10px] font-black text-[#1B2559] uppercase border-r border-[#E0E5F2] w-[120px] text-center">Dentist</th>
+                      <th className="px-4 py-2 text-[10px] font-black text-[#1B2559] uppercase w-[120px] text-center">Cashier</th>
                     </tr>
                   </thead>
                   {isLoading ? (
@@ -1036,17 +1036,17 @@ export default function LedgerPage() {
 
                                         {/* No. - Merged */}
                                         {isFirstOfGroup && (
-                                          <td rowSpan={group.length} className="px-3 py-3 border-r border-[#E0E5F2] text-[10px] font-black text-[#A3AED0] text-center w-[40px] group-hover:text-primary transition-colors">
+                                          <td rowSpan={group.length} className="px-3 py-1.5 border-r border-[#E0E5F2] text-[11px] font-bold text-[#A3AED0] text-center w-[40px] group-hover:text-primary transition-colors">
                                             {groupIndex + 1}
                                           </td>
                                         )}
 
                                         {/* Patient Name + Gender/Age - Merged */}
                                         {isFirstOfGroup && (
-                                          <td rowSpan={group.length} className="px-4 py-3 border-r border-[#E0E5F2] align-middle">
-                                            <div className="flex items-center gap-3 w-full max-w-[220px]">
+                                          <td rowSpan={group.length} className="px-4 py-1.5 border-r border-[#E0E5F2] align-middle">
+                                            <div className="flex items-center gap-3 w-full max-w-[260px]">
                                               <div
-                                                className="w-10 h-10 rounded-full bg-[#E2E8F0] flex flex-col items-center justify-end shrink-0 overflow-hidden shadow-sm cursor-pointer border border-[#cbd5e1]"
+                                                className="w-8 h-8 rounded-full bg-[#E2E8F0] flex flex-col items-center justify-end shrink-0 overflow-hidden shadow-sm cursor-pointer border border-[#cbd5e1]"
                                                 onClick={() => { if (firstEntry.patient_id) router.push(`/patients/${firstEntry.patient_id}`); }}
                                               >
                                                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[85%] h-[85%] text-[#94A3B8]">
@@ -1054,11 +1054,11 @@ export default function LedgerPage() {
                                                   <path d="M12 13C7.58172 13 4 16.5817 4 21H20C20 16.5817 16.4183 13 12 13Z" fill="currentColor" />
                                                 </svg>
                                               </div>
-                                              <div className="min-w-0 w-full relative">
+                                              <div className="min-w-[120px] w-full relative">
                                                 <input
                                                   data-patient-input={firstEntry.id}
                                                   className={cn(
-                                                    "w-full bg-transparent outline-none focus:bg-[#F4F7FE] px-1 py-0.5 rounded transition-all text-[12px] font-black uppercase placeholder:text-[#A3AED0]/70",
+                                                    "w-full bg-transparent outline-none focus:bg-[#F4F7FE] px-1 py-0.5 rounded transition-all text-[11px] font-bold placeholder:text-[#A3AED0]/70",
                                                     firstEntry.patient_id ? "text-[#1B2559] group-hover:text-primary cursor-pointer hover:underline decoration-[2px] underline-offset-4" : "text-[#1B2559]"
                                                   )}
                                                   placeholder="Search Patient..."
@@ -1068,10 +1068,10 @@ export default function LedgerPage() {
                                                   onBlur={() => setTimeout(() => setActivePatientLookup(null), 200)}
                                                   onClick={() => { if (firstEntry.patient_id) window.open(`/patients/${firstEntry.patient_id}`, '_blank'); }}
                                                 />
-                                                <div className="flex items-center gap-1.5 px-1 uppercase tracking-widest text-[#1B2559]">
-                                                  <span className="text-[10px] font-black">{firstEntry.patients?.gender === 'Male' ? 'M' : firstEntry.patients?.gender === 'Female' ? 'F' : firstEntry.manual_gender || '—'}</span>
-                                                  <span className="text-[10px] text-[#1B2559] opacity-80 font-black px-0.5">•</span>
-                                                  <span className="text-[10px] font-black">{firstEntry.patients?.age || firstEntry.manual_age || '—'} YRS</span>
+                                                <div className="flex items-center gap-1.5 px-1 uppercase tracking-widest text-[#1B2559] mt-0.5">
+                                                  <span className="text-[9px] font-bold">{firstEntry.patients?.gender === 'Male' ? 'M' : firstEntry.patients?.gender === 'Female' ? 'F' : firstEntry.manual_gender || '—'}</span>
+                                                  <span className="text-[9px] text-[#1B2559] opacity-80 font-bold px-0.5">•</span>
+                                                  <span className="text-[9px] font-bold">{firstEntry.patients?.age || firstEntry.manual_age || '—'} YRS</span>
                                                 </div>
                                               </div>
                                             </div>
@@ -1135,7 +1135,7 @@ export default function LedgerPage() {
                                         {/* Gender & Age removed - now shown inline under Patient Name */}
 
                                         {/* Treatment - INDIVIDUAL with Add/Delete buttons */}
-                                        <td className="px-4 py-3 border-r border-[#E0E5F2] text-[10px] font-bold text-[#1B2559]">
+                                        <td className="px-4 py-1.5 border-r border-[#E0E5F2] text-[11px] font-bold text-[#1B2559]">
                                           <div className="flex items-center gap-1">
                                             <input
                                               ref={(el) => { if (el && activeTreatmentLookup?.id === entry.id) el.setAttribute('data-treatment-input', entry.id); }}
@@ -1276,15 +1276,15 @@ export default function LedgerPage() {
                                         </td>
 
 
-                                        <td className="px-4 py-3 border-r border-[#E0E5F2] text-[11px] font-black text-[#1B2559] text-center">
+                                        <td className="px-4 py-1.5 border-r border-[#E0E5F2] text-[11px] font-bold text-[#1B2559] text-center">
                                           <div className="flex items-center justify-center w-full group/input relative text-[#1B2559] gap-[1px]">
-                                            <span className="text-[10px] font-black pointer-events-none transition-transform duration-200 group-hover/input:-translate-x-1">$</span>
+                                            <span className="text-[11px] font-bold pointer-events-none transition-transform duration-200 group-hover/input:-translate-x-1">$</span>
                                             <input
                                               type="text"
                                               inputMode="numeric"
                                               style={{ width: `${Math.max(String(entry.unit_price ?? '').length, 1)}ch` }}
                                               className={cn(
-                                                "bg-transparent outline-none focus:bg-[#F4F7FE] rounded transition-transform duration-200 text-left font-black p-0",
+                                                "bg-transparent outline-none focus:bg-[#F4F7FE] rounded transition-transform duration-200 text-left font-bold p-0",
                                                 "group-hover/input:translate-x-1 inline-block"
                                               )}
                                               value={entry.unit_price}
@@ -1301,7 +1301,7 @@ export default function LedgerPage() {
                                         </td>
 
                                         {/* Qty - INDIVIDUAL (Custom Dropdown) */}
-                                        <td className="px-2 py-3 border-r border-[#E0E5F2] text-[11px] font-black text-[#A3AED0] text-center bg-[#F4F7FE]/5 relative">
+                                        <td className="px-2 py-1.5 border-r border-[#E0E5F2] text-[11px] font-bold text-[#A3AED0] text-center bg-[#F4F7FE]/5 relative">
                                           <button
                                             data-qty-btn={entry.id}
                                             onClick={(e) => {
@@ -1368,14 +1368,14 @@ export default function LedgerPage() {
                                             const groupRemaining = groupTotal - groupPaid;
                                             return (
                                               <>
-                                                <td rowSpan={group.length} className="px-4 py-3 border-r border-[#E0E5F2] text-[11px] font-black text-[#1B2559] text-center bg-[#F4F7FE]/10 align-middle">
+                                                <td rowSpan={group.length} className="px-4 py-1.5 border-r border-[#E0E5F2] text-[11px] font-bold text-[#1B2559] text-center bg-[#F4F7FE]/10 align-middle">
                                                   ${groupTotal.toLocaleString()}
                                                 </td>
-                                                <td rowSpan={group.length} className="px-4 py-3 border-r border-[#E0E5F2] text-[11px] font-black text-[#19D5C5] text-center align-middle">
+                                                <td rowSpan={group.length} className="px-4 py-1.5 border-r border-[#E0E5F2] text-[11px] font-bold text-[#19D5C5] text-center align-middle">
                                                   <button
                                                     data-payment-trigger={firstEntry.id}
                                                     onClick={() => setActivePaymentDropdown(prev => prev === firstEntry.id ? null : firstEntry.id)}
-                                                    className="w-full text-center hover:bg-[#F4F7FE] rounded-lg py-1 px-2 transition-all font-black text-[#19D5C5] cursor-pointer"
+                                                    className="w-full text-center hover:bg-[#F4F7FE] rounded-lg py-1 px-2 transition-all font-bold text-[#19D5C5] cursor-pointer"
                                                   >
                                                     {groupPaid > 0 ? `$${groupPaid.toLocaleString()}` : <span className="text-[#A3AED0]">$0</span>}
                                                   </button>
@@ -1506,15 +1506,15 @@ export default function LedgerPage() {
                                                     );
                                                   })()}
                                                 </td>
-                                                <td rowSpan={group.length} className="px-4 py-3 border-r border-[#E0E5F2] text-[11px] font-black text-[#EE5D50] text-center align-middle">
+                                                <td rowSpan={group.length} className="px-4 py-1.5 border-r border-[#E0E5F2] text-[11px] font-bold text-[#EE5D50] text-center align-middle">
                                                   <div className="flex items-center justify-center w-full group/input relative text-[#EE5D50] gap-[1px]">
-                                                    <span className="text-[10px] font-black pointer-events-none transition-transform duration-200 group-hover/input:-translate-x-1">$</span>
+                                                    <span className="text-[11px] font-bold pointer-events-none transition-transform duration-200 group-hover/input:-translate-x-1">$</span>
                                                     <input
                                                       type="text"
                                                       inputMode="numeric"
                                                       style={{ width: `${Math.max(String(firstEntry.amount_remaining ?? '').length, 1)}ch` }}
                                                       className={cn(
-                                                        "bg-transparent outline-none focus:bg-[#F4F7FE] border border-transparent focus:border-[#E0E5F2] rounded-lg py-1 transition-transform duration-200 text-left font-black p-0",
+                                                        "bg-transparent outline-none focus:bg-[#F4F7FE] border border-transparent focus:border-[#E0E5F2] rounded-lg transition-transform duration-200 text-left font-bold p-0",
                                                         "group-hover/input:translate-x-1 text-[#EE5D50] inline-block"
                                                       )}
                                                       value={firstEntry.amount_remaining ?? ''}
@@ -1535,11 +1535,11 @@ export default function LedgerPage() {
                                         {/* Doctor - Merged */}
                                         {
                                           isFirstOfGroup && (
-                                            <td rowSpan={group.length} className="px-4 py-3 align-middle border-r border-[#E0E5F2]">
+                                            <td rowSpan={group.length} className="px-4 py-1.5 align-middle border-r border-[#E0E5F2]">
                                               <button
                                                 data-staff-trigger={`doctor-${firstEntry.id}`}
                                                 onClick={() => setActiveStaffDropdown(prev => prev?.groupKey === firstEntry.id && prev?.type === 'doctor' ? null : { groupKey: firstEntry.id, type: 'doctor' })}
-                                                className="w-full text-center text-[10px] font-black uppercase text-[#1B2559] hover:bg-[#F4F7FE] rounded-lg py-1.5 px-2 transition-all group/btn relative flex items-center justify-center overflow-hidden"
+                                                className="w-full text-center text-[10px] font-bold uppercase text-[#1B2559] hover:bg-[#F4F7FE] rounded-lg py-1 px-2 transition-all group/btn relative flex items-center justify-center overflow-hidden"
                                               >
                                                 <span className={cn(
                                                   "transition-transform duration-200 block z-10",
@@ -1590,11 +1590,11 @@ export default function LedgerPage() {
                                         {/* Cashier - Merged */}
                                         {
                                           isFirstOfGroup && (
-                                            <td rowSpan={group.length} className="px-4 py-3 align-middle border-r border-[#E0E5F2]">
+                                            <td rowSpan={group.length} className="px-4 py-1.5 align-middle border-r border-[#E0E5F2]">
                                               <button
                                                 data-staff-trigger={`cashier-${firstEntry.id}`}
                                                 onClick={() => setActiveStaffDropdown(prev => prev?.groupKey === firstEntry.id && prev?.type === 'cashier' ? null : { groupKey: firstEntry.id, type: 'cashier' })}
-                                                className="w-full text-center text-[10px] font-black uppercase text-[#19D5C5] hover:bg-[#F4F7FE] rounded-lg py-1.5 px-2 transition-all group/btn relative flex items-center justify-center overflow-hidden"
+                                                className="w-full text-center text-[10px] font-bold uppercase text-[#19D5C5] hover:bg-[#F4F7FE] rounded-lg py-1 px-2 transition-all group/btn relative flex items-center justify-center overflow-hidden"
                                               >
                                                 <span className={cn(
                                                   "transition-transform duration-200 block z-10",
@@ -1652,20 +1652,20 @@ export default function LedgerPage() {
                           <tbody className="divide-y divide-[#E0E5F2]">
                             {/* Persistent Blank Add Row */}
                             <tr
-                              className="h-12 hover:bg-[#F4F7FE]/60 bg-[#F4F7FE]/30 cursor-text transition-all border-b border-[#E0E5F2] group"
+                              className="h-8 hover:bg-[#F4F7FE]/60 bg-[#F4F7FE]/30 cursor-text transition-all border-b border-[#E0E5F2] group"
                               onClick={handleInitializeManualRow}
                             >
-                              <td className="px-3 py-3 border-r border-[#E0E5F2] text-center w-[40px]"></td>
-                              <td className="px-3 py-3 border-r border-[#E0E5F2] text-center w-[40px] text-[#A3AED0]/50"><Plus className="w-4 h-4 mx-auto group-hover:text-primary transition-colors" /></td>
-                              <td className="px-4 py-3 border-r border-[#E0E5F2]"><span className="text-[12px] font-black uppercase text-[#A3AED0]/50">Enter Patient...</span></td>
-                              <td className="px-4 py-3 border-r border-[#E0E5F2]"><span className="text-[10px] font-black uppercase text-[#A3AED0]/50 tracking-widest">Select Treatment</span></td>
-                              <td className="px-4 py-3 border-r border-[#E0E5F2] text-center"><span className="text-[11px] font-black text-[#A3AED0]/50">$0</span></td>
-                              <td className="px-2 py-3 border-r border-[#E0E5F2] text-center"><span className="text-[10px] font-black text-[#A3AED0]/50">1</span></td>
-                              <td className="px-4 py-3 border-r border-[#E0E5F2] text-center"><span className="text-[11px] font-black text-[#A3AED0]/50">$0</span></td>
-                              <td className="px-4 py-3 border-r border-[#E0E5F2] text-center"><span className="text-[11px] font-black text-[#A3AED0]/50">$0</span></td>
-                              <td className="px-4 py-3 border-r border-[#E0E5F2] text-center"><span className="text-[11px] font-black text-[#A3AED0]/50">$0</span></td>
-                              <td className="px-4 py-3 border-r border-[#E0E5F2] text-center"><span className="text-[10px] font-black uppercase text-[#A3AED0]/50 tracking-widest">Select Doctor</span></td>
-                              <td className="px-4 py-3 text-center"><span className="text-[10px] font-black uppercase text-[#A3AED0]/50 tracking-widest">Select Cashier</span></td>
+                              <td className="px-3 py-1.5 border-r border-[#E0E5F2] text-center w-[40px]"></td>
+                              <td className="px-3 py-1.5 border-r border-[#E0E5F2] text-center w-[40px] text-[#A3AED0]/50"><Plus className="w-4 h-4 mx-auto group-hover:text-primary transition-colors" /></td>
+                              <td className="px-4 py-1.5 border-r border-[#E0E5F2]"><span className="text-[11px] font-bold text-[#A3AED0]/50">Enter Patient...</span></td>
+                              <td className="px-4 py-1.5 border-r border-[#E0E5F2]"><span className="text-[10px] font-bold uppercase text-[#A3AED0]/50 tracking-widest">Select Treatment</span></td>
+                              <td className="px-4 py-1.5 border-r border-[#E0E5F2] text-center"><span className="text-[11px] font-bold text-[#A3AED0]/50">$0</span></td>
+                              <td className="px-2 py-1.5 border-r border-[#E0E5F2] text-center"><span className="text-[10px] font-bold text-[#A3AED0]/50">1</span></td>
+                              <td className="px-4 py-1.5 border-r border-[#E0E5F2] text-center"><span className="text-[11px] font-bold text-[#A3AED0]/50">$0</span></td>
+                              <td className="px-4 py-1.5 border-r border-[#E0E5F2] text-center"><span className="text-[11px] font-bold text-[#A3AED0]/50">$0</span></td>
+                              <td className="px-4 py-1.5 border-r border-[#E0E5F2] text-center"><span className="text-[11px] font-bold text-[#A3AED0]/50">$0</span></td>
+                              <td className="px-4 py-1.5 border-r border-[#E0E5F2] text-center"><span className="text-[10px] font-bold uppercase text-[#A3AED0]/50 tracking-widest">Select Dentist</span></td>
+                              <td className="px-4 py-1.5 text-center"><span className="text-[10px] font-bold uppercase text-[#A3AED0]/50 tracking-widest">Select Cashier</span></td>
                             </tr>
                           </tbody>
 
