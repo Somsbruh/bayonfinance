@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, Suspense } from "react";
 import {
     ArrowLeft,
     Building2,
@@ -11,12 +11,14 @@ import {
     DollarSign,
     ChevronDown,
     Loader2,
-    Layers
+    Layers,
+    AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
+import DatePicker from "@/components/DatePicker";
 
 // Placeholder vendor database
 const VENDOR_DATABASE = [
@@ -25,8 +27,15 @@ const VENDOR_DATABASE = [
     { name: "PharmaGlobal", contact: "Robert Wilson", phone: "0123456789" },
 ];
 
-export default function CreateNewItemPage() {
+const MEDICINE_CATEGORIES = ["Medicine", "Pain and Anxiety", "Antibiotics", "Supplements", "General"];
+const INVENTORY_CATEGORIES = ["Equipment", "Tools", "Consumables", "Office Supplies", "General"];
+
+function CreateNewItemPageInner() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const tabParam = searchParams.get('tab') || 'medicine';
+    const itemType = tabParam === 'inventory' ? 'inventory' : 'medicine';
+
     const [vendorSearch, setVendorSearch] = useState("");
     const [showVendorSuggestions, setShowVendorSuggestions] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -46,20 +55,25 @@ export default function CreateNewItemPage() {
         quantity: 0,
         unit: "",
         buyPrice: 0,
-        sellPrice: 0
+        sellPrice: 0,
+        expiryDate: "",
+        lowStockThreshold: 10,
     });
 
     useEffect(() => {
         const fetchExistingOptions = async () => {
             try {
-                const { data, error } = await supabase.from('inventory').select('category, unit');
+                const { data, error } = await supabase
+                    .from('inventory')
+                    .select('category, unit')
+                    .eq('item_type', itemType);
                 if (error) throw error;
 
                 if (data) {
                     const cats = Array.from(new Set(data.map(i => i.category).filter(Boolean)));
                     const units = Array.from(new Set(data.map(i => i.unit).filter(Boolean)));
 
-                    const defaultCats = ["Medicine", "Pain and Anxiety", "Antibiotics", "Supplements", "General"];
+                    const defaultCats = itemType === 'inventory' ? INVENTORY_CATEGORIES : MEDICINE_CATEGORIES;
                     const defaultUnits = ["Piece", "Pill", "Box", "Bottle"];
 
                     setDbCategories(Array.from(new Set([...defaultCats, ...cats])));
@@ -67,14 +81,14 @@ export default function CreateNewItemPage() {
                 }
             } catch (err) {
                 console.error("Error fetching suggestions:", err);
-                // Fallback to defaults
-                setDbCategories(["Medicine", "Pain and Anxiety", "Antibiotics", "Supplements", "General"]);
+                const defaultCats = itemType === 'inventory' ? INVENTORY_CATEGORIES : MEDICINE_CATEGORIES;
+                setDbCategories(defaultCats);
                 setDbUnits(["Piece", "Pill", "Box", "Bottle"]);
             }
         };
 
         fetchExistingOptions();
-    }, []);
+    }, [itemType]);
 
     const suggestions = useMemo(() => {
         if (!vendorSearch) return [];
@@ -117,11 +131,14 @@ export default function CreateNewItemPage() {
                     buy_price: formData.buyPrice || 0,
                     sell_price: formData.sellPrice || 0,
                     category: formData.category,
+                    item_type: itemType,
+                    expiry_date: formData.expiryDate || null,
+                    low_stock_threshold: formData.lowStockThreshold || 10,
                 }]);
 
             if (insertError) throw insertError;
 
-            router.push('/inventory');
+            router.push(`/inventory?tab=${tabParam}`);
         } catch (err: any) {
             console.error('Error creating item:', err);
             setError(err.message || "Failed to create item");
@@ -134,13 +151,15 @@ export default function CreateNewItemPage() {
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
             {/* Header */}
             <div className="flex items-center gap-4 shrink-0">
-                <Link href="/inventory">
+                <Link href={`/inventory?tab=${tabParam}`}>
                     <button className="w-10 h-10 rounded-full border border-[#E0E5F2] bg-white flex items-center justify-center text-[#1B2559] hover:bg-gray-50 transition-all shadow-sm">
                         <ArrowLeft className="w-5.5 h-5.5" />
                     </button>
                 </Link>
                 <div className="flex flex-col">
-                    <h1 className="text-4xl font-medium text-[#1B2559] tracking-tight">Create new item</h1>
+                    <h1 className="text-4xl font-medium text-[#1B2559] tracking-tight">
+                        {itemType === 'inventory' ? 'Add Inventory Item' : 'Create new item'}
+                    </h1>
                     {error && <span className="text-[10px] font-medium text-[#EE5D50] uppercase mt-1">{error}</span>}
                 </div>
             </div>
@@ -232,8 +251,8 @@ export default function CreateNewItemPage() {
                             </h2>
                         </div>
 
-                        {/* Row 1: Product Name (50%), Category (25%) & SKU (25%) */}
-                        <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-4 gap-8">
+                        {/* Row 1: Product Name (2/5), Category, Low Stock, SKU */}
+                        <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-5 gap-5">
                             <div className="md:col-span-2 space-y-1.5">
                                 <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Product Name <span className="text-[#EE5D50] ml-0.5">*</span></label>
                                 <input
@@ -301,6 +320,22 @@ export default function CreateNewItemPage() {
                                 </div>
                             </div>
 
+                            {/* Low Stock Threshold */}
+                            <div className="space-y-1.5">
+                                <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Low Stock At</label>
+                                <div className="relative bg-[#F4F7FE]/50 rounded-lg px-5 py-3 flex items-center gap-3">
+                                    <AlertTriangle className="w-4 h-4 text-[#FFB547] shrink-0" />
+                                    <input
+                                        type="number"
+                                        placeholder="10"
+                                        min={0}
+                                        value={formData.lowStockThreshold || ""}
+                                        onChange={(e) => setFormData({ ...formData, lowStockThreshold: parseInt(e.target.value) || 0 })}
+                                        className="bg-transparent border-none p-0 text-[#1B2559] text-[12px] font-medium outline-none placeholder:text-[#A3AED0] w-full"
+                                    />
+                                </div>
+                            </div>
+
                             {/* SKU */}
                             <div className="space-y-1.5">
                                 <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">SKU <span className="text-[10px] text-[#A3AED0] lowercase ml-1">(Optional)</span></label>
@@ -317,8 +352,8 @@ export default function CreateNewItemPage() {
                             </div>
                         </div>
 
-                        {/* Row 2: Qty, Unit, Cost, Price (All 25%) */}
-                        <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-4 gap-8">
+                        {/* Row 2: Qty, Unit, Cost, Price, Expiry (5 cols) */}
+                        <div className="md:col-span-3 grid grid-cols-2 md:grid-cols-5 gap-5">
                             {/* Quantity */}
                             <div className="space-y-1.5">
                                 <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Quantity</label>
@@ -401,17 +436,41 @@ export default function CreateNewItemPage() {
 
                             {/* Selling Price */}
                             <div className="space-y-1.5">
-                                <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Price (Sell)</label>
-                                <div className="relative bg-[#F4F7FE]/50 rounded-lg px-5 py-3 flex items-center gap-2">
-                                    <DollarSign className="w-4 h-4 text-[#3B82F6]" />
+                                <label className={cn(
+                                    "text-[11px] font-medium uppercase tracking-widest pl-1 transition-colors",
+                                    formData.category === 'Consumables' ? "text-[#A3AED0]/40" : "text-[#A3AED0]"
+                                )}>Price (Sell)</label>
+                                <div className={cn(
+                                    "relative rounded-lg px-5 py-3 flex items-center gap-2 transition-all",
+                                    formData.category === 'Consumables'
+                                        ? "bg-[#F4F7FE]/30 cursor-not-allowed opacity-50"
+                                        : "bg-[#F4F7FE]/50"
+                                )}>
+                                    <DollarSign className={cn("w-4 h-4 transition-colors", formData.category === 'Consumables' ? "text-[#A3AED0]/40" : "text-[#3B82F6]")} />
                                     <input
                                         type="number"
                                         placeholder="0.00"
-                                        value={formData.sellPrice || ""}
+                                        disabled={formData.category === 'Consumables'}
+                                        value={formData.category === 'Consumables' ? "" : (formData.sellPrice || "")}
                                         onChange={(e) => setFormData({ ...formData, sellPrice: parseFloat(e.target.value) || 0 })}
-                                        className="bg-transparent border-none p-0 text-[13px] font-medium text-[#1B2559] outline-none placeholder:text-[#A3AED0] w-full"
+                                        className="bg-transparent border-none p-0 text-[13px] font-medium text-[#1B2559] outline-none placeholder:text-[#A3AED0] w-full disabled:cursor-not-allowed"
                                     />
+                                    {formData.category === 'Consumables' && (
+                                        <span className="text-[9px] font-black text-[#A3AED0]/60 uppercase tracking-widest whitespace-nowrap">N/A</span>
+                                    )}
                                 </div>
+                            </div>
+
+                            {/* Expiry Date */}
+                            <div className="space-y-1.5">
+                                <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Expiry Date</label>
+                                <DatePicker
+                                    value={formData.expiryDate || undefined}
+                                    onChange={(date) => setFormData({ ...formData, expiryDate: date.toISOString().split('T')[0] })}
+                                    placeholder="Select date"
+                                    format="dd/MM/yyyy"
+                                    triggerClassName="bg-[#F4F7FE]/50 border-[#F4F7FE] hover:bg-[#F4F7FE]/80 h-[46px] px-5"
+                                />
                             </div>
                         </div>
 
@@ -440,3 +499,12 @@ export default function CreateNewItemPage() {
         </div>
     );
 }
+
+export default function CreateNewItemPage() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center min-h-[40vh]"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#3B82F6]" /></div>}>
+            <CreateNewItemPageInner />
+        </Suspense>
+    );
+}
+

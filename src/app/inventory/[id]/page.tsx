@@ -17,12 +17,15 @@ import {
     Trash2,
     ArrowUpRight,
     ArrowDownRight,
-    Plus
+    Plus,
+    ClipboardList,
+    AlertTriangle
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
+import DatePicker from "@/components/DatePicker";
 
 // Placeholder vendor database
 const VENDOR_DATABASE = [
@@ -30,6 +33,9 @@ const VENDOR_DATABASE = [
     { name: "MediSupply Co.", contact: "Sarah Miller", phone: "0987654321" },
     { name: "PharmaGlobal", contact: "Robert Wilson", phone: "0123456789" },
 ];
+
+const MEDICINE_CATEGORIES = ["Medicine", "Pain and Anxiety", "Antibiotics", "Supplements", "General"];
+const INVENTORY_CATEGORIES = ["Equipment", "Tools", "Consumables", "Office Supplies", "General"];
 
 export default function ItemDetailsPage() {
     const router = useRouter();
@@ -54,6 +60,21 @@ export default function ItemDetailsPage() {
     const [totalConsumption, setTotalConsumption] = useState(0);
     const [usageTrend, setUsageTrend] = useState(0);
     const [showNote, setShowNote] = useState(false);
+    const [adjExpiry, setAdjExpiry] = useState<string>("");
+    const [showVendorInfo, setShowVendorInfo] = useState(false);
+    const [showProductDetails, setShowProductDetails] = useState(false);
+
+    interface Transaction {
+        id: string;
+        created_at: string;
+        type: string;
+        quantity_change: number;
+        resulting_stock: number;
+        expiry_date: string | null;
+        reason: string | null;
+        performed_by: string | null;
+    }
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
 
     const [formData, setFormData] = useState<{
         vendorName: string;
@@ -68,6 +89,8 @@ export default function ItemDetailsPage() {
         sellPrice: number;
         lastStockIn: string | null;
         lastStockOut: string | null;
+        item_type: 'medicine' | 'inventory';
+        lowStockThreshold: number;
     }>({
         vendorName: "",
         contactPerson: "",
@@ -80,7 +103,9 @@ export default function ItemDetailsPage() {
         buyPrice: 0,
         sellPrice: 0,
         lastStockIn: null,
-        lastStockOut: null
+        lastStockOut: null,
+        item_type: 'medicine' as 'medicine' | 'inventory',
+        lowStockThreshold: 10,
     });
 
     useEffect(() => {
@@ -109,25 +134,39 @@ export default function ItemDetailsPage() {
                         buyPrice: item.buy_price || 0,
                         sellPrice: item.sell_price || 0,
                         lastStockIn: item.last_stock_in || null,
-                        lastStockOut: item.last_stock_out || null
+                        lastStockOut: item.last_stock_out || null,
+                        item_type: item.item_type || 'medicine',
+                        lowStockThreshold: item.low_stock_threshold ?? 10,
                     });
                     setVendorSearch(item.vendor || "");
                 }
 
-                // Fetch suggestions
-                const { data: suggestions, error: sugError } = await supabase.from('inventory').select('category, unit');
+                // Fetch suggestions scoped to the same item_type
+                const { data: suggestions, error: sugError } = await supabase
+                    .from('inventory')
+                    .select('category, unit')
+                    .eq('item_type', item?.item_type || 'medicine');
                 if (sugError) throw sugError;
 
                 if (suggestions) {
                     const cats = Array.from(new Set(suggestions.map(i => i.category).filter(Boolean)));
                     const units = Array.from(new Set(suggestions.map(i => i.unit).filter(Boolean)));
 
-                    const defaultCats = ["Medicine", "Pain and Anxiety", "Antibiotics", "Supplements", "General"];
+                    const defaultCats = (item?.item_type || 'medicine') === 'inventory' ? INVENTORY_CATEGORIES : MEDICINE_CATEGORIES;
                     const defaultUnits = ["Piece", "Pill", "Box", "Bottle"];
 
                     setDbCategories(Array.from(new Set([...defaultCats, ...cats])));
                     setDbUnits(Array.from(new Set([...defaultUnits, ...units])));
                 }
+
+                // Fetch transaction history
+                const { data: txns, error: txnError } = await supabase
+                    .from('inventory_transactions')
+                    .select('*')
+                    .eq('inventory_id', id)
+                    .order('created_at', { ascending: false });
+                if (txnError) throw txnError;
+                setTransactions(txns || []);
             } catch (err: any) {
                 console.error("Error fetching item details:", err);
                 setError(err.message || "Failed to fetch item details");
@@ -170,6 +209,7 @@ export default function ItemDetailsPage() {
         }));
 
         try {
+            // 1. Update inventory stock level
             const { error: updateError } = await supabase
                 .from('inventory')
                 .update({
@@ -180,23 +220,32 @@ export default function ItemDetailsPage() {
 
             if (updateError) throw updateError;
 
-            // 2. Log to audit_logs
-            await supabase.from('audit_logs').insert({
-                table_name: 'inventory',
-                record_id: id,
-                action: type === 'IN' ? 'STOCK_IN' : 'STOCK_OUT',
-                new_values: {
-                    quantity: amount,
-                    note: adjNote,
-                    previous_stock: formData.quantity,
-                    new_stock: newQty
-                }
-            });
+            // 2. Create transaction log
+            const { data: newTxn, error: txnError } = await supabase
+                .from('inventory_transactions')
+                .insert({
+                    inventory_id: id,
+                    type: type === 'IN' ? 'in' : 'out',
+                    quantity_change: adjustment,
+                    resulting_stock: newQty,
+                    reason: adjNote || null,
+                    expiry_date: type === 'IN' && adjExpiry ? adjExpiry : null,
+                })
+                .select()
+                .single();
 
-            // Success - Reset adjustment fields
+            if (txnError) throw txnError;
+
+            // 3. Update local transaction list
+            if (newTxn) {
+                setTransactions(prev => [newTxn, ...prev]);
+            }
+
+            // 4. Reset adjustment fields
             setAdjQty(0);
             setAdjNote("");
-            alert(`Stock ${type === 'IN' ? 'added' : 'decreased'} successfully`);
+            setAdjExpiry("");
+            setShowNote(false);
         } catch (err: any) {
             console.error('Error adjusting stock:', err);
             alert("Failed to adjust stock: " + err.message);
@@ -296,11 +345,13 @@ export default function ItemDetailsPage() {
                     buy_price: formData.buyPrice || 0,
                     sell_price: formData.sellPrice || 0,
                     category: formData.category,
+                    item_type: formData.item_type,
+                    low_stock_threshold: formData.lowStockThreshold || 10,
                 })
                 .eq('id', id);
 
             if (updateError) throw updateError;
-            router.refresh();
+            router.push(`/inventory?tab=${formData.item_type}`);
         } catch (err: any) {
             console.error('Error updating item:', err);
             setError(err.message || "Failed to update item");
@@ -379,421 +430,607 @@ export default function ItemDetailsPage() {
             {/* Main Content Sections */}
             <div className="flex flex-col gap-6">
                 {/* Vendor Information (Full Width) */}
-                <div className="bg-white rounded-lg border border-[#E0E5F2] p-8 shadow-sm">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4">
-                        <div className="md:col-span-3 mb-2">
-                            <h2 className="text-2xl font-medium text-[#1B2559] flex items-center gap-2 font-kantumruy tracking-tight">
-                                <Building2 className="w-6 h-6 text-[#3B82F6]" />
-                                Vendor Information
-                            </h2>
+                <div className="bg-white rounded-lg border border-[#E0E5F2] shadow-sm overflow-hidden">
+                    {/* Toggle Header */}
+                    <button
+                        onClick={() => setShowVendorInfo(v => !v)}
+                        className="w-full flex items-center justify-between px-6 py-4 hover:bg-[#F4F7FE]/30 transition-colors"
+                    >
+                        <div className="flex items-center gap-2.5">
+                            <Building2 className="w-5 h-5 text-[#3B82F6]" />
+                            <h2 className="text-[14px] font-black text-[#1B2559] tracking-tight">Vendor Information</h2>
+                            {!showVendorInfo && formData.vendorName && (
+                                <span className="text-[11px] font-medium text-[#A3AED0] ml-1">· {formData.vendorName}</span>
+                            )}
                         </div>
+                        <ChevronDown className={cn("w-4 h-4 text-[#A3AED0] transition-transform duration-200", showVendorInfo && "rotate-180")} />
+                    </button>
 
-                        {/* Vendor Name with Autocomplete */}
-                        <div className="space-y-1.5 relative">
-                            <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Vendor Name</label>
-                            <div className="relative group">
-                                <input
-                                    type="text"
-                                    placeholder="e.g. Dentalku"
-                                    value={vendorSearch || formData.vendorName}
-                                    onFocus={() => setShowVendorSuggestions(true)}
-                                    onChange={(e) => {
-                                        setVendorSearch(e.target.value);
-                                        setFormData({ ...formData, vendorName: e.target.value });
-                                    }}
-                                    className="w-full bg-[#F4F7FE]/50 border-none rounded-lg px-5 py-3 text-[12px] font-medium text-[#1B2559] outline-none placeholder:text-[#A3AED0] focus:ring-2 focus:ring-[#3B82F6]/10 transition-all font-kantumruy"
-                                />
-                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A3AED0]" />
+                    {/* Collapsible Content */}
+                    <div className={cn(
+                        "overflow-hidden transition-all duration-300 ease-in-out",
+                        showVendorInfo ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
+                    )}>
+                        <div className="px-6 pb-6 pt-2">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4">
 
-                                {showVendorSuggestions && suggestions.length > 0 && (
-                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#E0E5F2] rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                                        {suggestions.map((v) => (
-                                            <button
-                                                key={v.name}
-                                                onClick={() => selectVendor(v)}
-                                                className="w-full px-5 py-3 text-left hover:bg-[#F4F7FE] transition-colors flex flex-col gap-0.5"
-                                            >
-                                                <span className="text-[12px] font-medium text-[#1B2559]">{v.name}</span>
-                                                <span className="text-[10px] text-[#A3AED0] font-medium">{v.contact} • {v.phone}</span>
-                                            </button>
-                                        ))}
+                                {/* Vendor Name with Autocomplete */}
+                                <div className="space-y-1.5 relative">
+                                    <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Vendor Name</label>
+                                    <div className="relative group">
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. Dentalku"
+                                            value={vendorSearch || formData.vendorName}
+                                            onFocus={() => setShowVendorSuggestions(true)}
+                                            onChange={(e) => {
+                                                setVendorSearch(e.target.value);
+                                                setFormData({ ...formData, vendorName: e.target.value });
+                                            }}
+                                            className="w-full bg-[#F4F7FE]/50 border-none rounded-lg px-5 py-3 text-[12px] font-medium text-[#1B2559] outline-none placeholder:text-[#A3AED0] focus:ring-2 focus:ring-[#3B82F6]/10 transition-all font-kantumruy"
+                                        />
+                                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A3AED0]" />
+
+                                        {showVendorSuggestions && suggestions.length > 0 && (
+                                            <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#E0E5F2] rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                                {suggestions.map((v) => (
+                                                    <button
+                                                        key={v.name}
+                                                        onClick={() => selectVendor(v)}
+                                                        className="w-full px-5 py-3 text-left hover:bg-[#F4F7FE] transition-colors flex flex-col gap-0.5"
+                                                    >
+                                                        <span className="text-[12px] font-medium text-[#1B2559]">{v.name}</span>
+                                                        <span className="text-[10px] text-[#A3AED0] font-medium">{v.contact} • {v.phone}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                            </div>
-                        </div>
+                                </div>
 
-                        {/* Contact Person */}
-                        <div className="space-y-1.5">
-                            <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Contact Person</label>
-                            <div className="relative bg-[#F4F7FE]/50 rounded-lg px-5 py-3 flex items-center gap-3">
-                                <User className="w-4 h-4 text-[#3B82F6]" />
-                                <input
-                                    type="text"
-                                    placeholder="James Anderson"
-                                    value={formData.contactPerson}
-                                    onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
-                                    className="bg-transparent border-none p-0 text-[12px] font-medium text-[#1B2559] outline-none placeholder:text-[#A3AED0] w-full font-kantumruy"
-                                />
-                            </div>
-                        </div>
+                                {/* Contact Person */}
+                                <div className="space-y-1.5">
+                                    <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Contact Person</label>
+                                    <div className="relative bg-[#F4F7FE]/50 rounded-lg px-5 py-3 flex items-center gap-3">
+                                        <User className="w-4 h-4 text-[#3B82F6]" />
+                                        <input
+                                            type="text"
+                                            placeholder="James Anderson"
+                                            value={formData.contactPerson}
+                                            onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
+                                            className="bg-transparent border-none p-0 text-[12px] font-medium text-[#1B2559] outline-none placeholder:text-[#A3AED0] w-full font-kantumruy"
+                                        />
+                                    </div>
+                                </div>
 
-                        {/* Phone Number */}
-                        <div className="space-y-1.5">
-                            <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Phone Number</label>
-                            <div className="relative bg-[#F4F7FE]/50 rounded-lg px-5 py-3 flex items-center gap-3">
-                                <Phone className="w-4 h-4 text-[#3B82F6]" />
-                                <input
-                                    type="text"
-                                    placeholder="084395450343"
-                                    value={formData.phoneNumber}
-                                    onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                                    className="bg-transparent border-none p-0 text-[#1B2559] text-[12px] font-medium outline-none placeholder:text-[#A3AED0] w-full"
-                                />
+                                {/* Phone Number */}
+                                <div className="space-y-1.5">
+                                    <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Phone Number</label>
+                                    <div className="relative bg-[#F4F7FE]/50 rounded-lg px-5 py-3 flex items-center gap-3">
+                                        <Phone className="w-4 h-4 text-[#3B82F6]" />
+                                        <input
+                                            type="text"
+                                            placeholder="084395450343"
+                                            value={formData.phoneNumber}
+                                            onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                                            className="bg-transparent border-none p-0 text-[#1B2559] text-[12px] font-medium outline-none placeholder:text-[#A3AED0] w-full"
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Product Details (Full Width) */}
-                <div className="bg-white rounded-lg border border-[#E0E5F2] p-8 shadow-sm">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-x-8 gap-y-6">
-                        <div className="md:col-span-4 mb-2">
-                            <h2 className="text-2xl font-medium text-[#1B2559] flex items-center gap-2 font-kantumruy tracking-tight">
-                                <Package className="w-6 h-6 text-[#3B82F6]" />
-                                Product Details
-                            </h2>
+                <div className="bg-white rounded-lg border border-[#E0E5F2] shadow-sm overflow-hidden">
+                    {/* Toggle Header */}
+                    <button
+                        onClick={() => setShowProductDetails(v => !v)}
+                        className="w-full flex items-center justify-between px-6 py-4 hover:bg-[#F4F7FE]/30 transition-colors"
+                    >
+                        <div className="flex items-center gap-2.5">
+                            <Package className="w-5 h-5 text-[#3B82F6]" />
+                            <h2 className="text-[14px] font-black text-[#1B2559] tracking-tight">Product Details</h2>
+                            {!showProductDetails && formData.sku && (
+                                <span className="text-[11px] font-medium text-[#A3AED0] ml-1">· SKU {formData.sku}</span>
+                            )}
+                        </div>
+                        <ChevronDown className={cn("w-4 h-4 text-[#A3AED0] transition-transform duration-200", showProductDetails && "rotate-180")} />
+                    </button>
+
+                    {/* Collapsible Content */}
+                    <div className={cn(
+                        "overflow-hidden transition-all duration-300 ease-in-out",
+                        showProductDetails ? "max-h-[600px] opacity-100" : "max-h-0 opacity-0"
+                    )}>
+                        <div className="px-6 pb-6 pt-2">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-x-8 gap-y-6">
+
+                                <div className="md:col-span-2 space-y-1.5">
+                                    <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Product Name <span className="text-[#EE5D50] ml-0.5">*</span></label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Braces"
+                                        value={formData.productName}
+                                        onChange={(e) => {
+                                            setFormData({ ...formData, productName: e.target.value });
+                                            if (error) setError(null);
+                                        }}
+                                        className={cn(
+                                            "w-full bg-[#F4F7FE]/50 border-none rounded-lg px-5 py-3 text-[12px] font-medium text-[#1B2559] outline-none placeholder:text-[#A3AED0] focus:ring-2 focus:ring-[#3B82F6]/10 transition-all font-kantumruy",
+                                            error === "Product name is required" && "ring-2 ring-[#EE5D50]/20 bg-[#EE5D50]/5"
+                                        )}
+                                    />
+                                </div>
+
+                                <div className="space-y-1.5 relative">
+                                    <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Category</label>
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            placeholder="Medicine"
+                                            value={formData.category}
+                                            onFocus={() => setIsCategoryDropdownOpen(true)}
+                                            onChange={(e) => {
+                                                setFormData({ ...formData, category: e.target.value });
+                                                setIsCategoryDropdownOpen(true);
+                                            }}
+                                            className="w-full bg-[#F4F7FE]/50 rounded-lg px-5 py-3 text-[12px] font-medium text-[#1B2559] outline-none hover:bg-[#F4F7FE]/80 transition-all border border-transparent focus:border-[#3B82F6]/20"
+                                        />
+                                        <ChevronDown className={cn("absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A3AED0] transition-transform pointer-events-none", isCategoryDropdownOpen && "rotate-180")} />
+                                        {isCategoryDropdownOpen && (
+                                            <>
+                                                <div className="fixed inset-0 z-40" onClick={() => setIsCategoryDropdownOpen(false)} />
+                                                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#E0E5F2] rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                                    <div className="max-h-[200px] overflow-y-auto">
+                                                        {dbCategories
+                                                            .filter(cat => !formData.category || cat.toLowerCase().includes(formData.category.toLowerCase()))
+                                                            .map((cat) => (
+                                                                <button
+                                                                    key={cat}
+                                                                    type="button"
+                                                                    onClick={() => { setFormData({ ...formData, category: cat }); setIsCategoryDropdownOpen(false); }}
+                                                                    className={cn("w-full px-5 py-2.5 text-left text-[11px] font-medium uppercase tracking-widest transition-colors hover:bg-[#F4F7FE]", formData.category === cat ? "text-[#3B82F6] bg-[#F4F7FE]/50" : "text-[#1B2559]")}
+                                                                >
+                                                                    {cat}
+                                                                </button>
+                                                            ))}
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">SKU</label>
+                                    <div className="relative bg-[#F4F7FE]/50 rounded-lg px-5 py-3 flex items-center gap-3">
+                                        <Hash className="w-4 h-4 text-[#A3AED0]" />
+                                        <input
+                                            type="text"
+                                            placeholder="213-2311"
+                                            value={formData.sku}
+                                            onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                                            className="bg-transparent border-none p-0 text-[#1B2559] text-[12px] font-medium outline-none placeholder:text-[#A3AED0] w-full"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Low Stock Threshold */}
+                                <div className="md:col-span-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Low Stock At</label>
+                                            <div className="relative bg-[#F4F7FE]/50 rounded-lg px-3 py-3 flex items-center gap-2">
+                                                <AlertTriangle className="w-4 h-4 text-[#FFB547] shrink-0" />
+                                                <input
+                                                    type="number"
+                                                    placeholder="10"
+                                                    min={0}
+                                                    value={formData.lowStockThreshold || ""}
+                                                    onChange={(e) => setFormData({ ...formData, lowStockThreshold: parseInt(e.target.value) || 0 })}
+                                                    className="bg-transparent border-none p-0 text-[#1B2559] text-[12px] font-medium outline-none placeholder:text-[#A3AED0] w-full"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Quantity</label>
+                                            <div className="relative bg-[#F4F7FE]/50 rounded-lg px-3 py-3 flex items-center gap-2">
+                                                <Layers className="w-4 h-4 text-[#3B82F6]" />
+                                                <input
+                                                    type="number"
+                                                    value={formData.quantity}
+                                                    onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
+                                                    className="bg-transparent border-none p-0 text-[#1B2559] text-[12px] font-medium outline-none w-full"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1.5 relative">
+                                            <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Unit</label>
+                                            <div className="relative">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Piece"
+                                                    value={formData.unit}
+                                                    onFocus={() => setIsUnitDropdownOpen(true)}
+                                                    onChange={(e) => { setFormData({ ...formData, unit: e.target.value }); setIsUnitDropdownOpen(true); }}
+                                                    className="w-full bg-[#F4F7FE]/50 rounded-lg px-3 py-3 text-[12px] font-medium text-[#1B2559] outline-none hover:bg-[#F4F7FE]/80 transition-all border border-transparent focus:border-[#3B82F6]/20"
+                                                />
+                                                <ChevronDown className={cn("absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A3AED0] pointer-events-none transition-transform", isUnitDropdownOpen && "rotate-180")} />
+                                                {isUnitDropdownOpen && (
+                                                    <>
+                                                        <div className="fixed inset-0 z-40" onClick={() => setIsUnitDropdownOpen(false)} />
+                                                        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#E0E5F2] rounded-lg shadow-xl z-50 overflow-hidden">
+                                                            <div className="max-h-[200px] overflow-y-auto">
+                                                                {dbUnits.filter(u => !formData.unit || u.toLowerCase().includes(formData.unit.toLowerCase())).map(u => (
+                                                                    <button key={u} type="button" onClick={() => { setFormData({ ...formData, unit: u }); setIsUnitDropdownOpen(false); }} className={cn("w-full px-5 py-2.5 text-left text-[12px] font-medium", formData.unit === u ? "text-[#3B82F6] bg-[#F4F7FE]/50" : "text-[#1B2559] hover:bg-[#F4F7FE]")}>
+                                                                        {u}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Cost (Buy)</label>
+                                            <div className="relative bg-[#F4F7FE]/50 rounded-lg px-3 py-3 flex items-center gap-2">
+                                                <DollarSign className="w-4 h-4 text-[#19D5C5]" />
+                                                <input type="number" value={formData.buyPrice} onChange={(e) => setFormData({ ...formData, buyPrice: parseFloat(e.target.value) || 0 })} className="bg-transparent border-none p-0 text-[13px] font-medium text-[#1B2559] outline-none w-full" />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Price (Sell)</label>
+                                            <div className="relative bg-[#F4F7FE]/50 rounded-lg px-3 py-3 flex items-center gap-2">
+                                                <DollarSign className="w-4 h-4 text-[#3B82F6]" />
+                                                <input type="number" value={formData.sellPrice} onChange={(e) => setFormData({ ...formData, sellPrice: parseFloat(e.target.value) || 0 })} className="bg-transparent border-none p-0 text-[13px] font-medium text-[#1B2559] outline-none w-full" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Bottom Sections: Stock & Analysis Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Stock Management (6/12) */}
+                <div className="lg:col-span-6 flex flex-col">
+                    <div className="bg-white rounded-lg border border-[#E0E5F2] p-5 shadow-sm flex-1 flex flex-col gap-3">
+
+                        {/* Header */}
+                        <div className="flex items-center gap-2">
+                            <Calendar className="w-4.5 h-4.5 text-[#3B82F6] shrink-0" />
+                            <h2 className="text-[14px] font-black text-[#1B2559] tracking-tight flex-1">Stock Management</h2>
                         </div>
 
-                        <div className="md:col-span-2 space-y-1.5">
-                            <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Product Name <span className="text-[#EE5D50] ml-0.5">*</span></label>
-                            <input
-                                type="text"
-                                placeholder="e.g. Braces"
-                                value={formData.productName}
-                                onChange={(e) => {
-                                    setFormData({ ...formData, productName: e.target.value });
-                                    if (error) setError(null);
-                                }}
-                                className={cn(
-                                    "w-full bg-[#F4F7FE]/50 border-none rounded-lg px-5 py-3 text-[12px] font-medium text-[#1B2559] outline-none placeholder:text-[#A3AED0] focus:ring-2 focus:ring-[#3B82F6]/10 transition-all font-kantumruy",
-                                    error === "Product name is required" && "ring-2 ring-[#EE5D50]/20 bg-[#EE5D50]/5"
-                                )}
+                        {/* Stepper */}
+                        <div className="flex items-center justify-between bg-[#F4F7FE]/60 rounded-xl px-4 py-3 border border-[#E0E5F2]/50">
+                            <button
+                                onClick={() => setAdjQty(q => q - 1)}
+                                className="w-12 h-12 rounded-xl flex items-center justify-center text-[#EE5D50] hover:bg-[#EE5D50]/10 active:scale-90 transition-all font-black text-2xl select-none"
+                            >
+                                −
+                            </button>
+                            <div className="flex flex-col items-center">
+                                <span className={cn(
+                                    "text-3xl font-black tabular-nums leading-none transition-colors",
+                                    adjQty === 0 ? "text-[#A3AED0]" : adjQty > 0 ? "text-[#19D5C5]" : "text-[#EE5D50]"
+                                )}>
+                                    {adjQty > 0 ? `+${adjQty}` : adjQty}
+                                </span>
+                                <span className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest mt-1">{formData.unit}</span>
+                            </div>
+                            <button
+                                onClick={() => setAdjQty(q => q + 1)}
+                                className="w-12 h-12 rounded-xl flex items-center justify-center text-[#19D5C5] hover:bg-[#19D5C5]/10 active:scale-90 transition-all font-black text-2xl select-none"
+                            >
+                                +
+                            </button>
+                        </div>
+
+                        {/* Expiry — greyed out when qty = 0 or negative */}
+                        <div className={cn("space-y-1 transition-opacity duration-200", adjQty <= 0 ? "opacity-40 pointer-events-none" : "opacity-100")}>
+                            <label className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Batch Expiry Date</label>
+                            <DatePicker
+                                value={adjExpiry || undefined}
+                                onChange={(date) => setAdjExpiry(date.toISOString().split('T')[0])}
+                                placeholder="Optional"
+                                format="dd/MM/yyyy"
+                                triggerClassName="bg-[#F4F7FE]/50 border-[#F4F7FE] hover:bg-[#F4F7FE]/80 h-[36px] px-4"
                             />
                         </div>
 
-                        <div className="space-y-1.5 relative">
-                            <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Category</label>
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    placeholder="Medicine"
-                                    value={formData.category}
-                                    onFocus={() => setIsCategoryDropdownOpen(true)}
-                                    onChange={(e) => {
-                                        setFormData({ ...formData, category: e.target.value });
-                                        setIsCategoryDropdownOpen(true);
-                                    }}
-                                    className="w-full bg-[#F4F7FE]/50 rounded-lg px-5 py-3 text-[12px] font-medium text-[#1B2559] outline-none hover:bg-[#F4F7FE]/80 transition-all border border-transparent focus:border-[#3B82F6]/20"
-                                />
-                                <ChevronDown className={cn("absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A3AED0] transition-transform pointer-events-none", isCategoryDropdownOpen && "rotate-180")} />
-                                {isCategoryDropdownOpen && (
-                                    <>
-                                        <div className="fixed inset-0 z-40" onClick={() => setIsCategoryDropdownOpen(false)} />
-                                        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#E0E5F2] rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                                            <div className="max-h-[200px] overflow-y-auto">
-                                                {dbCategories
-                                                    .filter(cat => !formData.category || cat.toLowerCase().includes(formData.category.toLowerCase()))
-                                                    .map((cat) => (
-                                                        <button
-                                                            key={cat}
-                                                            type="button"
-                                                            onClick={() => { setFormData({ ...formData, category: cat }); setIsCategoryDropdownOpen(false); }}
-                                                            className={cn("w-full px-5 py-2.5 text-left text-[11px] font-medium uppercase tracking-widest transition-colors hover:bg-[#F4F7FE]", formData.category === cat ? "text-[#3B82F6] bg-[#F4F7FE]/50" : "text-[#1B2559]")}
-                                                        >
-                                                            {cat}
-                                                        </button>
-                                                    ))}
-                                            </div>
-                                        </div>
-                                    </>
+                        {/* Reason — inline toggle, no layout shift */}
+                        <div>
+                            <button
+                                onClick={() => setShowNote(n => !n)}
+                                className="flex items-center gap-1.5 text-[10px] font-black text-[#A3AED0] hover:text-[#1B2559] uppercase tracking-widest transition-colors"
+                            >
+                                <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", showNote && "rotate-180")} />
+                                {showNote ? "Hide reason" : "Add reason"}
+                                {adjNote && !showNote && (
+                                    <span className="ml-1 text-[#4318FF]/60 normal-case truncate max-w-[120px]">· {adjNote}</span>
                                 )}
-                            </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">SKU</label>
-                            <div className="relative bg-[#F4F7FE]/50 rounded-lg px-5 py-3 flex items-center gap-3">
-                                <Hash className="w-4 h-4 text-[#A3AED0]" />
-                                <input
-                                    type="text"
-                                    placeholder="213-2311"
-                                    value={formData.sku}
-                                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                                    className="bg-transparent border-none p-0 text-[#1B2559] text-[12px] font-medium outline-none placeholder:text-[#A3AED0] w-full"
+                            </button>
+                            <div className={cn(
+                                "overflow-hidden transition-all duration-200",
+                                showNote ? "max-h-[80px] mt-1.5 opacity-100" : "max-h-0 opacity-0"
+                            )}>
+                                <textarea
+                                    value={adjNote}
+                                    onChange={(e) => setAdjNote(e.target.value)}
+                                    placeholder="e.g. Restock from supplier..."
+                                    className="w-full bg-[#F4F7FE]/50 border-none rounded-lg px-4 py-2 text-[11px] font-medium text-[#1B2559] outline-none h-[64px] resize-none placeholder:text-[#A3AED0] focus:ring-1 focus:ring-[#3B82F6]/10 transition-all"
                                 />
                             </div>
                         </div>
 
-                        <div className="space-y-1.5">
-                            <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Quantity</label>
-                            <div className="relative bg-[#F4F7FE]/50 rounded-lg px-5 py-3 flex items-center gap-3">
-                                <Layers className="w-4 h-4 text-[#3B82F6]" />
-                                <input
-                                    type="number"
-                                    value={formData.quantity}
-                                    onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
-                                    className="bg-transparent border-none p-0 text-[#1B2559] text-[12px] font-medium outline-none w-full"
-                                />
+                        {/* Divider */}
+                        <div className="h-[1px] bg-[#F4F7FE]" />
+
+                        {/* Stats row */}
+                        <div className="grid grid-cols-3 gap-2">
+                            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-[#F4F7FE]/30 border border-[#E0E5F2]/50">
+                                <div className="w-6 h-6 rounded-full bg-white border border-[#E0E5F2] flex items-center justify-center shrink-0">
+                                    <ArrowUpRight className="w-3 h-3 text-[#19D5C5]" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[7px] font-medium text-[#A3AED0] uppercase tracking-widest leading-none mb-0.5">Last In</p>
+                                    <p className="text-[9px] font-medium text-[#1B2559] truncate leading-tight">
+                                        {formData.lastStockIn ? new Date(formData.lastStockIn).toLocaleDateString('en-GB') : "—"}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-[#F4F7FE]/30 border border-[#E0E5F2]/50">
+                                <div className="w-6 h-6 rounded-full bg-white border border-[#E0E5F2] flex items-center justify-center shrink-0">
+                                    <ArrowDownRight className="w-3 h-3 text-[#EE5D50]" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[7px] font-medium text-[#A3AED0] uppercase tracking-widest leading-none mb-0.5">Last Out</p>
+                                    <p className="text-[9px] font-medium text-[#1B2559] truncate leading-tight">
+                                        {formData.lastStockOut ? new Date(formData.lastStockOut).toLocaleDateString('en-GB') : "—"}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-[#F4F7FE]/30 border border-[#E0E5F2]/50">
+                                <div className="w-6 h-6 rounded-full bg-white border border-[#E0E5F2] flex items-center justify-center shrink-0">
+                                    <Layers className="w-3 h-3 text-[#3B82F6]" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[7px] font-medium text-[#A3AED0] uppercase tracking-widest leading-none mb-0.5">Stock</p>
+                                    <p className="text-[9px] font-medium text-[#1B2559] leading-tight">
+                                        {formData.quantity} <span className="text-[7px] text-[#A3AED0] uppercase">{formData.unit}</span>
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="space-y-1.5 relative">
-                            <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Unit</label>
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    placeholder="Piece"
-                                    value={formData.unit}
-                                    onFocus={() => setIsUnitDropdownOpen(true)}
-                                    onChange={(e) => { setFormData({ ...formData, unit: e.target.value }); setIsUnitDropdownOpen(true); }}
-                                    className="w-full bg-[#F4F7FE]/50 rounded-lg px-5 py-3 text-[12px] font-medium text-[#1B2559] outline-none hover:bg-[#F4F7FE]/80 transition-all border border-transparent focus:border-[#3B82F6]/20"
-                                />
-                                <ChevronDown className={cn("absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A3AED0] pointer-events-none transition-transform", isUnitDropdownOpen && "rotate-180")} />
-                                {isUnitDropdownOpen && (
-                                    <>
-                                        <div className="fixed inset-0 z-40" onClick={() => setIsUnitDropdownOpen(false)} />
-                                        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#E0E5F2] rounded-lg shadow-xl z-50 overflow-hidden">
-                                            <div className="max-h-[200px] overflow-y-auto">
-                                                {dbUnits.filter(u => !formData.unit || u.toLowerCase().includes(formData.unit.toLowerCase())).map(u => (
-                                                    <button key={u} type="button" onClick={() => { setFormData({ ...formData, unit: u }); setIsUnitDropdownOpen(false); }} className={cn("w-full px-5 py-2.5 text-left text-[12px] font-medium", formData.unit === u ? "text-[#3B82F6] bg-[#F4F7FE]/50" : "text-[#1B2559] hover:bg-[#F4F7FE]")}>
-                                                        {u}
-                                                    </button>
-                                                ))}
+                        {/* Confirm Button */}
+                        <button
+                            onClick={() => {
+                                if (adjQty === 0) return;
+                                handleAdjustStock(Math.abs(adjQty), adjQty > 0 ? 'IN' : 'OUT');
+                            }}
+                            disabled={adjQty === 0}
+                            className={cn(
+                                "w-full py-3.5 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 mt-auto shadow-md disabled:opacity-35 disabled:cursor-not-allowed disabled:shadow-none active:scale-[0.99]",
+                                adjQty > 0
+                                    ? "bg-[#19D5C5] text-white shadow-[#19D5C5]/25 hover:opacity-90"
+                                    : adjQty < 0
+                                        ? "bg-[#EE5D50] text-white shadow-[#EE5D50]/25 hover:opacity-90"
+                                        : "bg-[#F4F7FE] text-[#A3AED0]"
+                            )}
+                        >
+                            {adjQty > 0 ? <Plus className="w-4 h-4" /> : adjQty < 0 ? <div className="w-3.5 h-0.5 bg-white rounded-full" /> : null}
+                            Confirm
+                            {adjQty !== 0 && (
+                                <span className="opacity-70">
+                                    ({adjQty > 0 ? `+${adjQty}` : adjQty} {formData.unit})
+                                </span>
+                            )}
+                        </button>
+
+                    </div>
+                </div>
+
+                {/* Analysis Section (6/12) */}
+                <div className="lg:col-span-6 flex flex-col">
+                    <div className="bg-white rounded-lg border border-[#E0E5F2] p-6 shadow-sm flex-1">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                            <h2 className="text-[20px] font-medium text-[#1B2559] flex items-center gap-2 font-kantumruy tracking-tight">
+                                <BarChart3 className="w-5 h-5 text-[#3B82F6]" />
+                                Analysis
+                            </h2>
+
+                            <div className="bg-[#F4F7FE]/50 p-0.5 rounded-lg flex gap-1 w-full md:w-36">
+                                {(['1m', '3m', '6m'] as const).map((t) => (
+                                    <button
+                                        key={t}
+                                        onClick={() => setTimeframe(t)}
+                                        className={cn(
+                                            "flex-1 py-1 rounded-lg text-[9px] font-medium uppercase tracking-widest transition-all",
+                                            timeframe === t ? "bg-white text-[#3B82F6] shadow-sm" : "text-[#A3AED0] hover:text-[#1B2559]"
+                                        )}
+                                    >
+                                        {t}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between gap-3 p-4 rounded-lg bg-[#F4F7FE]/30 border border-[#E0E5F2]/50">
+                                <div>
+                                    <p className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest mb-1">Consumption</p>
+                                    <div className="flex items-baseline gap-1.5">
+                                        <h3 className="text-2xl font-medium text-[#1B2559] tracking-tighter">
+                                            {totalConsumption.toLocaleString()}
+                                        </h3>
+                                        <span className="text-[10px] font-medium text-[#A3AED0] uppercase">{formData.unit}</span>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest mb-1">Trend</p>
+                                    <div className={cn(
+                                        "inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-medium",
+                                        usageTrend >= 0 ? "bg-[#19D5C5]/10 text-[#19D5C5]" : "bg-[#EE5D50]/10 text-[#EE5D50]"
+                                    )}>
+                                        {usageTrend >= 0 ? <Plus className="w-2.5 h-2.5" /> : <div className="w-2 h-0.5 bg-current" />}
+                                        {Math.abs(usageTrend)}%
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="h-[120px] flex items-end justify-between gap-2 px-1 group/chart">
+                                {usageData.map((val, i) => {
+                                    const max = Math.max(...usageData, 1);
+                                    const height = (val / max) * 100;
+                                    return (
+                                        <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
+                                            <div
+                                                className="w-full bg-[#F4F7FE] rounded-t-xl relative group overflow-hidden transition-all duration-700 ease-out cursor-pointer hover:shadow-md"
+                                                style={{ height: `${height}%`, minHeight: '10%' }}
+                                            >
+                                                <div className="absolute inset-x-0 bottom-0 bg-[#3B82F6] h-1 transition-all duration-500 rounded-t-full" />
+                                                <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#1B2559] text-white px-2 py-1 rounded-md text-[8px] font-medium opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none shadow-lg whitespace-nowrap">
+                                                    {val} {formData.unit}
+                                                </div>
                                             </div>
+                                            <span className="text-[7px] font-medium text-[#A3AED0] uppercase tracking-tight">
+                                                {usageLabels[i]}
+                                            </span>
                                         </div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Cost (Buy)</label>
-                            <div className="relative bg-[#F4F7FE]/50 rounded-lg px-5 py-3 flex items-center gap-2">
-                                <DollarSign className="w-4 h-4 text-[#19D5C5]" />
-                                <input type="number" value={formData.buyPrice} onChange={(e) => setFormData({ ...formData, buyPrice: parseFloat(e.target.value) || 0 })} className="bg-transparent border-none p-0 text-[13px] font-medium text-[#1B2559] outline-none w-full" />
-                            </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Price (Sell)</label>
-                            <div className="relative bg-[#F4F7FE]/50 rounded-lg px-5 py-3 flex items-center gap-2">
-                                <DollarSign className="w-4 h-4 text-[#3B82F6]" />
-                                <input type="number" value={formData.sellPrice} onChange={(e) => setFormData({ ...formData, sellPrice: parseFloat(e.target.value) || 0 })} className="bg-transparent border-none p-0 text-[13px] font-medium text-[#1B2559] outline-none w-full" />
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                {/* Bottom Sections: Stock & Analysis Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    {/* Stock Management (6/12) */}
-                    <div className="lg:col-span-6 flex flex-col">
-                        <div className="bg-white rounded-lg border border-[#E0E5F2] p-6 shadow-sm flex-1">
-                            <div className="flex items-center justify-between gap-4 mb-4">
-                                <h2 className="text-[20px] font-medium text-[#1B2559] flex items-center gap-2 font-kantumruy tracking-tight">
-                                    <Calendar className="w-5 h-5 text-[#3B82F6]" />
-                                    Stock Management
-                                </h2>
-                                <button
-                                    onClick={() => setShowNote(!showNote)}
-                                    className={cn(
-                                        "text-[10px] font-medium uppercase tracking-widest transition-colors",
-                                        showNote ? "text-[#3B82F6]" : "text-[#A3AED0] hover:text-[#1B2559]"
-                                    )}
-                                >
-                                    {showNote ? "Hide Note" : "Add Note"}
-                                </button>
-                            </div>
+            {/* Transaction History Sheet */}
+            <div className="bg-white rounded-lg border border-[#E0E5F2] shadow-sm overflow-hidden">
+                <div className="px-6 py-5 border-b border-[#E0E5F2] flex items-center justify-between">
+                    <h2 className="text-[20px] font-medium text-[#1B2559] flex items-center gap-2 font-kantumruy tracking-tight">
+                        <ClipboardList className="w-5 h-5 text-[#3B82F6]" />
+                        Transaction History
+                    </h2>
+                    <span className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest">
+                        {transactions.length} record{transactions.length !== 1 ? 's' : ''}
+                    </span>
+                </div>
 
-                            <div className="flex-1 space-y-3">
-                                <div className="space-y-3">
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Amount</label>
-                                        <div className="relative bg-[#F4F7FE]/50 rounded-lg px-4 py-2 flex items-center gap-3 border border-transparent focus-within:ring-2 focus-within:ring-[#3B82F6]/10 transition-all">
-                                            <Layers className="w-4 h-4 text-[#3B82F6]" />
-                                            <input
-                                                type="number"
-                                                value={adjQty || ""}
-                                                onChange={(e) => setAdjQty(parseInt(e.target.value) || 0)}
-                                                placeholder="e.g. 10"
-                                                className="bg-transparent border-none p-0 text-[12px] font-medium text-[#1B2559] outline-none placeholder:text-[#A3AED0] w-full"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {showNote && (
-                                        <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                                            <label className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Reason / Note</label>
-                                            <textarea
-                                                value={adjNote}
-                                                onChange={(e) => setAdjNote(e.target.value)}
-                                                placeholder="e.g. Withdrawing 22 boxes..."
-                                                className="w-full bg-[#F4F7FE]/50 border-none rounded-lg px-4 py-2 text-[12px] font-medium text-[#1B2559] outline-none min-h-[60px] resize-none placeholder:text-[#A3AED0] focus:ring-1 focus:ring-[#3B82F6]/10 transition-all"
-                                            />
-                                        </div>
-                                    )}
-
-                                    <div className="flex gap-2.5">
-                                        <button
-                                            onClick={() => handleAdjustStock(adjQty, 'IN')}
-                                            disabled={!adjQty || adjQty <= 0}
-                                            className="flex-1 bg-[#19D5C5] text-white py-2.5 rounded-lg font-medium text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-md shadow-[#19D5C5]/20 disabled:opacity-50 disabled:scale-100"
-                                        >
-                                            <Plus className="w-3.5 h-3.5" /> Add
-                                        </button>
-                                        <button
-                                            onClick={() => handleAdjustStock(adjQty, 'OUT')}
-                                            disabled={!adjQty || adjQty <= 0 || adjQty > formData.quantity}
-                                            className="flex-1 bg-[#EE5D50] text-white py-2.5 rounded-lg font-medium text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-md shadow-[#EE5D50]/20 disabled:opacity-50 disabled:scale-100"
-                                        >
-                                            <div className="w-3 h-0.5 bg-white rounded-full" /> Decrease
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="h-[1px] bg-[#F4F7FE] my-1" />
-
-                                <div className="grid grid-cols-2 gap-3 mt-3">
-                                    <div className="flex items-center gap-3 p-3 rounded-lg bg-[#F4F7FE]/30 border border-[#E0E5F2]/50 hover:border-[#3B82F6]/20 transition-all group">
-                                        <div className="w-8 h-8 rounded-full bg-white border border-[#E0E5F2] flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
-                                            <ArrowUpRight className="w-4 h-4 text-[#19D5C5]" />
-                                        </div>
-                                        <div className="flex-1 truncate">
-                                            <p className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest mb-0.5">Last In</p>
-                                            <h3 className="text-[11px] font-medium text-[#1B2559] truncate leading-tight">
-                                                {formData.lastStockIn ? new Date(formData.lastStockIn).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : "—"}
-                                            </h3>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 p-3 rounded-lg bg-[#F4F7FE]/30 border border-[#E0E5F2]/50 hover:border-[#3B82F6]/20 transition-all group">
-                                        <div className="w-8 h-8 rounded-full bg-white border border-[#E0E5F2] flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
-                                            <ArrowDownRight className="w-4 h-4 text-[#EE5D50]" />
-                                        </div>
-                                        <div className="flex-1 truncate">
-                                            <p className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest mb-0.5">Last Out</p>
-                                            <h3 className="text-[11px] font-medium text-[#1B2559] truncate leading-tight">
-                                                {formData.lastStockOut ? new Date(formData.lastStockOut).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : "—"}
-                                            </h3>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 p-3 rounded-lg bg-[#F4F7FE]/30 border border-[#E0E5F2]/50 hover:border-[#3B82F6]/20 transition-all group">
-                                        <div className="w-8 h-8 rounded-full bg-white border border-[#E0E5F2] flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
-                                            <Layers className="w-4 h-4 text-[#3B82F6]" />
-                                        </div>
-                                        <div className="flex-1">
-                                            <p className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest mb-0.5">Qty</p>
-                                            <div className="flex items-baseline gap-1 leading-tight">
-                                                <h3 className="text-[12px] font-medium text-[#1B2559]">{formData.quantity}</h3>
-                                                <span className="text-[8px] font-medium text-[#A3AED0] uppercase">{formData.unit}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2.5 p-3 rounded-lg bg-[#F4F7FE]/30 border border-[#E0E5F2]/50 hover:border-[#3B82F6]/20 transition-all group">
-                                        <div className="w-8 h-8 rounded-full bg-white border border-[#E0E5F2] flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
-                                            <div className={cn(
-                                                "w-1.5 h-1.5 rounded-full",
-                                                formData.quantity > 20 ? "bg-[#19D5C5]" : formData.quantity > 5 ? "bg-[#FFB547]" : "bg-[#EE5D50]"
-                                            )} />
-                                        </div>
-                                        <div className="flex-1">
-                                            <p className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest mb-0.5">Health</p>
-                                            <h3 className={cn(
-                                                "text-[9px] font-medium uppercase tracking-tight leading-tight",
-                                                formData.quantity > 20 ? "text-[#19D5C5]" : formData.quantity > 5 ? "text-[#FFB547]" : "text-[#EE5D50]"
-                                            )}>
-                                                {formData.quantity > 20 ? "OK" : formData.quantity > 0 ? "LOW" : "OUT"}
-                                            </h3>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                {transactions.length === 0 ? (
+                    <div className="px-6 py-12 text-center">
+                        <ClipboardList className="w-10 h-10 text-[#E0E5F2] mx-auto mb-3" />
+                        <p className="text-[12px] font-medium text-[#A3AED0]">No transactions yet</p>
+                        <p className="text-[10px] text-[#A3AED0]/60 mt-1">Use the stock management controls above to add or remove stock</p>
                     </div>
-
-                    {/* Analysis Section (6/12) */}
-                    <div className="lg:col-span-6 flex flex-col">
-                        <div className="bg-white rounded-lg border border-[#E0E5F2] p-6 shadow-sm flex-1">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                                <h2 className="text-[20px] font-medium text-[#1B2559] flex items-center gap-2 font-kantumruy tracking-tight">
-                                    <BarChart3 className="w-5 h-5 text-[#3B82F6]" />
-                                    Analysis
-                                </h2>
-
-                                <div className="bg-[#F4F7FE]/50 p-0.5 rounded-lg flex gap-1 w-full md:w-36">
-                                    {(['1m', '3m', '6m'] as const).map((t) => (
-                                        <button
-                                            key={t}
-                                            onClick={() => setTimeframe(t)}
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="border-b border-[#E0E5F2]">
+                                    <th className="px-5 py-3.5 text-left text-[10px] font-black text-[#A3AED0] uppercase tracking-widest">Date & Time</th>
+                                    <th className="px-5 py-3.5 text-left text-[10px] font-black text-[#A3AED0] uppercase tracking-widest">Action</th>
+                                    <th className="px-5 py-3.5 text-right text-[10px] font-black text-[#A3AED0] uppercase tracking-widest">Change</th>
+                                    <th className="px-5 py-3.5 text-right text-[10px] font-black text-[#A3AED0] uppercase tracking-widest">Current Stock</th>
+                                    <th className="px-5 py-3.5 text-left text-[10px] font-black text-[#A3AED0] uppercase tracking-widest">Expiry</th>
+                                    <th className="px-5 py-3.5 text-left text-[10px] font-black text-[#A3AED0] uppercase tracking-widest">Reason</th>
+                                    <th className="px-3 py-3.5 w-8"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {transactions.map((txn, index) => {
+                                    const isIn = txn.type === 'in';
+                                    const dateObj = new Date(txn.created_at);
+                                    return (
+                                        <tr
+                                            key={txn.id}
                                             className={cn(
-                                                "flex-1 py-1 rounded-lg text-[9px] font-medium uppercase tracking-widest transition-all",
-                                                timeframe === t ? "bg-white text-[#3B82F6] shadow-sm" : "text-[#A3AED0] hover:text-[#1B2559]"
+                                                "border-b border-[#F4F7FE] transition-colors hover:bg-[#F4F7FE]/30",
+                                                index % 2 === 0 ? "bg-white" : "bg-[#FAFBFF]"
                                             )}
                                         >
-                                            {t}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between gap-3 p-4 rounded-lg bg-[#F4F7FE]/30 border border-[#E0E5F2]/50">
-                                    <div>
-                                        <p className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest mb-1">Consumption</p>
-                                        <div className="flex items-baseline gap-1.5">
-                                            <h3 className="text-2xl font-medium text-[#1B2559] tracking-tighter">
-                                                {totalConsumption.toLocaleString()}
-                                            </h3>
-                                            <span className="text-[10px] font-medium text-[#A3AED0] uppercase">{formData.unit}</span>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest mb-1">Trend</p>
-                                        <div className={cn(
-                                            "inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-medium",
-                                            usageTrend >= 0 ? "bg-[#19D5C5]/10 text-[#19D5C5]" : "bg-[#EE5D50]/10 text-[#EE5D50]"
-                                        )}>
-                                            {usageTrend >= 0 ? <Plus className="w-2.5 h-2.5" /> : <div className="w-2 h-0.5 bg-current" />}
-                                            {Math.abs(usageTrend)}%
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="h-[120px] flex items-end justify-between gap-2 px-1 group/chart">
-                                    {usageData.map((val, i) => {
-                                        const max = Math.max(...usageData, 1);
-                                        const height = (val / max) * 100;
-                                        return (
-                                            <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-                                                <div
-                                                    className="w-full bg-[#F4F7FE] rounded-t-xl relative group overflow-hidden transition-all duration-700 ease-out cursor-pointer hover:shadow-md"
-                                                    style={{ height: `${height}%`, minHeight: '10%' }}
-                                                >
-                                                    <div className="absolute inset-x-0 bottom-0 bg-[#3B82F6] h-1 transition-all duration-500 rounded-t-full" />
-                                                    <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#1B2559] text-white px-2 py-1 rounded-md text-[8px] font-medium opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none shadow-lg whitespace-nowrap">
-                                                        {val} {formData.unit}
-                                                    </div>
+                                            <td className="px-5 py-3">
+                                                <div className="text-[11px] font-medium text-[#1B2559]">
+                                                    {dateObj.toLocaleDateString('en-GB')}
                                                 </div>
-                                                <span className="text-[7px] font-medium text-[#A3AED0] uppercase tracking-tight">
-                                                    {usageLabels[i]}
+                                                <div className="text-[9px] font-medium text-[#A3AED0] mt-0.5">
+                                                    {dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                                </div>
+                                            </td>
+                                            <td className="px-5 py-3">
+                                                <div className={cn(
+                                                    "inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-tight",
+                                                    isIn ? "text-[#19D5C5]" : "text-[#EE5D50]"
+                                                )}>
+                                                    <div className={cn("w-2 h-2 rounded-full", isIn ? "bg-[#19D5C5]" : "bg-[#EE5D50]")} />
+                                                    {isIn ? 'STOCK IN' : 'STOCK OUT'}
+                                                </div>
+                                            </td>
+                                            <td className="px-5 py-3 text-right">
+                                                <span className={cn(
+                                                    "text-[12px] font-black tabular-nums",
+                                                    isIn ? "text-[#19D5C5]" : "text-[#EE5D50]"
+                                                )}>
+                                                    {isIn ? '+' : ''}{txn.quantity_change}
                                                 </span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
+                                            </td>
+                                            <td className="px-5 py-3 text-right">
+                                                <span className="text-[12px] font-black text-[#1B2559] tabular-nums">
+                                                    {txn.resulting_stock}
+                                                </span>
+                                                <span className="text-[8px] font-medium text-[#A3AED0] uppercase ml-1">{formData.unit}</span>
+                                            </td>
+                                            <td className="px-5 py-3">
+                                                {txn.expiry_date ? (
+                                                    <span className="text-[11px] font-medium text-[#FFB547]">
+                                                        {new Date(txn.expiry_date).toLocaleDateString('en-GB')}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10px] text-[#E0E5F2]">—</span>
+                                                )}
+                                            </td>
+                                            <td className="px-5 py-3">
+                                                <span className="text-[11px] font-medium text-[#1B2559] truncate max-w-[200px] block">
+                                                    {txn.reason || <span className="text-[#E0E5F2]">—</span>}
+                                                </span>
+                                            </td>
+                                            <td className="px-3 py-3 text-right">
+                                                <button
+                                                    onClick={async () => {
+                                                        if (!confirm('Delete this transaction record?')) return;
+                                                        const { error } = await supabase
+                                                            .from('inventory_transactions')
+                                                            .delete()
+                                                            .eq('id', txn.id);
+                                                        if (!error) {
+                                                            setTransactions(prev => prev.filter(t => t.id !== txn.id));
+                                                        }
+                                                    }}
+                                                    className="p-1.5 text-[#A3AED0] hover:text-[#EE5D50] hover:bg-[#EE5D50]/10 rounded-lg transition-all"
+                                                    title="Delete record"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );

@@ -47,7 +47,7 @@ export default function PatientsPage() {
             {/* Header & Quick Controls */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-4">
                 <div className="space-y-0.5">
-                    <h1 className="text-4xl font-medium text-[#1B2559] tracking-tight">Patient Portfolio</h1>
+                    <h1 className="text-4xl font-black text-[#1B2559] tracking-tight whitespace-nowrap">Patient Portfolio</h1>
                 </div>
                 <div className="flex items-center gap-3">
                     <button
@@ -68,16 +68,7 @@ export default function PatientsPage() {
 
             {/* Main Content Area */}
             <div className="card-premium p-0 border-none overflow-hidden pb-8">
-                <div className="p-8 pb-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 rounded-lg bg-primary/5 text-primary">
-                            <Users className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <span className="text-lg font-medium text-[#1B2559] block tracking-tight">Clinical Directory</span>
-                        </div>
-                    </div>
-                </div>
+
 
                 <div className="overflow-x-auto px-4">
                     <table className="w-full text-left">

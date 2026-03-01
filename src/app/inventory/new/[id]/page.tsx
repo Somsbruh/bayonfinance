@@ -30,6 +30,9 @@ const VENDOR_DATABASE = [
     { name: "PharmaGlobal", contact: "Robert Wilson", phone: "0123456789" },
 ];
 
+const MEDICINE_CATEGORIES = ["Medicine", "Pain and Anxiety", "Antibiotics", "Supplements", "General"];
+const INVENTORY_CATEGORIES = ["Equipment", "Tools", "Consumables", "Office Supplies", "General"];
+
 export default function ItemDetailsPage() {
     const router = useRouter();
     const params = useParams();
@@ -58,8 +61,9 @@ export default function ItemDetailsPage() {
         unit: "",
         buyPrice: 0,
         sellPrice: 0,
-        lastStockIn: null,
-        lastStockOut: null
+        lastStockIn: null as string | null,
+        lastStockOut: null as string | null,
+        item_type: 'medicine' as 'medicine' | 'inventory',
     });
 
     useEffect(() => {
@@ -88,22 +92,24 @@ export default function ItemDetailsPage() {
                         buyPrice: item.buy_price || 0,
                         sellPrice: item.sell_price || 0,
                         lastStockIn: item.last_stock_in || null,
-                        lastStockOut: item.last_stock_out || null
+                        lastStockOut: item.last_stock_out || null,
+                        item_type: item.item_type || 'medicine',
                     });
                     setVendorSearch(item.vendor || "");
                 }
 
-                // Fetch suggestions
-                const { data: suggestions, error: sugError } = await supabase.from('inventory').select('category, unit');
+                // Fetch suggestions scoped to this item_type
+                const { data: suggestions, error: sugError } = await supabase
+                    .from('inventory')
+                    .select('category, unit')
+                    .eq('item_type', item?.item_type || 'medicine');
                 if (sugError) throw sugError;
 
                 if (suggestions) {
                     const cats = Array.from(new Set(suggestions.map(i => i.category).filter(Boolean)));
                     const units = Array.from(new Set(suggestions.map(i => i.unit).filter(Boolean)));
-
-                    const defaultCats = ["Medicine", "Pain and Anxiety", "Antibiotics", "Supplements", "General"];
+                    const defaultCats = (item?.item_type || 'medicine') === 'inventory' ? INVENTORY_CATEGORIES : MEDICINE_CATEGORIES;
                     const defaultUnits = ["Piece", "Pill", "Box", "Bottle"];
-
                     setDbCategories(Array.from(new Set([...defaultCats, ...cats])));
                     setDbUnits(Array.from(new Set([...defaultUnits, ...units])));
                 }
@@ -159,11 +165,12 @@ export default function ItemDetailsPage() {
                     buy_price: formData.buyPrice || 0,
                     sell_price: formData.sellPrice || 0,
                     category: formData.category,
+                    item_type: formData.item_type,
                 })
                 .eq('id', id);
 
             if (updateError) throw updateError;
-            router.refresh();
+            router.push(`/inventory?tab=${formData.item_type}`);
         } catch (err: any) {
             console.error('Error updating item:', err);
             setError(err.message || "Failed to update item");
@@ -493,7 +500,7 @@ export default function ItemDetailsPage() {
                                 <div>
                                     <p className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest mb-0.5">Last Stock In</p>
                                     <h3 className="text-xl font-medium text-[#1B2559]">
-                                        {formData.lastStockIn ? new Date(formData.lastStockIn).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : "No records found"}
+                                        {formData.lastStockIn ? new Date(formData.lastStockIn).toLocaleDateString('en-GB') : "No records found"}
                                     </h3>
                                 </div>
                             </div>
@@ -504,7 +511,7 @@ export default function ItemDetailsPage() {
                                 <div>
                                     <p className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest mb-0.5">Last Stock Out</p>
                                     <h3 className="text-xl font-medium text-[#1B2559]">
-                                        {formData.lastStockOut ? new Date(formData.lastStockOut).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : "No records found"}
+                                        {formData.lastStockOut ? new Date(formData.lastStockOut).toLocaleDateString('en-GB') : "No records found"}
                                     </h3>
                                 </div>
                             </div>

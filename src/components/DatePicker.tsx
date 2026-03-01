@@ -22,7 +22,7 @@ export default function DatePicker({
     onChange,
     className,
     placeholder = "Select date",
-    format: dateFormat = "EEEE, MMMM d",
+    format: dateFormat = "dd/MM/yyyy",
     triggerClassName
 }: DatePickerProps) {
     const [isOpen, setIsOpen] = useState(false);

@@ -14,6 +14,7 @@ interface DailyReportModalProps {
 }
 
 import { createPortal } from "react-dom";
+import { RevenueBreakdownChart } from "./RevenueBreakdownChart";
 
 export default function DailyReportModal({ isOpen, onClose, date, branchId }: DailyReportModalProps) {
     const [incomeAba, setIncomeAba] = useState(0);
@@ -24,6 +25,7 @@ export default function DailyReportModal({ isOpen, onClose, date, branchId }: Da
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const [revenueData, setRevenueData] = useState<{ category: string, amount: number }[]>([]);
 
     useEffect(() => {
         setMounted(true);
@@ -39,20 +41,51 @@ export default function DailyReportModal({ isOpen, onClose, date, branchId }: Da
         setIsLoading(true);
         const dateStr = format(date, 'yyyy-MM-dd');
 
-        // 1. Fetch Income from Ledger
+        // 1. Fetch Income from Ledger with Treatment Categories
         const { data: ledgerData, error: ledgerError } = await supabase
             .from('ledger_entries')
-            .select('paid_aba, paid_cash_usd, paid_cash_khr')
+            .select(`
+                paid_aba, 
+                paid_cash_usd, 
+                paid_cash_khr,
+                item_type,
+                total_price,
+                treatments ( category )
+            `)
             .eq('branch_id', branchId)
             .eq('date', dateStr);
 
         if (ledgerData) {
-            const aba = ledgerData.reduce((sum, e) => sum + (Number(e.paid_aba) || 0), 0);
-            const usd = ledgerData.reduce((sum, e) => sum + (Number(e.paid_cash_usd) || 0), 0);
-            const khr = ledgerData.reduce((sum, e) => sum + (Number(e.paid_cash_khr) || 0), 0);
+            let aba = 0;
+            let usd = 0;
+            let khr = 0;
+
+            // Temporary map to aggregate revenue by category
+            const categorySums: Record<string, number> = {};
+
+            ledgerData.forEach((e: any) => {
+                aba += Number(e.paid_aba) || 0;
+                usd += Number(e.paid_cash_usd) || 0;
+                khr += Number(e.paid_cash_khr) || 0;
+
+                // Aggregate for the chart (using total_price value of the entry)
+                const value = Number(e.total_price) || 0;
+                if (value > 0) {
+                    if (e.item_type === 'medicine' || e.item_type === 'inventory') {
+                        categorySums['Medicine (Sales)'] = (categorySums['Medicine (Sales)'] || 0) + value;
+                    } else if (e.item_type === 'treatment') {
+                        const cat = e.treatments?.category || 'Other';
+                        categorySums[cat] = (categorySums[cat] || 0) + value;
+                    }
+                }
+            });
+
             setIncomeAba(aba);
             setIncomeUsd(usd);
             setIncomeKhr(khr);
+
+            // Convert map to array for the chart
+            setRevenueData(Object.entries(categorySums).map(([category, amount]) => ({ category, amount })));
         }
 
         // 2. Fetch Existing Report (Spending)
@@ -211,11 +244,18 @@ export default function DailyReportModal({ isOpen, onClose, date, branchId }: Da
                                         <p className="text-xl font-medium text-black">{incomeKhr.toLocaleString()} ៛</p>
                                     </div>
 
-                                    <div className="pt-4">
-                                        <p className="text-[10px] font-medium text-black uppercase tracking-widest mb-1">Total Income</p>
-                                        <p className="text-2xl font-medium text-black">${totalIncomeUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                                    <div className="pt-4 border-t border-black/10 mt-4">
+                                        <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Total Income</p>
+                                        <p className="text-2xl font-black text-black">${totalIncomeUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
                                     </div>
                                 </div>
+
+                                {/* Inner Chart Area */}
+                                {revenueData.length > 0 && (
+                                    <div className="mt-8 text-left max-w-[340px] mx-auto print:break-inside-avoid shadow-sm rounded-[24px]">
+                                        <RevenueBreakdownChart data={revenueData} title="Income" />
+                                    </div>
+                                )}
                             </div>
 
                             {/* Right Column: Spending (ចំណាយ) */}
@@ -259,7 +299,7 @@ export default function DailyReportModal({ isOpen, onClose, date, branchId }: Da
                     </div>
                 </div>
             </div>
-        </div>,
+        </div >,
         document.body
     );
 }

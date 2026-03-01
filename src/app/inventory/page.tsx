@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
 import {
     Package, Plus, Search, Filter, MoreVertical,
     Building2, DollarSign, CheckCircle2,
@@ -9,6 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 interface InventoryItem {
     id: string;
@@ -19,6 +20,7 @@ interface InventoryItem {
     stock_level: number;
     unit: string;
     sell_price: number;
+    item_type: 'medicine' | 'inventory';
     status: 'IN STOCK' | 'LOW STOCK' | 'OUT OF STOCK';
 }
 
@@ -27,10 +29,15 @@ type SortConfig = {
     direction: 'asc' | 'desc';
 };
 
-export default function InventoryPage() {
+function InventoryPageInner() {
+    const searchParams = useSearchParams();
+    const tabParam = searchParams.get('tab');
+
     const [items, setItems] = useState<InventoryItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'Medicine' | 'Inventory' | 'Order Stock'>('Medicine');
+    const [activeTab, setActiveTab] = useState<'Medicine' | 'Inventory' | 'Order Stock'>(
+        tabParam === 'inventory' ? 'Inventory' : 'Medicine'
+    );
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -104,21 +111,20 @@ export default function InventoryPage() {
     }, [items, sortConfig]);
 
     const categories = useMemo(() => {
-        const relevantItems = activeTab === 'Medicine' ? items : []; // Current items are all medicines
-        return ["All", ...Array.from(new Set(relevantItems.map(item => item.category)))];
+        const tabType = activeTab === 'Medicine' ? 'medicine' : 'inventory';
+        const relevantItems = items.filter(i => i.item_type === tabType);
+        return ["All", ...Array.from(new Set(relevantItems.map(item => item.category).filter(Boolean)))];
     }, [items, activeTab]);
 
     const filteredItems = sortedItems.filter(item => {
         const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.sku.toLowerCase().includes(searchQuery.toLowerCase());
 
-        let matchesTab = true;
+        let matchesTab = false;
         if (activeTab === 'Medicine') {
-            // Current data belongs to Medicine (Pharmacy)
-            matchesTab = true;
+            matchesTab = item.item_type === 'medicine';
         } else if (activeTab === 'Inventory') {
-            // Inventory is blank for now per user request
-            matchesTab = false;
+            matchesTab = item.item_type === 'inventory';
         }
 
         const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
@@ -140,11 +146,9 @@ export default function InventoryPage() {
     };
 
     const stats = useMemo(() => {
-        const currentItems = activeTab === 'Order Stock' ? items : items.filter(item => {
-            if (activeTab === 'Medicine') return true; // All current items are medicines
-            if (activeTab === 'Inventory') return true; // Show items in Inventory tab too
-            return true;
-        });
+        let currentItems = items;
+        if (activeTab === 'Medicine') currentItems = items.filter(i => i.item_type === 'medicine');
+        else if (activeTab === 'Inventory') currentItems = items.filter(i => i.item_type === 'inventory');
 
         const totalValue = currentItems.reduce((acc, item) => acc + (item.stock_level * item.sell_price), 0);
         const inStock = currentItems.filter(i => i.status === 'IN STOCK').length;
@@ -250,7 +254,7 @@ export default function InventoryPage() {
                     <button className="flex items-center justify-center gap-2 bg-white px-6 py-3 rounded-lg border border-[#E0E5F2] text-[11px] font-medium text-[#3B82F6] hover:bg-gray-50 transition-all shadow-sm">
                         Order Stock
                     </button>
-                    <Link href="/inventory/new">
+                    <Link href={`/inventory/new?tab=${activeTab === 'Medicine' ? 'medicine' : 'inventory'}`}>
                         <button className="flex items-center justify-center gap-2 bg-[#3B82F6] px-6 py-3 rounded-lg text-[11px] font-medium text-white hover:bg-[#2563EB] transition-all shadow-md shadow-[#3B82F6]/20">
                             <Plus className="w-4 h-4" />
                             New Product
@@ -552,5 +556,13 @@ export default function InventoryPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function InventoryPage() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center min-h-[40vh]"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#3B82F6]" /></div>}>
+            <InventoryPageInner />
+        </Suspense>
     );
 }
