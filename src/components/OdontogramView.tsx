@@ -29,18 +29,18 @@ export default function OdontogramView({ patientId }: OdontogramViewProps) {
     };
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col">
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between shrink-0">
                 <div>
-                    <h2 className="text-base font-bold text-slate-900 leading-tight">Clinical Odontogram</h2>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">interactive dental chart</p>
+                    <h2 className="text-base font-medium text-slate-900 leading-tight">Clinical Odontogram</h2>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-medium">interactive dental chart</p>
                 </div>
 
                 <div className="flex bg-slate-100 p-0.5 rounded-lg shrink-0">
                     <button
                         onClick={() => setChartType('adult')}
                         className={cn(
-                            "px-3 py-1 text-[10px] font-bold rounded-md transition-all",
+                            "px-3 py-1 text-[10px] font-medium rounded-md transition-all",
                             chartType === 'adult'
                                 ? "bg-white text-primary shadow-sm"
                                 : "text-slate-500 hover:text-slate-700"
@@ -51,7 +51,7 @@ export default function OdontogramView({ patientId }: OdontogramViewProps) {
                     <button
                         onClick={() => setChartType('baby')}
                         className={cn(
-                            "px-3 py-1 text-[10px] font-bold rounded-md transition-all",
+                            "px-3 py-1 text-[10px] font-medium rounded-md transition-all",
                             chartType === 'baby'
                                 ? "bg-white text-primary shadow-sm"
                                 : "text-slate-500 hover:text-slate-700"
@@ -76,7 +76,7 @@ export default function OdontogramView({ patientId }: OdontogramViewProps) {
                 </div>
             </div>
 
-            <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-100 flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase tracking-widest shrink-0">
+            <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-100 flex justify-between items-center text-[9px] font-medium text-slate-400 uppercase tracking-widest shrink-0">
                 <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     Clean view

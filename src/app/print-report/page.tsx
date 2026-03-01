@@ -31,7 +31,7 @@ function ReportContent() {
                 <div className="flex gap-3">
                     <button
                         onClick={() => window.print()}
-                        className="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+                        className="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
                     >
                         <Printer className="w-4 h-4" />
                         Print / Save as PDF
@@ -44,12 +44,12 @@ function ReportContent() {
                 {/* Clinic Info */}
                 <div className="flex justify-between items-start mb-12">
                     <div className="space-y-2">
-                        <h1 className="text-3xl font-black tracking-tighter text-slate-900 uppercase">Bayon Dental Clinic</h1>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Financial Performance Report</p>
+                        <h1 className="text-3xl font-medium tracking-tighter text-slate-900 uppercase">Bayon Dental Clinic</h1>
+                        <p className="text-xs font-medium text-slate-400 uppercase tracking-widest">Financial Performance Report</p>
                     </div>
                     <div className="text-right">
-                        <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Date Generated</p>
-                        <p className="text-sm font-bold">{format(new Date(), 'MMMM do, yyyy')}</p>
+                        <p className="text-[10px] uppercase tracking-widest font-medium text-slate-400">Date Generated</p>
+                        <p className="text-sm font-medium">{format(new Date(), 'MMMM do, yyyy')}</p>
                     </div>
                 </div>
 
@@ -58,23 +58,23 @@ function ReportContent() {
                 {/* Report Metadata */}
                 <div className="grid grid-cols-2 gap-12 mb-16">
                     <div className="space-y-4">
-                        <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">Analysis Scope</h2>
+                        <h2 className="text-[10px] font-medium text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">Analysis Scope</h2>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <p className="text-[8px] uppercase font-bold text-slate-400">Timeframe</p>
-                                <p className="text-sm font-bold text-slate-900">{timeframe}</p>
+                                <p className="text-[8px] uppercase font-medium text-slate-400">Timeframe</p>
+                                <p className="text-sm font-medium text-slate-900">{timeframe}</p>
                             </div>
                             <div>
-                                <p className="text-[8px] uppercase font-bold text-slate-400">Currency</p>
-                                <p className="text-sm font-bold text-slate-900">USD ($)</p>
+                                <p className="text-[8px] uppercase font-medium text-slate-400">Currency</p>
+                                <p className="text-sm font-medium text-slate-900">USD ($)</p>
                             </div>
                         </div>
                     </div>
                     <div className="space-y-4">
-                        <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">Patient Reach</h2>
+                        <h2 className="text-[10px] font-medium text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">Patient Reach</h2>
                         <div>
-                            <p className="text-[8px] uppercase font-bold text-slate-400">Total Registered Profiles</p>
-                            <p className="text-sm font-bold text-slate-900">{patientCount} Clinical Records</p>
+                            <p className="text-[8px] uppercase font-medium text-slate-400">Total Registered Profiles</p>
+                            <p className="text-sm font-medium text-slate-900">{patientCount} Clinical Records</p>
                         </div>
                     </div>
                 </div>
@@ -82,42 +82,42 @@ function ReportContent() {
                 {/* Key Metrics Grid */}
                 <div className="grid grid-cols-3 gap-8 mb-16">
                     <div className="p-6 bg-slate-50 border border-slate-100 rounded-none space-y-2">
-                        <p className="text-[8px] uppercase font-black text-slate-400 tracking-widest">Period Revenue</p>
-                        <p className="text-3xl font-black text-slate-900">${Number(periodRevenue).toLocaleString()}</p>
+                        <p className="text-[8px] uppercase font-medium text-slate-400 tracking-widest">Period Revenue</p>
+                        <p className="text-3xl font-medium text-slate-900">${Number(periodRevenue).toLocaleString()}</p>
                     </div>
                     <div className="p-6 bg-slate-50 border border-slate-100 rounded-none space-y-2">
-                        <p className="text-[8px] uppercase font-black text-slate-400 tracking-widest">Cycle Income</p>
-                        <p className="text-3xl font-black text-slate-900">${Number(weeklyIncome).toLocaleString()}</p>
+                        <p className="text-[8px] uppercase font-medium text-slate-400 tracking-widest">Cycle Income</p>
+                        <p className="text-3xl font-medium text-slate-900">${Number(weeklyIncome).toLocaleString()}</p>
                     </div>
                     <div className="p-6 bg-slate-50 border border-slate-100 rounded-none space-y-2">
-                        <p className="text-[8px] uppercase font-black text-slate-400 tracking-widest">Realized Total</p>
-                        <p className="text-3xl font-black text-slate-900">${Number(realizedTotal).toLocaleString()}</p>
+                        <p className="text-[8px] uppercase font-medium text-slate-400 tracking-widest">Realized Total</p>
+                        <p className="text-3xl font-medium text-slate-900">${Number(realizedTotal).toLocaleString()}</p>
                     </div>
                 </div>
 
                 {/* Historical Growth - Placeholder for simple table since we can't easily print canvas without extra libs */}
                 <div className="mb-16">
-                    <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2 mb-6">Historical Revenue Analysis</h2>
+                    <h2 className="text-[10px] font-medium text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2 mb-6">Historical Revenue Analysis</h2>
                     <p className="text-xs text-slate-500 mb-8 italic">Revenue trends are captured and visualized within the digital cockpit. This printed summary provides final realized aggregates.</p>
                 </div>
 
                 {/* Top Staff Performance */}
                 <div className="mb-16">
-                    <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2 mb-6">Staff Contribution Portfolio</h2>
+                    <h2 className="text-[10px] font-medium text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2 mb-6">Staff Contribution Portfolio</h2>
                     <table className="w-full">
                         <thead>
                             <tr className="text-left border-b-2 border-slate-900">
-                                <th className="py-2 text-[10px] uppercase font-black">Personnel Name</th>
-                                <th className="py-2 text-right text-[10px] uppercase font-black">Performance Share</th>
-                                <th className="py-2 text-right text-[10px] uppercase font-black">Total Realized</th>
+                                <th className="py-2 text-[10px] uppercase font-medium">Personnel Name</th>
+                                <th className="py-2 text-right text-[10px] uppercase font-medium">Performance Share</th>
+                                <th className="py-2 text-right text-[10px] uppercase font-medium">Total Realized</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {topStaff.map((s: any, idx: number) => (
                                 <tr key={idx}>
-                                    <td className="py-4 font-bold text-sm">{s.name}</td>
+                                    <td className="py-4 font-medium text-sm">{s.name}</td>
                                     <td className="py-4 text-right text-xs">{(s.total / Number(realizedTotal) * 100).toFixed(1)}%</td>
-                                    <td className="py-4 text-right font-mono font-bold text-sm">${s.total.toLocaleString()}</td>
+                                    <td className="py-4 text-right font-mono font-medium text-sm">${s.total.toLocaleString()}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -126,7 +126,7 @@ function ReportContent() {
 
                 {/* Footer Disclaimer */}
                 <div className="mt-auto pt-10 text-center border-t border-slate-100 space-y-2">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">Confidential Biological & Financial Data</p>
+                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest italic">Confidential Biological & Financial Data</p>
                     <p className="text-[8px] text-slate-300 uppercase tracking-[0.3em]">Generated by Bayon Dental Intelligence · NextGen Dental SaaS</p>
                 </div>
             </div>
@@ -136,7 +136,7 @@ function ReportContent() {
 
 export default function ClinicalReportPage() {
     return (
-        <Suspense fallback={<div className="p-10 text-center font-black uppercase tracking-widest text-[#A3AED0]">Formatting Clinical Manuscript...</div>}>
+        <Suspense fallback={<div className="p-10 text-center font-medium uppercase tracking-widest text-[#A3AED0]">Formatting Clinical Manuscript...</div>}>
             <ReportContent />
         </Suspense>
     );

@@ -156,7 +156,7 @@ export default function InventoryPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[40vh]">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#4318FF]"></div>
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#3B82F6]"></div>
             </div>
         );
     }
@@ -165,18 +165,18 @@ export default function InventoryPage() {
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
             {/* Page Header Area */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-0">
-                <h1 className="text-4xl font-black text-[#1B2559] tracking-tight">Inventory</h1>
+                <h1 className="text-4xl font-medium text-[#1B2559] tracking-tight">Inventory</h1>
 
                 {/* Compact Header Stats Banner - Compressed Scaling */}
                 <div className="flex flex-col lg:flex-row items-center gap-7 pt-0">
                     {/* Asset Value Section */}
                     <div className="flex items-center gap-4">
                         <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center border border-[#E0E5F2] shadow-sm shrink-0">
-                            <DollarSign className="w-5.5 h-5.5 text-[#4318FF]" />
+                            <DollarSign className="w-5.5 h-5.5 text-[#3B82F6]" />
                         </div>
                         <div>
-                            <p className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-0.5">Total Asset Value</p>
-                            <h2 className="text-3xl font-black text-[#1B2559] tracking-tighter leading-none">
+                            <p className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest mb-0.5">Total Asset Value</p>
+                            <h2 className="text-3xl font-medium text-[#1B2559] tracking-tighter leading-none">
                                 ${stats.totalValue.toLocaleString()}
                             </h2>
                         </div>
@@ -186,15 +186,15 @@ export default function InventoryPage() {
 
                     <div className="flex-1 w-full lg:min-w-[280px]">
                         <div className="flex items-baseline gap-2 mb-1">
-                            <span className="text-2xl font-black text-[#1B2559] leading-none">{stats.total}</span>
-                            <span className="text-[12px] font-bold text-[#A3AED0]">product</span>
+                            <span className="text-2xl font-medium text-[#1B2559] leading-none">{stats.total}</span>
+                            <span className="text-[12px] font-medium text-[#A3AED0]">product</span>
                         </div>
                         <div className="flex gap-1 h-1.5 w-full rounded-full overflow-hidden mb-1.5">
                             <div style={{ width: `${(stats.inStock / (stats.total || 1)) * 100}%` }} className="bg-[#19D5C5]" />
                             <div style={{ width: `${(stats.lowStock / (stats.total || 1)) * 100}%` }} className="bg-[#FFB547]" />
                             <div style={{ width: `${(stats.outOfStock / (stats.total || 1)) * 100}%` }} className="bg-[#EE5D50]" />
                         </div>
-                        <div className="flex flex-wrap gap-4 text-[10px] font-bold tracking-tight">
+                        <div className="flex flex-wrap gap-4 text-[10px] font-medium tracking-tight">
                             <div className="flex items-center gap-1.5">
                                 <div className="w-2 h-2 rounded-full bg-[#19D5C5]" />
                                 <span className="text-[#A3AED0]">In stock:</span>
@@ -217,13 +217,13 @@ export default function InventoryPage() {
                         key={tab}
                         onClick={() => setActiveTab(tab)}
                         className={cn(
-                            "pb-2.5 text-[12px] font-bold transition-all relative",
-                            activeTab === tab ? "text-[#4318FF]" : "text-[#A3AED0] hover:text-[#1B2559]"
+                            "pb-2.5 text-[12px] font-medium transition-all relative",
+                            activeTab === tab ? "text-[#3B82F6]" : "text-[#A3AED0] hover:text-[#1B2559]"
                         )}
                     >
                         {tab}
                         {activeTab === tab && (
-                            <div className="absolute -bottom-[0.5px] left-0 right-0 h-[2px] bg-[#4318FF] rounded-t-full" />
+                            <div className="absolute -bottom-[0.5px] left-0 right-0 h-[2px] bg-[#3B82F6] rounded-t-full" />
                         )}
                     </button>
                 ))}
@@ -232,26 +232,26 @@ export default function InventoryPage() {
             {/* Utility Bar */}
             <div className="flex flex-col md:flex-row items-center gap-4 py-1">
                 <div className="relative flex-1 w-full group">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#A3AED0] group-focus-within:text-[#4318FF] transition-colors" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#A3AED0] group-focus-within:text-[#3B82F6] transition-colors" />
                     <input
                         type="text"
                         placeholder="Search name or reservation ID..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-white border border-[#E0E5F2] rounded-[20px] pl-11 pr-4 py-3.5 text-[12px] font-bold text-[#1B2559] shadow-sm focus:border-[#4318FF]/30 transition-all outline-none placeholder:text-[#A3AED0]"
+                        className="w-full bg-white border border-[#E0E5F2] rounded-lg pl-11 pr-4 py-3.5 text-[12px] font-medium text-[#1B2559] shadow-sm focus:border-[#3B82F6]/30 transition-all outline-none placeholder:text-[#A3AED0]"
                     />
                 </div>
 
                 <div className="flex items-center gap-2.5 w-full md:w-auto">
-                    <button className="flex items-center justify-center gap-2 bg-white px-5 py-3 rounded-2xl border border-[#E0E5F2] text-[11px] font-black text-[#1B2559] hover:bg-gray-50 transition-all shadow-sm">
+                    <button className="flex items-center justify-center gap-2 bg-white px-5 py-3 rounded-lg border border-[#E0E5F2] text-[11px] font-medium text-[#1B2559] hover:bg-gray-50 transition-all shadow-sm">
                         <Filter className="w-4 h-4 text-[#A3AED0]" />
                         Filters
                     </button>
-                    <button className="flex items-center justify-center gap-2 bg-white px-6 py-3 rounded-2xl border border-[#E0E5F2] text-[11px] font-black text-[#4318FF] hover:bg-gray-50 transition-all shadow-sm">
+                    <button className="flex items-center justify-center gap-2 bg-white px-6 py-3 rounded-lg border border-[#E0E5F2] text-[11px] font-medium text-[#3B82F6] hover:bg-gray-50 transition-all shadow-sm">
                         Order Stock
                     </button>
                     <Link href="/inventory/new">
-                        <button className="flex items-center justify-center gap-2 bg-[#4318FF] px-6 py-3 rounded-2xl text-[11px] font-black text-white hover:bg-[#3311E0] transition-all shadow-md shadow-[#4318FF]/20">
+                        <button className="flex items-center justify-center gap-2 bg-[#3B82F6] px-6 py-3 rounded-lg text-[11px] font-medium text-white hover:bg-[#2563EB] transition-all shadow-md shadow-[#3B82F6]/20">
                             <Plus className="w-4 h-4" />
                             New Product
                         </button>
@@ -265,26 +265,26 @@ export default function InventoryPage() {
                     {Array.from(new Set(filteredItems.map(i => i.category))).map((category) => (
                         <div key={category} className="space-y-4">
                             <div className="px-4 flex items-center justify-between">
-                                <h3 className="text-[10px] font-black uppercase tracking-widest text-[#A3AED0]">{category || "Uncategorized"}</h3>
+                                <h3 className="text-[10px] font-medium uppercase tracking-widest text-[#A3AED0]">{category || "Uncategorized"}</h3>
                                 <div className="h-px flex-1 bg-[#E0E5F2] ml-4 opacity-50" />
                             </div>
 
-                            <div className="bg-white rounded-[24px] border border-[#E0E5F2] shadow-sm overflow-hidden">
+                            <div className="bg-white rounded-lg border border-[#E0E5F2] shadow-sm overflow-hidden">
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left">
                                         <thead>
                                             <tr className="border-b border-[#F4F7FE]">
                                                 <th className="px-5 py-5 w-10">
                                                     <div className="w-5 h-5 rounded-md border-2 border-[#E0E5F2] flex items-center justify-center bg-white cursor-pointer" onClick={toggleSelectAll}>
-                                                        {selectedItems.length === filteredItems.length && filteredItems.length > 0 && <Check className="w-3.5 h-3.5 text-[#4318FF]" />}
+                                                        {selectedItems.length === filteredItems.length && filteredItems.length > 0 && <Check className="w-3.5 h-3.5 text-[#3B82F6]" />}
                                                     </div>
                                                 </th>
-                                                <th className="px-5 py-5"><span className="text-[11px] font-black text-[#A3AED0] uppercase tracking-widest">Name</span></th>
-                                                <th className="px-5 py-5"><span className="text-[11px] font-black text-[#A3AED0] uppercase tracking-widest">SKU</span></th>
-                                                <th className="px-5 py-5"><span className="text-[11px] font-black text-[#A3AED0] uppercase tracking-widest">Vendor</span></th>
-                                                <th className="px-5 py-5"><span className="text-[11px] font-black text-[#A3AED0] uppercase tracking-widest">Stock</span></th>
-                                                <th className="px-5 py-5"><span className="text-[11px] font-black text-[#A3AED0] uppercase tracking-widest">Status</span></th>
-                                                <th className="px-5 py-5 text-right"><span className="text-[11px] font-black text-[#A3AED0] uppercase tracking-widest">Asset Value</span></th>
+                                                <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Name</span></th>
+                                                <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">SKU</span></th>
+                                                <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Vendor</span></th>
+                                                <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Stock</span></th>
+                                                <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Status</span></th>
+                                                <th className="px-5 py-5 text-right"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Asset Value</span></th>
                                                 <th className="px-5 py-5 w-12"></th>
                                             </tr>
                                         </thead>
@@ -296,7 +296,7 @@ export default function InventoryPage() {
                                                             onClick={() => toggleSelectItem(item.id)}
                                                             className={cn(
                                                                 "w-5 h-5 rounded-md border-2 border-[#E0E5F2] flex items-center justify-center transition-all cursor-pointer",
-                                                                selectedItems.includes(item.id) ? "bg-[#4318FF] border-[#4318FF]" : "bg-white group-hover:border-[#4318FF]/50"
+                                                                selectedItems.includes(item.id) ? "bg-[#3B82F6] border-[#3B82F6]" : "bg-white group-hover:border-[#3B82F6]/50"
                                                             )}
                                                         >
                                                             {selectedItems.includes(item.id) && <Check className="w-3.5 h-3.5 text-white" />}
@@ -304,27 +304,27 @@ export default function InventoryPage() {
                                                     </td>
                                                     <td className="px-5 py-4">
                                                         <div className="flex flex-col">
-                                                            <span className="text-[12px] font-black text-[#1B2559] leading-tight font-kantumruy">{item.name}</span>
-                                                            <span className="text-[10px] font-bold text-[#A3AED0] uppercase tracking-tighter mt-0.5">{item.unit}</span>
+                                                            <span className="text-[12px] font-medium text-[#1B2559] leading-tight font-kantumruy">{item.name}</span>
+                                                            <span className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-tighter mt-0.5">{item.unit}</span>
                                                         </div>
                                                     </td>
                                                     <td className="px-5 py-4">
-                                                        <span className="text-[12px] font-bold text-[#1B2559]">{item.sku || '—'}</span>
+                                                        <span className="text-[12px] font-medium text-[#1B2559]">{item.sku || '—'}</span>
                                                     </td>
                                                     <td className="px-5 py-4">
                                                         <div className="flex items-center gap-2">
                                                             <div className="w-7 h-7 bg-[#F4F7FE] rounded-lg flex items-center justify-center shrink-0">
-                                                                <Building2 className="w-3.5 h-3.5 text-[#4318FF]" />
+                                                                <Building2 className="w-3.5 h-3.5 text-[#3B82F6]" />
                                                             </div>
-                                                            <span className="text-[12px] font-bold text-[#1B2559]">{item.vendor || '—'}</span>
+                                                            <span className="text-[12px] font-medium text-[#1B2559]">{item.vendor || '—'}</span>
                                                         </div>
                                                     </td>
                                                     <td className="px-5 py-4">
-                                                        <span className="text-[12px] font-black text-[#1B2559]">{item.stock_level}</span>
+                                                        <span className="text-[12px] font-medium text-[#1B2559]">{item.stock_level}</span>
                                                     </td>
                                                     <td className="px-5 py-4">
                                                         <div className={cn(
-                                                            "inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-tight",
+                                                            "inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-tight",
                                                             item.status === 'IN STOCK' ? "text-[#19D5C5]" :
                                                                 item.status === 'LOW STOCK' ? "text-[#FFB547]" : "text-[#EE5D50]"
                                                         )}>
@@ -337,11 +337,11 @@ export default function InventoryPage() {
                                                         </div>
                                                     </td>
                                                     <td className="px-5 py-4 text-right">
-                                                        <span className="text-[12px] font-black text-[#1B2559]">${(item.stock_level * item.sell_price).toLocaleString()}</span>
+                                                        <span className="text-[12px] font-medium text-[#1B2559]">${(item.stock_level * item.sell_price).toLocaleString()}</span>
                                                     </td>
                                                     <td className="px-5 py-4 text-right">
                                                         <Link href={`/inventory/${item.id}`}>
-                                                            <button className="p-2 text-[#A3AED0] hover:text-[#4318FF] transition-all bg-[#F4F7FE]/50 rounded-lg">
+                                                            <button className="p-2 text-[#A3AED0] hover:text-[#3B82F6] transition-all bg-[#F4F7FE]/50 rounded-lg">
                                                                 <MoreVertical className="w-4.5 h-4.5" />
                                                             </button>
                                                         </Link>
@@ -356,7 +356,7 @@ export default function InventoryPage() {
                     ))}
                 </div>
             ) : activeTab === 'Order Stock' ? (
-                <div className="bg-white rounded-[24px] overflow-hidden border border-[#E0E5F2] shadow-sm">
+                <div className="bg-white rounded-lg overflow-hidden border border-[#E0E5F2] shadow-sm">
                     <div className="overflow-x-auto animate-in slide-in-from-right-4 duration-500">
                         <table className="w-full text-left">
                             <thead>
@@ -364,7 +364,7 @@ export default function InventoryPage() {
                                     {['ORDER', 'CREATED', 'FROM VENDOR', 'STATUS', 'ITEM RECEIVED', 'SEND EMAIL'].map((header) => (
                                         <th key={header} className="px-5 py-5">
                                             <div className="flex items-center gap-2 cursor-pointer group">
-                                                <span className="text-[11px] font-black text-[#A3AED0] uppercase tracking-widest">{header}</span>
+                                                <span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">{header}</span>
                                                 <ArrowUpDown className="w-3.5 h-3.5 text-[#A3AED0] opacity-30 group-hover:opacity-100 transition-opacity" />
                                             </div>
                                         </th>
@@ -384,20 +384,20 @@ export default function InventoryPage() {
                                     <tr key={order.id} className="hover:bg-[#F4F7FE]/20 transition-colors">
                                         <td className="px-5 py-4">
                                             <div className="flex flex-col">
-                                                <span className="text-[12px] font-black text-[#1B2559]">{order.id}</span>
-                                                <span className="text-[10px] text-[#A3AED0] font-bold">{order.items} items • ${order.total.toLocaleString()}</span>
+                                                <span className="text-[12px] font-medium text-[#1B2559]">{order.id}</span>
+                                                <span className="text-[10px] text-[#A3AED0] font-medium">{order.items} items • ${order.total.toLocaleString()}</span>
                                             </div>
                                         </td>
-                                        <td className="px-5 py-4 text-[12px] font-bold text-[#1B2559]">{order.date}</td>
+                                        <td className="px-5 py-4 text-[12px] font-medium text-[#1B2559]">{order.date}</td>
                                         <td className="px-5 py-4">
                                             <div className="flex items-center gap-2">
                                                 <Building2 className="w-4 h-4 text-[#A3AED0]" />
-                                                <span className="text-[12px] font-bold text-[#1B2559]">{order.vendor}</span>
+                                                <span className="text-[12px] font-medium text-[#1B2559]">{order.vendor}</span>
                                             </div>
                                         </td>
                                         <td className="px-5 py-4">
                                             <span className={cn(
-                                                "px-2.5 py-1.5 rounded-[10px] text-[10px] font-black uppercase tracking-tight",
+                                                "px-2.5 py-1.5 rounded-[10px] text-[10px] font-medium uppercase tracking-tight",
                                                 order.status === 'COMPLETE' ? "bg-green-100/50 text-green-600" :
                                                     order.status === 'PENDING' ? "bg-[#F4F7FE] text-[#1B2559]/60" : "bg-purple-100/50 text-purple-600"
                                             )}>
@@ -408,11 +408,11 @@ export default function InventoryPage() {
                                             <div className="flex items-center gap-3">
                                                 <div className="flex-1 max-w-[90px] h-[5px] bg-[#F4F7FE] rounded-full overflow-hidden">
                                                     <div
-                                                        className="h-full bg-[#4318FF] transition-all duration-1000"
+                                                        className="h-full bg-[#3B82F6] transition-all duration-1000"
                                                         style={{ width: `${order.progress}%` }}
                                                     />
                                                 </div>
-                                                <span className="text-[11px] font-black text-[#1B2559] whitespace-nowrap">{order.received}</span>
+                                                <span className="text-[11px] font-medium text-[#1B2559] whitespace-nowrap">{order.received}</span>
                                             </div>
                                         </td>
                                         <td className="px-5 py-4 text-center">
@@ -422,8 +422,8 @@ export default function InventoryPage() {
                                         </td>
                                         <td className="px-5 py-4">
                                             <button className={cn(
-                                                "w-full py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all",
-                                                order.status === 'COMPLETE' ? "bg-[#F4F7FE] text-[#A3AED0] cursor-not-allowed border-none shadow-none" : "bg-white border border-[#E0E5F2] text-[#4318FF] hover:border-[#4318FF]/20 shadow-sm"
+                                                "w-full py-2 rounded-lg text-[11px] font-medium uppercase tracking-wider transition-all",
+                                                order.status === 'COMPLETE' ? "bg-[#F4F7FE] text-[#A3AED0] cursor-not-allowed border-none shadow-none" : "bg-white border border-[#E0E5F2] text-[#3B82F6] hover:border-[#3B82F6]/20 shadow-sm"
                                             )}>
                                                 Receive
                                             </button>
@@ -440,7 +440,7 @@ export default function InventoryPage() {
                     </div>
                 </div>
             ) : (
-                <div className="bg-white rounded-[24px] overflow-hidden border border-[#E0E5F2] shadow-sm">
+                <div className="bg-white rounded-lg overflow-hidden border border-[#E0E5F2] shadow-sm">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead>
@@ -450,7 +450,7 @@ export default function InventoryPage() {
                                             onClick={toggleSelectAll}
                                             className={cn(
                                                 "w-5 h-5 rounded-md border-2 border-[#E0E5F2] flex items-center justify-center transition-all",
-                                                selectedItems.length === filteredItems.length && filteredItems.length > 0 ? "bg-[#4318FF] border-[#4318FF]" : "bg-white"
+                                                selectedItems.length === filteredItems.length && filteredItems.length > 0 ? "bg-[#3B82F6] border-[#3B82F6]" : "bg-white"
                                             )}
                                         >
                                             {selectedItems.length === filteredItems.length && filteredItems.length > 0 && <Check className="w-3.5 h-3.5 text-white" />}
@@ -471,10 +471,10 @@ export default function InventoryPage() {
                                             onClick={() => handleSort(col.key as SortConfig['key'])}
                                         >
                                             <div className="flex items-center gap-2">
-                                                <span className="text-[11px] font-black text-[#A3AED0] uppercase tracking-widest">{col.label}</span>
+                                                <span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">{col.label}</span>
                                                 <ArrowUpDown className={cn(
                                                     "w-3.5 h-3.5 transition-all",
-                                                    sortConfig.key === col.key ? "text-[#4318FF] opacity-100" : "text-[#A3AED0] opacity-30 group-hover:opacity-100"
+                                                    sortConfig.key === col.key ? "text-[#3B82F6] opacity-100" : "text-[#A3AED0] opacity-30 group-hover:opacity-100"
                                                 )} />
                                             </div>
                                         </th>
@@ -493,7 +493,7 @@ export default function InventoryPage() {
                                                 onClick={() => toggleSelectItem(item.id)}
                                                 className={cn(
                                                     "w-5 h-5 rounded-md border-2 border-[#E0E5F2] flex items-center justify-center transition-all",
-                                                    selectedItems.includes(item.id) ? "bg-[#4318FF] border-[#4318FF]" : "bg-white group-hover:border-[#4318FF]/50"
+                                                    selectedItems.includes(item.id) ? "bg-[#3B82F6] border-[#3B82F6]" : "bg-white group-hover:border-[#3B82F6]/50"
                                                 )}
                                             >
                                                 {selectedItems.includes(item.id) && <Check className="w-3.5 h-3.5 text-white" />}
@@ -501,28 +501,28 @@ export default function InventoryPage() {
                                         </td>
                                         <td className="px-5 py-4">
                                             <div className="flex flex-col">
-                                                <span className="text-[12px] font-black text-[#1B2559] leading-tight font-kantumruy">{item.name}</span>
-                                                <span className="text-[10px] font-bold text-[#A3AED0] uppercase tracking-tighter mt-0.5">{item.unit}</span>
+                                                <span className="text-[12px] font-medium text-[#1B2559] leading-tight font-kantumruy">{item.name}</span>
+                                                <span className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-tighter mt-0.5">{item.unit}</span>
                                             </div>
                                         </td>
                                         <td className="px-5 py-4">
-                                            <span className="text-[12px] font-bold text-[#A3AED0]">{item.category}</span>
+                                            <span className="text-[12px] font-medium text-[#A3AED0]">{item.category}</span>
                                         </td>
                                         <td className="px-5 py-4">
-                                            <span className="text-[12px] font-bold text-[#1B2559]">{item.sku || '—'}</span>
+                                            <span className="text-[12px] font-medium text-[#1B2559]">{item.sku || '—'}</span>
                                         </td>
                                         <td className="px-5 py-4">
                                             <div className="flex items-center gap-2">
                                                 <Building2 className="w-4 h-4 text-[#A3AED0]" />
-                                                <span className="text-[12px] font-bold text-[#1B2559]">{item.vendor || '—'}</span>
+                                                <span className="text-[12px] font-medium text-[#1B2559]">{item.vendor || '—'}</span>
                                             </div>
                                         </td>
                                         <td className="px-5 py-4">
-                                            <span className="text-[12px] font-black text-[#1B2559]">{item.stock_level}</span>
+                                            <span className="text-[12px] font-medium text-[#1B2559]">{item.stock_level}</span>
                                         </td>
                                         <td className="px-5 py-4">
                                             <div className={cn(
-                                                "inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-tight",
+                                                "inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-tight",
                                                 item.status === 'IN STOCK' ? "text-[#19D5C5]" :
                                                     item.status === 'LOW STOCK' ? "text-[#FFB547]" : "text-[#EE5D50]"
                                             )}>
@@ -535,11 +535,11 @@ export default function InventoryPage() {
                                             </div>
                                         </td>
                                         <td className="px-5 py-4">
-                                            <span className="text-[12px] font-black text-[#1B2559]">${(item.stock_level * item.sell_price).toLocaleString()}</span>
+                                            <span className="text-[12px] font-medium text-[#1B2559]">${(item.stock_level * item.sell_price).toLocaleString()}</span>
                                         </td>
                                         <td className="px-5 py-4 text-right">
                                             <Link href={`/inventory/${item.id}`}>
-                                                <button className="p-2 text-[#A3AED0] hover:text-[#4318FF] transition-all bg-[#F4F7FE]/50 rounded-lg">
+                                                <button className="p-2 text-[#A3AED0] hover:text-[#3B82F6] transition-all bg-[#F4F7FE]/50 rounded-lg">
                                                     <MoreVertical className="w-5 h-5" />
                                                 </button>
                                             </Link>

@@ -146,7 +146,7 @@ export default function DatePicker({
                                 setShowYearPicker(false);
                             }}
                             className={cn(
-                                "text-[12px] font-black uppercase tracking-wider px-2 py-1 rounded-lg transition-all",
+                                "text-[12px] font-medium uppercase tracking-wider px-2 py-1 rounded-lg transition-all",
                                 showMonthPicker ? "bg-primary text-white" : "text-[#1B2559] hover:bg-[#F4F7FE] hover:text-primary"
                             )}
                         >
@@ -160,7 +160,7 @@ export default function DatePicker({
                                 setShowMonthPicker(false);
                             }}
                             className={cn(
-                                "text-[12px] font-black uppercase tracking-wider px-2 py-1 rounded-lg transition-all",
+                                "text-[12px] font-medium uppercase tracking-wider px-2 py-1 rounded-lg transition-all",
                                 showYearPicker ? "bg-primary text-white" : "text-[#1B2559] hover:bg-[#F4F7FE] hover:text-primary"
                             )}
                         >
@@ -168,10 +168,10 @@ export default function DatePicker({
                         </button>
                     </div>
                     <div className="flex items-center gap-1">
-                        <button onClick={handlePrevMonth} className="p-2 hover:bg-[#F4F7FE] rounded-xl text-[#A3AED0] hover:text-primary transition-all">
+                        <button onClick={handlePrevMonth} className="p-2 hover:bg-[#F4F7FE] rounded-lg text-[#A3AED0] hover:text-primary transition-all">
                             <ChevronLeft className="w-4 h-4" />
                         </button>
-                        <button onClick={handleNextMonth} className="p-2 hover:bg-[#F4F7FE] rounded-xl text-[#A3AED0] hover:text-primary transition-all">
+                        <button onClick={handleNextMonth} className="p-2 hover:bg-[#F4F7FE] rounded-lg text-[#A3AED0] hover:text-primary transition-all">
                             <ChevronRight className="w-4 h-4" />
                         </button>
                     </div>
@@ -179,14 +179,14 @@ export default function DatePicker({
 
                 {/* Month Picker Dropdown */}
                 {showMonthPicker && (
-                    <div ref={monthListRef} className="max-h-[200px] overflow-y-auto custom-scrollbar mb-4 rounded-2xl border border-[#E0E5F2] bg-[#F4F7FE]/50">
+                    <div ref={monthListRef} className="max-h-[200px] overflow-y-auto custom-scrollbar mb-4 rounded-lg border border-[#E0E5F2] bg-[#F4F7FE]/50">
                         {MONTHS.map((month, idx) => (
                             <button
                                 key={month}
                                 data-active={viewDate.getMonth() === idx}
                                 onClick={(e) => { e.stopPropagation(); handleMonthSelect(idx); }}
                                 className={cn(
-                                    "w-full text-left px-4 py-2.5 text-[11px] font-black uppercase tracking-wider transition-all",
+                                    "w-full text-left px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider transition-all",
                                     viewDate.getMonth() === idx
                                         ? "bg-primary text-white"
                                         : "text-[#1B2559] hover:bg-[#E0E5F2]"
@@ -200,14 +200,14 @@ export default function DatePicker({
 
                 {/* Year Picker Dropdown */}
                 {showYearPicker && (
-                    <div ref={yearListRef} className="max-h-[200px] overflow-y-auto custom-scrollbar mb-4 rounded-2xl border border-[#E0E5F2] bg-[#F4F7FE]/50">
+                    <div ref={yearListRef} className="max-h-[200px] overflow-y-auto custom-scrollbar mb-4 rounded-lg border border-[#E0E5F2] bg-[#F4F7FE]/50">
                         {years.map((year) => (
                             <button
                                 key={year}
                                 data-active={viewDate.getFullYear() === year}
                                 onClick={(e) => { e.stopPropagation(); handleYearSelect(year); }}
                                 className={cn(
-                                    "w-full text-left px-4 py-2.5 text-[11px] font-black uppercase tracking-wider transition-all",
+                                    "w-full text-left px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider transition-all",
                                     viewDate.getFullYear() === year
                                         ? "bg-primary text-white"
                                         : "text-[#1B2559] hover:bg-[#E0E5F2]"
@@ -224,7 +224,7 @@ export default function DatePicker({
                     <>
                         <div className="grid grid-cols-7 mb-3 text-center">
                             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
-                                <div key={`${day}-${idx}`} className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest py-1">
+                                <div key={`${day}-${idx}`} className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest py-1">
                                     {day}
                                 </div>
                             ))}
@@ -244,10 +244,10 @@ export default function DatePicker({
                                             handleDateClick(day);
                                         }}
                                         className={cn(
-                                            "w-9 h-9 flex items-center justify-center rounded-xl text-[10px] font-black tracking-tight transition-all relative mx-auto",
+                                            "w-9 h-9 flex items-center justify-center rounded-lg text-[10px] font-medium tracking-tight transition-all relative mx-auto",
                                             !isCurrentMonth && "text-[#E0E5F2]",
                                             isCurrentMonth && "text-[#1B2559] hover:bg-[#F4F7FE] hover:text-primary",
-                                            isSelected && "bg-primary text-white hover:bg-[#3311DB] shadow-lg shadow-primary/20",
+                                            isSelected && "bg-primary text-white hover:bg-[#2563EB] shadow-lg shadow-primary/20",
                                             isTodayDate && !isSelected && "bg-primary/5 text-primary"
                                         )}
                                     >
@@ -269,13 +269,13 @@ export default function DatePicker({
                 ref={triggerRef}
                 onClick={toggleOpen}
                 className={cn(
-                    "flex items-center justify-between h-10 px-4 cursor-pointer group rounded-xl border border-[#E0E5F2] bg-[#F4F7FE] hover:bg-[#E0E5F2] transition-all",
+                    "flex items-center justify-between h-10 px-4 cursor-pointer group rounded-lg border border-[#E0E5F2] bg-[#F4F7FE] hover:bg-[#E0E5F2] transition-all",
                     triggerClassName
                 )}
             >
                 <div className="flex items-center gap-2">
                     <CalendarIcon className="w-3.5 h-3.5 text-primary group-hover:scale-110 transition-transform" />
-                    <span className={cn("text-[10px] font-black text-[#1B2559] whitespace-nowrap", !selectedDate && "text-[#A3AED0]")}>
+                    <span className={cn("text-[10px] font-medium text-[#1B2559] whitespace-nowrap", !selectedDate && "text-[#A3AED0]")}>
                         {selectedDate ? format(selectedDate, dateFormat) : placeholder}
                     </span>
                 </div>

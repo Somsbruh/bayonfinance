@@ -272,20 +272,20 @@ export default function ReportsPage() {
                         <select
                             value={selectedYear}
                             onChange={(e) => setSelectedYear(Number(e.target.value))}
-                            className="bg-secondary/50 border border-border rounded-xl px-4 py-1.5 text-xs font-bold outline-none focus:ring-2 ring-primary/20"
+                            className="bg-secondary/50 border border-border rounded-lg px-4 py-1.5 text-xs font-medium outline-none focus:ring-2 ring-primary/20"
                         >
                             {[2024, 2025, 2026, 2027].map(y => (
                                 <option key={y} value={y}>{y}</option>
                             ))}
                         </select>
                     )}
-                    <div className="flex bg-secondary/50 p-1 rounded-xl border border-border overflow-x-auto no-scrollbar max-w-[400px]">
+                    <div className="flex bg-secondary/50 p-1 rounded-lg border border-border overflow-x-auto no-scrollbar max-w-[400px]">
                         {(['1', '7', '30', '90', '180', '365'] as const).map((t) => (
                             <button
                                 key={t}
                                 onClick={() => setTimeframe(t)}
                                 className={cn(
-                                    "px-4 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap",
+                                    "px-4 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap",
                                     timeframe === t ? "bg-primary text-white shadow-lg" : "text-muted-foreground hover:text-foreground"
                                 )}
                             >
@@ -340,25 +340,25 @@ export default function ReportsPage() {
                 <div className="bg-white border border-[#EE5D50]/20 rounded-[2rem] overflow-hidden shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
                     <div className="bg-[#EE5D50]/5 px-8 py-5 flex items-center justify-between border-b border-[#EE5D50]/10">
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-[#EE5D50] flex items-center justify-center text-white shadow-lg shadow-[#EE5D50]/20">
+                            <div className="w-8 h-8 rounded-lg bg-[#EE5D50] flex items-center justify-center text-white shadow-lg shadow-[#EE5D50]/20">
                                 <AlertCircle className="w-5 h-5" />
                             </div>
                             <div>
-                                <h3 className="text-sm font-black text-[#1B2559] uppercase tracking-widest">Critical: Overdue Installments</h3>
-                                <p className="text-[10px] font-bold text-[#EE5D50] uppercase tracking-tighter">Action required to secure revenue flow</p>
+                                <h3 className="text-sm font-medium text-[#1B2559] uppercase tracking-widest">Critical: Overdue Installments</h3>
+                                <p className="text-[10px] font-medium text-[#EE5D50] uppercase tracking-tighter">Action required to secure revenue flow</p>
                             </div>
                         </div>
-                        <button className="text-[10px] font-black text-[#EE5D50] uppercase tracking-widest hover:underline">View All Collection Tasks</button>
+                        <button className="text-[10px] font-medium text-[#EE5D50] uppercase tracking-widest hover:underline">View All Collection Tasks</button>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead className="bg-[#F4F7FE]/30 border-b border-[#E0E5F2]">
                                 <tr>
-                                    <th className="px-8 py-4 text-[9px] font-black text-[#A3AED0] uppercase tracking-widest">Patient</th>
-                                    <th className="px-8 py-4 text-[9px] font-black text-[#A3AED0] uppercase tracking-widest">Plan Detail</th>
-                                    <th className="px-8 py-4 text-[9px] font-black text-[#A3AED0] uppercase tracking-widest text-right">Amount Due</th>
-                                    <th className="px-8 py-4 text-[9px] font-black text-[#A3AED0] uppercase tracking-widest text-center">Due Date</th>
-                                    <th className="px-8 py-4 text-[9px] font-black text-[#A3AED0] uppercase tracking-widest text-right">Action</th>
+                                    <th className="px-8 py-4 text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">Patient</th>
+                                    <th className="px-8 py-4 text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">Plan Detail</th>
+                                    <th className="px-8 py-4 text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest text-right">Amount Due</th>
+                                    <th className="px-8 py-4 text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest text-center">Due Date</th>
+                                    <th className="px-8 py-4 text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest text-right">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[#F4F7FE]">
@@ -366,28 +366,28 @@ export default function ReportsPage() {
                                     <tr key={idx} className="hover:bg-[#F4F7FE]/20 transition-all group">
                                         <td className="px-8 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-white border border-[#E0E5F2] flex items-center justify-center text-[10px] font-black text-[#1B2559]">
+                                                <div className="w-8 h-8 rounded-lg bg-white border border-[#E0E5F2] flex items-center justify-center text-[10px] font-medium text-[#1B2559]">
                                                     {item.patients?.name[0]}
                                                 </div>
                                                 <div>
-                                                    <p className="text-[11px] font-black text-[#1B2559] leading-tight">{item.patients?.name}</p>
-                                                    <p className="text-[9px] font-bold text-[#A3AED0]">{item.patients?.phone || 'No Contact'}</p>
+                                                    <p className="text-[11px] font-medium text-[#1B2559] leading-tight">{item.patients?.name}</p>
+                                                    <p className="text-[9px] font-medium text-[#A3AED0]">{item.patients?.phone || 'No Contact'}</p>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-8 py-4">
-                                            <p className="text-[11px] font-bold text-[#1B2559]">{item.payment_plans?.description || 'Treatment Installment'}</p>
+                                            <p className="text-[11px] font-medium text-[#1B2559]">{item.payment_plans?.description || 'Treatment Installment'}</p>
                                         </td>
                                         <td className="px-8 py-4 text-right">
-                                            <p className="text-[12px] font-black text-[#EE5D50]">${Number(item.total_price).toLocaleString()}</p>
+                                            <p className="text-[12px] font-medium text-[#EE5D50]">${Number(item.total_price).toLocaleString()}</p>
                                         </td>
                                         <td className="px-8 py-4 text-center">
-                                            <span className="inline-flex px-2 py-1 rounded-lg bg-[#EE5D50]/10 text-[#EE5D50] text-[10px] font-black">
+                                            <span className="inline-flex px-2 py-1 rounded-lg bg-[#EE5D50]/10 text-[#EE5D50] text-[10px] font-medium">
                                                 {format(new Date(item.date), 'MMM d, yyyy')}
                                             </span>
                                         </td>
                                         <td className="px-8 py-4 text-right">
-                                            <button className="p-2 text-[#A3AED0] hover:text-[#4318FF] hover:bg-[#F4F7FE] rounded-xl transition-all">
+                                            <button className="p-2 text-[#A3AED0] hover:text-[#3B82F6] hover:bg-[#F4F7FE] rounded-lg transition-all">
                                                 <ChevronRight className="w-4 h-4" />
                                             </button>
                                         </td>
@@ -401,7 +401,7 @@ export default function ReportsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="md:col-span-2 bg-card border border-border rounded-3xl p-8 shadow-xl">
-                    <h3 className="text-lg font-bold mb-6">Revenue Growth</h3>
+                    <h3 className="text-lg font-medium mb-6">Revenue Growth</h3>
                     <div className={cn(
                         "h-64 flex items-end justify-between px-4",
                         stats.chartData.length > 12 ? "gap-1" : "gap-2"
@@ -418,7 +418,7 @@ export default function ReportsPage() {
                             );
                         })}
                     </div>
-                    <div className="flex justify-between mt-4 text-[10px] text-muted-foreground font-black uppercase tracking-widest px-2 overflow-x-auto no-scrollbar gap-1">
+                    <div className="flex justify-between mt-4 text-[10px] text-muted-foreground font-medium uppercase tracking-widest px-2 overflow-x-auto no-scrollbar gap-1">
                         {stats.chartLabels.map((label, i) => (
                             <span key={i} className="flex-1 text-center min-w-[30px]">{label}</span>
                         ))}
@@ -426,15 +426,15 @@ export default function ReportsPage() {
                 </div>
 
                 <div className="bg-card border border-border rounded-3xl p-8 shadow-xl space-y-6">
-                    <h3 className="text-lg font-bold">Top Staff</h3>
+                    <h3 className="text-lg font-medium">Top Staff</h3>
                     <div className="space-y-4">
                         {stats.topStaff.map((s, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-secondary/30">
+                            <div key={idx} className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 font-bold">
+                                    <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 font-medium">
                                         {s.name[0]}
                                     </div>
-                                    <span className="text-sm font-bold">{s.name}</span>
+                                    <span className="text-sm font-medium">{s.name}</span>
                                 </div>
                                 <span className="text-xs font-mono">${s.total.toLocaleString()}</span>
                             </div>
@@ -462,17 +462,17 @@ function StatCard({ title, value, icon, trend, color }: any) {
     return (
         <div className="bg-card border border-border rounded-3xl p-6 shadow-lg space-y-4 hover:border-primary/50 transition-all group">
             <div className="flex items-center justify-between">
-                <div className={`p-3 rounded-2xl ${colorMap[color] || colorMap.blue}`}>
+                <div className={`p-3 rounded-lg ${colorMap[color] || colorMap.blue}`}>
                     {icon}
                 </div>
-                <div className="flex items-center gap-1 text-green-400 text-xs font-bold bg-green-400/10 px-2 py-1 rounded-lg">
+                <div className="flex items-center gap-1 text-green-400 text-xs font-medium bg-green-400/10 px-2 py-1 rounded-lg">
                     <ArrowUpRight className="w-3 h-3" />
                     {trend}
                 </div>
             </div>
             <div>
-                <h4 className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">{title}</h4>
-                <p className="text-2xl font-black text-foreground">{value}</p>
+                <h4 className="text-[10px] text-muted-foreground uppercase font-medium tracking-widest">{title}</h4>
+                <p className="text-2xl font-medium text-foreground">{value}</p>
             </div>
         </div>
     );

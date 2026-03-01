@@ -224,17 +224,17 @@ function NewAppointmentContent() {
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => router.back()}
-                            className="w-9 h-9 flex items-center justify-center bg-white border border-[#E0E5F2] rounded-xl text-[#A3AED0] hover:text-[#1B2559] transition-all shadow-sm group"
+                            className="w-9 h-9 flex items-center justify-center bg-white border border-[#E0E5F2] rounded-lg text-[#A3AED0] hover:text-[#1B2559] transition-all shadow-sm group"
                         >
                             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
                         </button>
                         <div className="flex items-center gap-4">
-                            <h1 className="text-2xl font-black text-[#1B2559] tracking-tight">New Appointment</h1>
-                            <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-[#E0E5F2] rounded-xl shadow-sm">
+                            <h1 className="text-2xl font-medium text-[#1B2559] tracking-tight">New Appointment</h1>
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-[#E0E5F2] rounded-lg shadow-sm">
                                 <User className="w-3 h-3 text-primary" />
                                 <div className="flex items-center gap-2">
-                                    <span className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest whitespace-nowrap">Patient</span>
-                                    <span className="text-[9px] font-black text-[#1B2559] uppercase tracking-widest whitespace-nowrap">{patient?.name}</span>
+                                    <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest whitespace-nowrap">Patient</span>
+                                    <span className="text-[9px] font-medium text-[#1B2559] uppercase tracking-widest whitespace-nowrap">{patient?.name}</span>
                                 </div>
                             </div>
                         </div>
@@ -243,13 +243,13 @@ function NewAppointmentContent() {
                     <div className="flex items-center gap-2.5">
                         <button
                             onClick={() => router.back()}
-                            className="px-5 py-2 rounded-xl text-[8px] font-black text-[#A3AED0] hover:text-[#1B2559] transition-all uppercase tracking-widest"
+                            className="px-5 py-2 rounded-lg text-[8px] font-medium text-[#A3AED0] hover:text-[#1B2559] transition-all uppercase tracking-widest"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleSave}
-                            className="bg-primary px-5 py-2.5 rounded-xl text-[9px] font-black text-white shadow-lg shadow-primary/20 flex items-center gap-2 hover:translate-y-[-1px] transition-all active:translate-y-0"
+                            className="bg-primary px-5 py-2.5 rounded-lg text-[9px] font-medium text-white shadow-lg shadow-primary/20 flex items-center gap-2 hover:translate-y-[-1px] transition-all active:translate-y-0"
                         >
                             <Check className="w-3.5 h-3.5" />
                             Finalize Appointment
@@ -260,7 +260,7 @@ function NewAppointmentContent() {
                 <div className="grid grid-cols-12 gap-5">
                     {/* Left Side: Clinical Menu (Selector) */}
                     <div className="col-span-12 lg:col-span-8 space-y-5">
-                        <div className="bg-white rounded-[24px] border border-[#E0E5F2] shadow-sm p-6 space-y-5">
+                        <div className="bg-white rounded-lg border border-[#E0E5F2] shadow-sm p-6 space-y-5">
                             {/* Search and Category Filters */}
                             <div className="space-y-5">
                                 <div className="flex items-center gap-3">
@@ -269,14 +269,14 @@ function NewAppointmentContent() {
                                         <input
                                             type="text"
                                             placeholder={`Search ${viewMode === 'treatment' ? 'clinical procedures' : 'medicines'}...`}
-                                            className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl py-3 pl-11 pr-4 text-[11px] font-black text-[#1B2559] focus:ring-4 focus:ring-primary/5 transition-all outline-none placeholder:text-[#A3AED0] placeholder:font-bold"
+                                            className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg py-3 pl-11 pr-4 text-[11px] font-medium text-[#1B2559] focus:ring-4 focus:ring-primary/5 transition-all outline-none placeholder:text-[#A3AED0] placeholder:font-medium"
                                             value={searchTerm}
                                             onChange={(e) => setSearchTerm(e.target.value)}
                                         />
                                     </div>
 
                                     {/* Context Switcher - Inventory Style Tabs */}
-                                    <div className="flex bg-[#F4F7FE] p-1 rounded-xl border border-[#E0E5F2]">
+                                    <div className="flex bg-[#F4F7FE] p-1 rounded-lg border border-[#E0E5F2]">
                                         {[
                                             { id: 'treatment', label: 'Treatment', icon: Activity },
                                             { id: 'medicine', label: 'Medicine', icon: DollarSign }
@@ -288,7 +288,7 @@ function NewAppointmentContent() {
                                                     setSelectedCategory(null);
                                                 }}
                                                 className={cn(
-                                                    "flex items-center gap-2 px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
+                                                    "flex items-center gap-2 px-4 py-2 rounded-lg text-[9px] font-medium uppercase tracking-widest transition-all",
                                                     viewMode === tab.id
                                                         ? "bg-white text-primary shadow-sm"
                                                         : "text-[#A3AED0] hover:text-[#1B2559]"
@@ -305,7 +305,7 @@ function NewAppointmentContent() {
                                     <button
                                         onClick={() => setSelectedCategory(null)}
                                         className={cn(
-                                            "px-2.5 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all border whitespace-nowrap",
+                                            "px-2.5 py-1.5 rounded-lg text-[8px] font-medium uppercase tracking-wider transition-all border whitespace-nowrap",
                                             !selectedCategory
                                                 ? "bg-[#1B2559] text-white border-[#1B2559] shadow-md shadow-[#1B2559]/10"
                                                 : "bg-[#F4F7FE] text-[#A3AED0] border-[#E0E5F2] hover:border-primary/50"
@@ -318,7 +318,7 @@ function NewAppointmentContent() {
                                             key={cat}
                                             onClick={() => setSelectedCategory(cat)}
                                             className={cn(
-                                                "px-2.5 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all border whitespace-nowrap",
+                                                "px-2.5 py-1.5 rounded-lg text-[8px] font-medium uppercase tracking-wider transition-all border whitespace-nowrap",
                                                 selectedCategory === cat
                                                     ? "text-white shadow-md"
                                                     : "bg-[#F4F7FE] text-[#A3AED0] border-[#E0E5F2] hover:border-primary/50"
@@ -348,14 +348,14 @@ function NewAppointmentContent() {
                                                 style={{ backgroundColor: getCategoryColor(item.category) }}
                                             />
                                             <div>
-                                                <h4 className="text-[11px] font-black text-[#1B2559] group-hover:text-primary transition-colors tracking-tight font-kantumruy leading-tight">{item.name}</h4>
-                                                <p className="text-[9px] font-black text-[#A3AED0] uppercase pt-0.5 tracking-tighter">{item.category}</p>
+                                                <h4 className="text-[11px] font-medium text-[#1B2559] group-hover:text-primary transition-colors tracking-tight font-kantumruy leading-tight">{item.name}</h4>
+                                                <p className="text-[9px] font-medium text-[#A3AED0] uppercase pt-0.5 tracking-tighter">{item.category}</p>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <div className="text-[12px] font-black text-[#1B2559] tracking-tight">${viewMode === 'treatment' ? item.price : item.sell_price}</div>
+                                            <div className="text-[12px] font-medium text-[#1B2559] tracking-tight">${viewMode === 'treatment' ? item.price : item.sell_price}</div>
                                             <div className={cn(
-                                                "text-[8px] font-black uppercase tracking-widest",
+                                                "text-[8px] font-medium uppercase tracking-widest",
                                                 (viewMode === 'treatment' || (item.stock_level > 0)) ? "text-emerald-500" : "text-rose-500"
                                             )}>
                                                 {viewMode === 'treatment' ? 'Available' : item.stock_level > 0 ? `${item.stock_level} Unit` : 'Out of Stock'}
@@ -366,12 +366,12 @@ function NewAppointmentContent() {
 
                                 {filteredItems.length === 0 && (
                                     <div className="col-span-full py-16 text-center border-2 border-dashed border-[#E0E5F2] rounded-[2rem] space-y-3">
-                                        <div className="w-12 h-12 bg-[#F4F7FE] rounded-xl flex items-center justify-center mx-auto">
+                                        <div className="w-12 h-12 bg-[#F4F7FE] rounded-lg flex items-center justify-center mx-auto">
                                             <Search className="w-6 h-6 text-[#A3AED0]" />
                                         </div>
                                         <div>
-                                            <h4 className="text-base font-black text-[#1B2559]">No {viewMode === 'treatment' ? 'Procedures' : 'Medicines'} Found</h4>
-                                            <p className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest mt-1">
+                                            <h4 className="text-base font-medium text-[#1B2559]">No {viewMode === 'treatment' ? 'Procedures' : 'Medicines'} Found</h4>
+                                            <p className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest mt-1">
                                                 {selectedCategory ? `No results in ${selectedCategory}` : "Try a different search term"}
                                             </p>
                                         </div>
@@ -384,14 +384,14 @@ function NewAppointmentContent() {
                     {/* Right Side: Appointment Configuration & Cart */}
                     <div className="col-span-12 lg:col-span-4 space-y-5">
                         {/* Config Card */}
-                        <div className="bg-white rounded-[24px] border border-[#E0E5F2] shadow-sm p-6 space-y-5">
+                        <div className="bg-white rounded-lg border border-[#E0E5F2] shadow-sm p-6 space-y-5">
                             <div className="space-y-4">
                                 <div className="space-y-1.5">
-                                    <label className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Dentist</label>
+                                    <label className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Dentist</label>
                                     <div className="relative">
                                         <User className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-primary" />
                                         <select
-                                            className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl py-2.5 pl-11 pr-6 text-[10px] font-black text-[#1B2559] outline-none appearance-none cursor-pointer focus:ring-4 focus:ring-primary/5 transition-all"
+                                            className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg py-2.5 pl-11 pr-6 text-[10px] font-medium text-[#1B2559] outline-none appearance-none cursor-pointer focus:ring-4 focus:ring-primary/5 transition-all"
                                             value={selectedDoctorId}
                                             onChange={(e) => setSelectedDoctorId(e.target.value)}
                                         >
@@ -403,7 +403,7 @@ function NewAppointmentContent() {
 
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1.5">
-                                        <label className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Date</label>
+                                        <label className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Date</label>
                                         <DatePicker
                                             value={selectedDate}
                                             onChange={(d) => setSelectedDate(format(d, 'yyyy-MM-dd'))}
@@ -412,14 +412,14 @@ function NewAppointmentContent() {
                                         />
                                     </div>
                                     <div className="space-y-1.5 relative">
-                                        <label className="text-[9px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Time</label>
+                                        <label className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Time</label>
                                         <div
-                                            className="h-10 bg-[#F4F7FE] hover:bg-[#E0E5F2] transition-colors rounded-xl border border-[#E0E5F2] px-4 flex items-center justify-between cursor-pointer group"
+                                            className="h-10 bg-[#F4F7FE] hover:bg-[#E0E5F2] transition-colors rounded-lg border border-[#E0E5F2] px-4 flex items-center justify-between cursor-pointer group"
                                             onClick={() => setIsTimeDropdownOpen(!isTimeDropdownOpen)}
                                         >
                                             <div className="flex items-center gap-2">
                                                 <Clock className="w-3.5 h-3.5 text-primary" />
-                                                <span className="text-[10px] font-black text-[#1B2559]">
+                                                <span className="text-[10px] font-medium text-[#1B2559]">
                                                     {format(new Date(`2000-01-01T${selectedTime}:00`), 'h:mm a')}
                                                 </span>
                                             </div>
@@ -429,7 +429,7 @@ function NewAppointmentContent() {
                                         {isTimeDropdownOpen && (
                                             <>
                                                 <div className="fixed inset-0 z-[40]" onClick={() => setIsTimeDropdownOpen(false)} />
-                                                <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-xl shadow-xl z-[100] overflow-hidden max-h-[180px] overflow-y-auto no-scrollbar border border-[#E0E5F2] animate-in fade-in zoom-in-95 duration-200">
+                                                <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-lg shadow-xl z-[100] overflow-hidden max-h-[180px] overflow-y-auto no-scrollbar border border-[#E0E5F2] animate-in fade-in zoom-in-95 duration-200">
                                                     {timeIntervals.map(t => (
                                                         <button
                                                             key={t}
@@ -438,7 +438,7 @@ function NewAppointmentContent() {
                                                                 setIsTimeDropdownOpen(false);
                                                             }}
                                                             className={cn(
-                                                                "w-full px-4 py-2.5 text-left text-[9px] font-black uppercase tracking-wider hover:bg-[#F4F7FE] transition-colors flex items-center justify-between",
+                                                                "w-full px-4 py-2.5 text-left text-[9px] font-medium uppercase tracking-wider hover:bg-[#F4F7FE] transition-colors flex items-center justify-between",
                                                                 selectedTime === t ? "bg-primary/5 text-primary" : "text-[#1B2559]"
                                                             )}
                                                         >
@@ -455,21 +455,21 @@ function NewAppointmentContent() {
                         </div>
 
                         {/* Cart Card */}
-                        <div className="bg-white rounded-[24px] border border-[#E0E5F2] shadow-sm p-6 space-y-5">
+                        <div className="bg-white rounded-lg border border-[#E0E5F2] shadow-sm p-6 space-y-5">
                             <div className="flex items-center justify-between">
-                                <h3 className="text-lg font-black text-[#1B2559] tracking-tight">Configuration Bundle</h3>
-                                <span className="bg-primary/10 text-primary px-2.5 py-0.5 rounded-full text-[10px] font-black">{selectedItems.length}</span>
+                                <h3 className="text-lg font-medium text-[#1B2559] tracking-tight">Configuration Bundle</h3>
+                                <span className="bg-primary/10 text-primary px-2.5 py-0.5 rounded-full text-[10px] font-medium">{selectedItems.length}</span>
                             </div>
 
                             <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-1 no-scrollbar">
                                 {selectedItems.map((item, idx) => (
                                     <div key={item.id} className="group relative">
-                                        <div className="bg-white border border-[#E0E5F2] rounded-xl p-3 transition-all hover:shadow-md border-l-4" style={{ borderLeftColor: getCategoryColor(item.category) }}>
+                                        <div className="bg-white border border-[#E0E5F2] rounded-lg p-3 transition-all hover:shadow-md border-l-4" style={{ borderLeftColor: getCategoryColor(item.category) }}>
                                             <div className="flex flex-col gap-2">
                                                 <div className="flex items-start justify-between gap-2">
                                                     <div className="min-w-0">
-                                                        <h5 className="text-[10px] font-black text-[#1B2559] truncate tracking-tight uppercase font-kantumruy">{item.name}</h5>
-                                                        <p className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest mt-0.5">{item.category}</p>
+                                                        <h5 className="text-[10px] font-medium text-[#1B2559] truncate tracking-tight uppercase font-kantumruy">{item.name}</h5>
+                                                        <p className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest mt-0.5">{item.category}</p>
                                                     </div>
                                                     <button
                                                         onClick={() => removeItem(item.id)}
@@ -486,9 +486,9 @@ function NewAppointmentContent() {
                                                             className="w-4.5 h-4.5 flex items-center justify-center bg-white rounded-md text-[#1B2559] hover:text-primary transition-all shadow-sm active:scale-90 disabled:opacity-30"
                                                             disabled={item.quantity <= 1}
                                                         >
-                                                            <span className="text-[10px] font-black">-</span>
+                                                            <span className="text-[10px] font-medium">-</span>
                                                         </button>
-                                                        <div className="w-5 text-center text-[9px] font-black text-[#1B2559]">
+                                                        <div className="w-5 text-center text-[9px] font-medium text-[#1B2559]">
                                                             {item.quantity || 1}
                                                         </div>
                                                         <button
@@ -499,7 +499,7 @@ function NewAppointmentContent() {
                                                         </button>
                                                     </div>
                                                     <div className="text-right">
-                                                        <p className="text-[11px] font-black text-primary tracking-tighter">
+                                                        <p className="text-[11px] font-medium text-primary tracking-tighter">
                                                             ${(Number(item.price) * (item.quantity || 1)).toLocaleString()}
                                                         </p>
                                                     </div>
@@ -510,8 +510,8 @@ function NewAppointmentContent() {
                                 ))}
 
                                 {selectedItems.length === 0 && (
-                                    <div className="py-8 text-center border-2 border-dashed border-[#E0E5F2] rounded-2xl">
-                                        <p className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest leading-none">No Items Selected</p>
+                                    <div className="py-8 text-center border-2 border-dashed border-[#E0E5F2] rounded-lg">
+                                        <p className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest leading-none">No Items Selected</p>
                                     </div>
                                 )}
                             </div>
@@ -519,13 +519,13 @@ function NewAppointmentContent() {
                             {selectedItems.length > 0 && (
                                 <div className="pt-5 border-t border-[#F4F7FE] space-y-3">
                                     <div className="flex items-center justify-between px-1">
-                                        <span className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest">Grand Subtotal</span>
-                                        <span className="text-xl font-black text-primary tracking-tighter">
+                                        <span className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest">Grand Subtotal</span>
+                                        <span className="text-xl font-medium text-primary tracking-tighter">
                                             ${selectedItems.reduce((sum, item) => sum + (Number(item.price) * (item.quantity || 1)), 0).toLocaleString()}
                                         </span>
                                     </div>
-                                    <div className="bg-[#F8FAFF] rounded-xl py-2 px-3 text-center border border-primary/5">
-                                        <p className="text-[8px] text-[#A3AED0] font-black uppercase tracking-[0.15em] leading-relaxed">
+                                    <div className="bg-[#F8FAFF] rounded-lg py-2 px-3 text-center border border-primary/5">
+                                        <p className="text-[8px] text-[#A3AED0] font-medium uppercase tracking-[0.15em] leading-relaxed">
                                             Equiv. Est {(selectedItems.reduce((sum, item) => sum + (Number(item.price) * (item.quantity || 1)), 0) * usdToKhr).toLocaleString()} Riel
                                         </p>
                                     </div>

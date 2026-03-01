@@ -58,26 +58,26 @@ export default function LoginPage() {
             <div className="relative z-10 w-full max-w-[440px] px-6">
                 {/* Logo/Brand Section */}
                 <div className="flex flex-col items-center mb-10 animate-in fade-in slide-in-from-top-8 duration-700">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#1B2559] to-[#3311DB] flex items-center justify-center text-white shadow-2xl shadow-primary/30 mb-6 rotate-6 hover:rotate-0 transition-transform duration-500">
+                    <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-[#1B2559] to-[#2563EB] flex items-center justify-center text-white shadow-2xl shadow-primary/30 mb-6 rotate-6 hover:rotate-0 transition-transform duration-500">
                         <ShieldCheck className="w-8 h-8" />
                     </div>
                     <div className="text-center space-y-1">
-                        <h1 className="text-3xl font-black text-[#1B2559] tracking-tight">Bayon Finance</h1>
-                        <p className="text-[10px] font-black text-[#A3AED0] uppercase tracking-[0.3em]">Institutional Ledger Access</p>
+                        <h1 className="text-3xl font-medium text-[#1B2559] tracking-tight">Bayon Finance</h1>
+                        <p className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-[0.3em]">Institutional Ledger Access</p>
                     </div>
                 </div>
 
                 {/* Login Card */}
                 <div className="bg-white/70 backdrop-blur-xl border border-white rounded-[2.5rem] p-8 md:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.05)] animate-in fade-in zoom-in-95 duration-700 delay-150">
                     <div className="mb-8">
-                        <h2 className="text-xl font-black text-[#1B2559]">Welcome Back</h2>
+                        <h2 className="text-xl font-medium text-[#1B2559]">Welcome Back</h2>
                         <p className="text-sm font-medium text-[#A3AED0] mt-1">Please enter your credentials to proceed.</p>
                     </div>
 
                     <form onSubmit={handleLogin} className="space-y-5">
                         {/* Username Input */}
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-[#1B2559] uppercase tracking-widest ml-1">Username</label>
+                            <label className="text-[10px] font-medium text-[#1B2559] uppercase tracking-widest ml-1">Username</label>
                             <div className="relative group">
                                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#A3AED0] group-focus-within:text-primary transition-colors">
                                     <User className="w-4 h-4" />
@@ -87,7 +87,7 @@ export default function LoginPage() {
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
                                     placeholder="Enter your username"
-                                    className="w-full bg-[#F4F7FE] border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl px-11 py-4 text-sm font-bold text-[#1B2559] outline-none transition-all placeholder:text-[#A3AED0]/60"
+                                    className="w-full bg-[#F4F7FE] border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-lg px-11 py-4 text-sm font-medium text-[#1B2559] outline-none transition-all placeholder:text-[#A3AED0]/60"
                                     required
                                 />
                             </div>
@@ -95,7 +95,7 @@ export default function LoginPage() {
 
                         {/* Password Input */}
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-[#1B2559] uppercase tracking-widest ml-1">Password</label>
+                            <label className="text-[10px] font-medium text-[#1B2559] uppercase tracking-widest ml-1">Password</label>
                             <div className="relative group">
                                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#A3AED0] group-focus-within:text-primary transition-colors">
                                     <Lock className="w-4 h-4" />
@@ -105,7 +105,7 @@ export default function LoginPage() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="••••••••"
-                                    className="w-full bg-[#F4F7FE] border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl px-11 py-4 text-sm font-bold text-[#1B2559] outline-none transition-all placeholder:text-[#A3AED0]/60"
+                                    className="w-full bg-[#F4F7FE] border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-lg px-11 py-4 text-sm font-medium text-[#1B2559] outline-none transition-all placeholder:text-[#A3AED0]/60"
                                     required
                                 />
                                 <button
@@ -119,7 +119,7 @@ export default function LoginPage() {
                         </div>
 
                         {error && (
-                            <div className="bg-red-50 border border-red-100 text-red-600 text-[11px] font-bold px-4 py-3 rounded-xl animate-in fade-in slide-in-from-top-1">
+                            <div className="bg-red-50 border border-red-100 text-red-600 text-[11px] font-medium px-4 py-3 rounded-lg animate-in fade-in slide-in-from-top-1">
                                 {error}
                             </div>
                         )}
@@ -127,7 +127,7 @@ export default function LoginPage() {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-primary hover:bg-[#3311DB] disabled:bg-primary/50 text-white font-black text-[11px] uppercase tracking-[0.2em] py-5 rounded-2xl shadow-xl shadow-primary/25 hover:shadow-primary/40 transition-all active:scale-[0.98] flex items-center justify-center gap-3 relative overflow-hidden group"
+                            className="w-full bg-primary hover:bg-[#2563EB] disabled:bg-primary/50 text-white font-medium text-[11px] uppercase tracking-[0.2em] py-5 rounded-lg shadow-xl shadow-primary/25 hover:shadow-primary/40 transition-all active:scale-[0.98] flex items-center justify-center gap-3 relative overflow-hidden group"
                         >
                             {isLoading ? (
                                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -141,14 +141,14 @@ export default function LoginPage() {
                     </form>
 
                     <div className="mt-8 pt-8 border-t border-[#F4F7FE] text-center">
-                        <p className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest">
+                        <p className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest">
                             Secured by Bayon Cloud Protocol
                         </p>
                     </div>
                 </div>
 
                 {/* Footer Info */}
-                <p className="mt-8 text-center text-[10px] font-bold text-[#A3AED0] uppercase tracking-tighter">
+                <p className="mt-8 text-center text-[10px] font-medium text-[#A3AED0] uppercase tracking-tighter">
                     © {new Date().getFullYear()} Bayon Dental Clinic Infrastructure. All rights reserved.
                 </p>
             </div>

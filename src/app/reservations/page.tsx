@@ -287,7 +287,7 @@ export default function ReservationsPage() {
     const getStatusStyles = (status: string) => {
         switch (status) {
             case 'Finished': return { bg: 'bg-[#EE5D50]/5', border: 'border-[#EE5D50]/20', dot: 'bg-[#EE5D50]', pill: 'bg-[#EE5D50] text-white' };
-            case 'Doing Treatment': return { bg: 'bg-[#4318FF]/5', border: 'border-[#4318FF]/20', dot: 'bg-[#4318FF]', pill: 'bg-[#4318FF] text-white shadow-sm shadow-[#4318FF]/20' };
+            case 'Doing Treatment': return { bg: 'bg-[#3B82F6]/5', border: 'border-[#3B82F6]/20', dot: 'bg-[#3B82F6]', pill: 'bg-[#3B82F6] text-white shadow-sm shadow-[#3B82F6]/20' };
             case 'Registered': return { bg: 'bg-[#19D5C5]/5', border: 'border-[#19D5C5]/20', dot: 'bg-[#19D5C5]', pill: 'bg-[#19D5C5] text-white' };
             default: return { bg: 'bg-gray-50', border: 'border-gray-200', dot: 'bg-gray-400', pill: 'bg-gray-400 text-white' };
         }
@@ -305,8 +305,8 @@ export default function ReservationsPage() {
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as any)}
                         className={cn(
-                            "py-2.5 text-[9px] font-bold transition-all relative border-b-2",
-                            activeTab === tab.id ? "text-[#4318FF] border-[#4318FF]" : "text-[#A3AED0] border-transparent hover:text-[#1B2559]"
+                            "py-2.5 text-[9px] font-medium transition-all relative border-b-2",
+                            activeTab === tab.id ? "text-[#3B82F6] border-[#3B82F6]" : "text-[#A3AED0] border-transparent hover:text-[#1B2559]"
                         )}
                     >
                         {tab.label}
@@ -322,16 +322,16 @@ export default function ReservationsPage() {
                             <CalendarIcon className="w-3.5 h-3.5 text-[#A3AED0]" />
                         </div>
                         <div className="flex items-baseline gap-1">
-                            <span className="text-xl font-black text-[#1B2559] tracking-tighter leading-none">{appointments.length}</span>
-                            <span className="text-[9px] font-bold text-[#A3AED0] uppercase tracking-tight">total appointments</span>
+                            <span className="text-xl font-medium text-[#1B2559] tracking-tighter leading-none">{appointments.length}</span>
+                            <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-tight">total appointments</span>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-1.5 border-l border-[#E0E5F2] pl-4">
-                        <button onClick={() => setSelectedDate(new Date())} className="px-4 py-1.5 bg-white border border-[#E0E5F2] rounded-lg text-[9px] font-black text-[#1B2559] uppercase hover:bg-[#F4F7FE] transition-all shadow-sm">Today</button>
+                        <button onClick={() => setSelectedDate(new Date())} className="px-4 py-1.5 bg-white border border-[#E0E5F2] rounded-lg text-[9px] font-medium text-[#1B2559] uppercase hover:bg-[#F4F7FE] transition-all shadow-sm">Today</button>
                         <div className="flex items-center gap-2 ml-1">
                             <button onClick={() => setSelectedDate(addDays(selectedDate, -1))} className="p-1 border border-[#E0E5F2] rounded-md text-[#A3AED0] hover:text-[#1B2559] hover:bg-gray-50"><ChevronLeft className="w-3 h-3" /></button>
-                            <span className="text-[11px] font-black text-[#1B2559] min-w-[100px] text-center tracking-tight">
+                            <span className="text-[11px] font-medium text-[#1B2559] min-w-[100px] text-center tracking-tight">
                                 {format(selectedDate, 'EEE, d MMM yyyy')}
                             </span>
                             <button onClick={() => setSelectedDate(addDays(selectedDate, 1))} className="p-1 border border-[#E0E5F2] rounded-md text-[#A3AED0] hover:text-[#1B2559] hover:bg-gray-50"><ChevronRight className="w-3 h-3" /></button>
@@ -341,10 +341,10 @@ export default function ReservationsPage() {
 
                 <div className="flex items-center gap-2.5">
                     <div className="flex bg-[#F4F7FE] p-0.5 rounded-lg border border-[#E0E5F2]">
-                        <button onClick={() => setView('day')} className={cn("px-4 py-1 rounded-md text-[9px] font-black uppercase transition-all", view === 'day' ? "bg-white text-primary shadow-sm" : "text-[#A3AED0] hover:text-[#1B2559]")}>Day</button>
-                        <button onClick={() => setView('week')} className={cn("px-4 py-1 rounded-md text-[9px] font-black uppercase transition-all", view === 'week' ? "bg-white text-primary shadow-sm" : "text-[#A3AED0] hover:text-[#1B2559]")}>Week</button>
+                        <button onClick={() => setView('day')} className={cn("px-4 py-1 rounded-md text-[9px] font-medium uppercase transition-all", view === 'day' ? "bg-white text-primary shadow-sm" : "text-[#A3AED0] hover:text-[#1B2559]")}>Day</button>
+                        <button onClick={() => setView('week')} className={cn("px-4 py-1 rounded-md text-[9px] font-medium uppercase transition-all", view === 'week' ? "bg-white text-primary shadow-sm" : "text-[#A3AED0] hover:text-[#1B2559]")}>Week</button>
                     </div>
-                    <button className="bg-white px-3 py-1.5 rounded-lg border border-[#E0E5F2] text-[9px] font-black text-[#1B2559] uppercase flex items-center gap-1.5 shadow-sm">
+                    <button className="bg-white px-3 py-1.5 rounded-lg border border-[#E0E5F2] text-[9px] font-medium text-[#1B2559] uppercase flex items-center gap-1.5 shadow-sm">
                         <Filter className="w-3 h-3 text-[#A3AED0]" />
                         All Dentist
                         <ChevronDown className="w-2.5 h-2.5 text-[#A3AED0]" />
@@ -357,8 +357,8 @@ export default function ReservationsPage() {
                 <div className="flex flex-col min-w-max h-full">
                     <div className="flex shrink-0 sticky top-0 z-40 bg-white">
                         <div className="w-[60px] border-r border-b border-[#f5f7fd] flex flex-col items-center justify-center py-3 bg-[#F4F7FE]/20 shrink-0 sticky left-0 z-[45] backdrop-blur-sm">
-                            <span className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest leading-none">GMT</span>
-                            <span className="text-[8px] font-black text-[#1B2559] mt-0.5">+07:00</span>
+                            <span className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest leading-none">GMT</span>
+                            <span className="text-[8px] font-medium text-[#1B2559] mt-0.5">+07:00</span>
                         </div>
                         {doctors.map(doc => (
                             <div key={doc.id} className="min-w-[180px] flex-1 border-r border-b border-[#f5f7fd] p-2 flex items-center justify-between group bg-white shadow-[inset_0_-1px_0_0_#f5f7fd]">
@@ -367,9 +367,9 @@ export default function ReservationsPage() {
                                         <User className="w-3.5 h-3.5 text-[#A3AED0]" />
                                     </div>
                                     <div className="truncate">
-                                        <h4 className="text-[9px] font-black text-[#1B2559] truncate uppercase leading-none mb-0.5">{doc.name}</h4>
-                                        <p className="text-[7px] font-bold text-[#A3AED0] uppercase truncate leading-none">
-                                            <span className="text-[#1B2559] font-black">{(appointments.filter(a => a.doctor_id === doc.id).length)} PTS</span>
+                                        <h4 className="text-[9px] font-medium text-[#1B2559] truncate uppercase leading-none mb-0.5">{doc.name}</h4>
+                                        <p className="text-[7px] font-medium text-[#A3AED0] uppercase truncate leading-none">
+                                            <span className="text-[#1B2559] font-medium">{(appointments.filter(a => a.doctor_id === doc.id).length)} PTS</span>
                                         </p>
                                     </div>
                                 </div>
@@ -385,7 +385,7 @@ export default function ReservationsPage() {
                             <div className="w-[60px] border-r border-[#f5f7fd] bg-white flex flex-col shrink-0 sticky left-0 z-30 shadow-[1px_0_0_0_#f5f7fd]">
                                 {timeSlots.filter(s => s.isMainLabel).map(slot => (
                                     <div key={slot.iso} className="h-[72px] border-b border-[#f5f7fd] flex items-center justify-center px-1">
-                                        <span className="text-[9px] font-black text-[#1B2559] uppercase tracking-tighter">{slot.display}</span>
+                                        <span className="text-[9px] font-medium text-[#1B2559] uppercase tracking-tighter">{slot.display}</span>
                                     </div>
                                 ))}
                             </div>
@@ -426,8 +426,8 @@ export default function ReservationsPage() {
                                                                 styles?.bg, styles?.border
                                                             )}>
                                                                 <div className={cn("w-1.5 h-1.5 rounded-full shrink-0 mr-1.5", styles?.dot)} />
-                                                                <span className="text-[8px] font-black text-[#1B2559] truncate uppercase leading-none">{appt.patients?.name}</span>
-                                                                <span className="ml-auto text-[7px] font-bold text-[#A3AED0] opacity-60 truncate pl-1.5 uppercase">{appt.treatments?.name.slice(0, 15)}</span>
+                                                                <span className="text-[8px] font-medium text-[#1B2559] truncate uppercase leading-none">{appt.patients?.name}</span>
+                                                                <span className="ml-auto text-[7px] font-medium text-[#A3AED0] opacity-60 truncate pl-1.5 uppercase">{appt.treatments?.name.slice(0, 15)}</span>
                                                             </div>
                                                         </div>
                                                     );
@@ -458,11 +458,11 @@ export default function ReservationsPage() {
             {/* Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-deepNavy/20 backdrop-blur-[2px] animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[24px] w-full max-w-[360px] border border-[#E0E5F2] shadow-2xl p-6 relative overflow-hidden flex flex-col gap-4">
-                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#4318FF] to-[#19D5C5]" />
+                    <div className="bg-white rounded-lg w-full max-w-[360px] border border-[#E0E5F2] shadow-2xl p-6 relative overflow-hidden flex flex-col gap-4">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#3B82F6] to-[#19D5C5]" />
 
                         <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-black text-[#1B2559] uppercase tracking-widest">
+                            <h3 className="text-sm font-medium text-[#1B2559] uppercase tracking-widest">
                                 {step === 'search' ? 'Identify Patient' :
                                     step === 'new-patient' ? 'New Profile' :
                                         step === 'treatment' ? 'Assign Procedure' : 'Finalize Reservation'}
@@ -473,15 +473,15 @@ export default function ReservationsPage() {
                         </div>
 
                         {/* Step Details */}
-                        <div className="bg-[#F4F7FE]/50 rounded-xl p-3 border border-[#E0E5F2]/50 flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-white border border-[#E0E5F2] flex items-center justify-center text-[#4318FF] shadow-sm">
+                        <div className="bg-[#F4F7FE]/50 rounded-lg p-3 border border-[#E0E5F2]/50 flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-white border border-[#E0E5F2] flex items-center justify-center text-[#3B82F6] shadow-sm">
                                 <Clock className="w-4 h-4" />
                             </div>
                             <div>
-                                <p className="text-[10px] font-black text-[#1B2559] leading-none mb-1">
+                                <p className="text-[10px] font-medium text-[#1B2559] leading-none mb-1">
                                     {format(selectedSlot?.date, 'MMM d, yyyy')} @ {selectedSlot?.slot.iso.slice(0, 5)}
                                 </p>
-                                <p className="text-[8px] font-bold text-[#A3AED0] uppercase tracking-widest leading-none">
+                                <p className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest leading-none">
                                     Den: {selectedSlot?.doc.name}
                                 </p>
                             </div>
@@ -491,10 +491,10 @@ export default function ReservationsPage() {
                         {step === 'search' && (
                             <div className="space-y-3">
                                 <div className="relative group">
-                                    <Search className="w-3.5 h-3.5 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A3AED0] group-focus-within:text-[#4318FF] transition-colors" />
+                                    <Search className="w-3.5 h-3.5 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A3AED0] group-focus-within:text-[#3B82F6] transition-colors" />
                                     <input
                                         autoFocus
-                                        className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl pl-10 pr-4 py-3 text-[11px] font-bold text-[#1B2559] outline-none focus:bg-white focus:border-[#4318FF]/30 transition-all"
+                                        className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg pl-10 pr-4 py-3 text-[11px] font-medium text-[#1B2559] outline-none focus:bg-white focus:border-[#3B82F6]/30 transition-all"
                                         placeholder="Search by name..."
                                         value={patientSearchQuery}
                                         onChange={(e) => handlePatientSearch(e.target.value)}
@@ -516,25 +516,25 @@ export default function ReservationsPage() {
                                                 setActivePatientPlans(plans || []);
                                                 setStep('treatment');
                                             }}
-                                            className="w-full flex items-center justify-between p-2.5 hover:bg-[#F4F7FE] rounded-xl border border-transparent hover:border-[#E0E5F2] transition-all group"
+                                            className="w-full flex items-center justify-between p-2.5 hover:bg-[#F4F7FE] rounded-lg border border-transparent hover:border-[#E0E5F2] transition-all group"
                                         >
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-white border border-[#E0E5F2] flex items-center justify-center text-[10px] font-black text-[#1B2559] group-hover:text-[#4318FF]">
+                                                <div className="w-8 h-8 rounded-lg bg-white border border-[#E0E5F2] flex items-center justify-center text-[10px] font-medium text-[#1B2559] group-hover:text-[#3B82F6]">
                                                     {p.name[0]}
                                                 </div>
                                                 <div className="text-left">
-                                                    <p className="text-[10px] font-black text-[#1B2559] leading-none mb-1">{p.name}</p>
-                                                    <p className="text-[8px] font-bold text-[#A3AED0] uppercase tracking-tighter">
+                                                    <p className="text-[10px] font-medium text-[#1B2559] leading-none mb-1">{p.name}</p>
+                                                    <p className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-tighter">
                                                         {p.gender} · {p.age} Yrs · {p.phone || 'No Phone'}
                                                     </p>
                                                 </div>
                                             </div>
-                                            <ChevronRight className="w-3.5 h-3.5 text-[#A3AED0] group-hover:text-[#4318FF]" />
+                                            <ChevronRight className="w-3.5 h-3.5 text-[#A3AED0] group-hover:text-[#3B82F6]" />
                                         </button>
                                     ))}
                                     {patientSearchQuery.length > 1 && patientResults.length === 0 && (
                                         <div className="py-4 text-center">
-                                            <p className="text-[9px] font-bold text-[#A3AED0] uppercase tracking-widest">No profiles found</p>
+                                            <p className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">No profiles found</p>
                                         </div>
                                     )}
                                 </div>
@@ -544,7 +544,7 @@ export default function ReservationsPage() {
                                         setNewPatientData({ ...newPatientData, name: patientSearchQuery });
                                         setStep('new-patient');
                                     }}
-                                    className="w-full flex items-center justify-center gap-2 py-3 bg-[#1B2559] text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-[#253375] transition-all shadow-md active:scale-95"
+                                    className="w-full flex items-center justify-center gap-2 py-3 bg-[#1B2559] text-white rounded-lg text-[9px] font-medium uppercase tracking-widest hover:bg-[#253375] transition-all shadow-md active:scale-95"
                                 >
                                     <UserPlus className="w-3.5 h-3.5" />
                                     Initialize New Profile
@@ -556,18 +556,18 @@ export default function ReservationsPage() {
                         {step === 'new-patient' && (
                             <div className="space-y-3">
                                 <div className="space-y-1.5">
-                                    <label className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Full Name</label>
+                                    <label className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Full Name</label>
                                     <input
-                                        className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl px-4 py-2.5 text-[11px] font-bold text-[#1B2559] outline-none"
+                                        className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg px-4 py-2.5 text-[11px] font-medium text-[#1B2559] outline-none"
                                         value={newPatientData.name}
                                         onChange={(e) => setNewPatientData({ ...newPatientData, name: e.target.value })}
                                     />
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1.5">
-                                        <label className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Sex</label>
+                                        <label className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Sex</label>
                                         <select
-                                            className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl px-4 py-2.5 text-[11px] font-bold text-[#1B2559] outline-none cursor-pointer"
+                                            className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg px-4 py-2.5 text-[11px] font-medium text-[#1B2559] outline-none cursor-pointer"
                                             value={newPatientData.gender}
                                             onChange={(e) => setNewPatientData({ ...newPatientData, gender: e.target.value })}
                                         >
@@ -576,19 +576,19 @@ export default function ReservationsPage() {
                                         </select>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Age</label>
+                                        <label className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Age</label>
                                         <input
                                             type="number"
-                                            className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl px-4 py-2.5 text-[11px] font-bold text-[#1B2559] outline-none"
+                                            className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg px-4 py-2.5 text-[11px] font-medium text-[#1B2559] outline-none"
                                             value={newPatientData.age}
                                             onChange={(e) => setNewPatientData({ ...newPatientData, age: e.target.value })}
                                         />
                                     </div>
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Phone</label>
+                                    <label className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Phone</label>
                                     <input
-                                        className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl px-4 py-2.5 text-[11px] font-bold text-[#1B2559] outline-none"
+                                        className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg px-4 py-2.5 text-[11px] font-medium text-[#1B2559] outline-none"
                                         placeholder="012 345 678"
                                         value={newPatientData.phone}
                                         onChange={(e) => setNewPatientData({ ...newPatientData, phone: e.target.value })}
@@ -597,13 +597,13 @@ export default function ReservationsPage() {
                                 <div className="flex gap-2 pt-2">
                                     <button
                                         onClick={() => setStep('search')}
-                                        className="flex-1 py-3 bg-[#F4F7FE] text-[#1B2559] rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all"
+                                        className="flex-1 py-3 bg-[#F4F7FE] text-[#1B2559] rounded-lg text-[9px] font-medium uppercase tracking-widest active:scale-95 transition-all"
                                     >
                                         Back
                                     </button>
                                     <button
                                         onClick={() => setStep('treatment')}
-                                        className="flex-1 py-3 bg-[#4318FF] text-white rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-md shadow-[#4318FF]/20"
+                                        className="flex-1 py-3 bg-[#3B82F6] text-white rounded-lg text-[9px] font-medium uppercase tracking-widest active:scale-95 transition-all shadow-md shadow-[#3B82F6]/20"
                                     >
                                         Continue
                                     </button>
@@ -615,10 +615,10 @@ export default function ReservationsPage() {
                         {step === 'treatment' && (
                             <div className="space-y-3">
                                 <div className="relative group">
-                                    <Stethoscope className="w-3.5 h-3.5 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A3AED0] group-focus-within:text-[#4318FF] transition-colors" />
+                                    <Stethoscope className="w-3.5 h-3.5 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A3AED0] group-focus-within:text-[#3B82F6] transition-colors" />
                                     <input
                                         autoFocus
-                                        className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl pl-10 pr-4 py-3 text-[11px] font-bold text-[#1B2559] outline-none focus:bg-white focus:border-[#4318FF]/30 transition-all"
+                                        className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg pl-10 pr-4 py-3 text-[11px] font-medium text-[#1B2559] outline-none focus:bg-white focus:border-[#3B82F6]/30 transition-all"
                                         placeholder="Find treatment..."
                                         value={treatmentSearchQuery}
                                         onChange={(e) => handleTreatmentSearch(e.target.value)}
@@ -656,20 +656,20 @@ export default function ReservationsPage() {
                                                 }
                                                 setStep('confirm');
                                             }}
-                                            className="w-full flex items-center justify-between p-2.5 hover:bg-[#F4F7FE] rounded-xl border border-transparent hover:border-[#E0E5F2] transition-all group"
+                                            className="w-full flex items-center justify-between p-2.5 hover:bg-[#F4F7FE] rounded-lg border border-transparent hover:border-[#E0E5F2] transition-all group"
                                         >
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-white border border-[#E0E5F2] flex items-center justify-center text-[#4318FF] group-hover:bg-[#4318FF] group-hover:text-white transition-all">
+                                                <div className="w-8 h-8 rounded-lg bg-white border border-[#E0E5F2] flex items-center justify-center text-[#3B82F6] group-hover:bg-[#3B82F6] group-hover:text-white transition-all">
                                                     <Activity className="w-4 h-4" />
                                                 </div>
                                                 <div className="text-left">
-                                                    <p className="text-[10px] font-black text-[#1B2559] leading-none mb-1">{t.name}</p>
-                                                    <p className="text-[8px] font-bold text-[#A3AED0] uppercase tracking-tighter">
+                                                    <p className="text-[10px] font-medium text-[#1B2559] leading-none mb-1">{t.name}</p>
+                                                    <p className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-tighter">
                                                         {t.duration_minutes} Mins · ${t.price}
                                                     </p>
                                                 </div>
                                             </div>
-                                            <ChevronRight className="w-3.5 h-3.5 text-[#A3AED0] group-hover:text-[#4318FF]" />
+                                            <ChevronRight className="w-3.5 h-3.5 text-[#A3AED0] group-hover:text-[#3B82F6]" />
                                         </button>
                                     ))}
                                 </div>
@@ -680,7 +680,7 @@ export default function ReservationsPage() {
                                         setTotalTreatmentPrice(20); // Default Consultation Price
                                         setStep('confirm');
                                     }}
-                                    className="w-full py-3 bg-[#F4F7FE] text-[#A3AED0] rounded-xl text-[9px] font-black uppercase tracking-widest hover:border-[#E0E5F2] border border-transparent transition-all"
+                                    className="w-full py-3 bg-[#F4F7FE] text-[#A3AED0] rounded-lg text-[9px] font-medium uppercase tracking-widest hover:border-[#E0E5F2] border border-transparent transition-all"
                                 >
                                     Skip to Consultation ($20)
                                 </button>
@@ -692,39 +692,39 @@ export default function ReservationsPage() {
                             <div className="space-y-4">
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-[#F4F7FE] flex items-center justify-center text-primary">
+                                        <div className="w-10 h-10 rounded-lg bg-[#F4F7FE] flex items-center justify-center text-primary">
                                             <User className="w-5 h-5" />
                                         </div>
                                         <div>
-                                            <p className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest">Client</p>
-                                            <p className="text-[12px] font-black text-[#1B2559]">
+                                            <p className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest">Client</p>
+                                            <p className="text-[12px] font-medium text-[#1B2559]">
                                                 {selectedPatient ? selectedPatient.name : newPatientData.name}
                                             </p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-[#F4F7FE] flex items-center justify-center text-primary">
+                                        <div className="w-10 h-10 rounded-lg bg-[#F4F7FE] flex items-center justify-center text-primary">
                                             <Stethoscope className="w-5 h-5" />
                                         </div>
                                         <div>
-                                            <p className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest">Procedure</p>
-                                            <p className="text-[12px] font-black text-[#1B2559]">
+                                            <p className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest">Procedure</p>
+                                            <p className="text-[12px] font-medium text-[#1B2559]">
                                                 {selectedTreatment?.name || 'Initial Consultation'}
                                             </p>
                                             {totalTreatmentPrice === 0 && activePatientPlans.length > 0 && (
-                                                <p className="text-[9px] font-bold text-[#19D5C5] uppercase animate-in fade-in slide-in-from-left-2 duration-500">
+                                                <p className="text-[9px] font-medium text-[#19D5C5] uppercase animate-in fade-in slide-in-from-left-2 duration-500">
                                                     Included in active plan
                                                 </p>
                                             )}
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-[#F4F7FE] flex items-center justify-center text-primary">
+                                        <div className="w-10 h-10 rounded-lg bg-[#F4F7FE] flex items-center justify-center text-primary">
                                             <DollarSign className="w-5 h-5" />
                                         </div>
                                         <div>
-                                            <p className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest">Pricing</p>
-                                            <p className="text-[12px] font-black text-[#1B2559]">
+                                            <p className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest">Pricing</p>
+                                            <p className="text-[12px] font-medium text-[#1B2559]">
                                                 {isInstallmentPlan ? `$${depositAmount} Deposit` : `$${totalTreatmentPrice}`}
                                             </p>
                                         </div>
@@ -735,16 +735,16 @@ export default function ReservationsPage() {
                                 <div className="space-y-3 pt-2 border-t border-[#E0E5F2]">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-                                            <div className="w-5 h-5 rounded-md bg-[#4318FF]/10 flex items-center justify-center text-[#4318FF]">
+                                            <div className="w-5 h-5 rounded-md bg-[#3B82F6]/10 flex items-center justify-center text-[#3B82F6]">
                                                 <Wallet className="w-3 h-3" />
                                             </div>
-                                            <span className="text-[10px] font-black text-[#1B2559] uppercase">Installment Plan</span>
+                                            <span className="text-[10px] font-medium text-[#1B2559] uppercase">Installment Plan</span>
                                         </div>
                                         <button
                                             onClick={() => setIsInstallmentPlan(!isInstallmentPlan)}
                                             className={cn(
                                                 "w-10 h-5 rounded-full transition-all relative px-1 flex items-center",
-                                                isInstallmentPlan ? "bg-[#4318FF]" : "bg-[#E0E5F2]"
+                                                isInstallmentPlan ? "bg-[#3B82F6]" : "bg-[#E0E5F2]"
                                             )}
                                         >
                                             <div className={cn(
@@ -757,10 +757,10 @@ export default function ReservationsPage() {
                                     {isInstallmentPlan && (
                                         <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                                             <div className="space-y-1">
-                                                <label className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Total Treatment Price (USD)</label>
+                                                <label className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Total Treatment Price (USD)</label>
                                                 <input
                                                     type="number"
-                                                    className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl px-3 py-2 text-[10px] font-bold text-[#1B2559] outline-none border-dashed"
+                                                    className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg px-3 py-2 text-[10px] font-medium text-[#1B2559] outline-none border-dashed"
                                                     value={totalTreatmentPrice}
                                                     onChange={(e) => {
                                                         const val = Number(e.target.value);
@@ -778,10 +778,10 @@ export default function ReservationsPage() {
                                             </div>
                                             <div className="grid grid-cols-2 gap-3">
                                                 <div className="space-y-1">
-                                                    <label className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Deposit (USD)</label>
+                                                    <label className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Deposit (USD)</label>
                                                     <input
                                                         type="number"
-                                                        className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl px-3 py-2 text-[10px] font-bold text-[#1B2559] outline-none"
+                                                        className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg px-3 py-2 text-[10px] font-medium text-[#1B2559] outline-none"
                                                         value={depositAmount}
                                                         onChange={(e) => {
                                                             const dep = Number(e.target.value);
@@ -791,10 +791,10 @@ export default function ReservationsPage() {
                                                     />
                                                 </div>
                                                 <div className="space-y-1">
-                                                    <label className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Monthly (USD)</label>
+                                                    <label className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Monthly (USD)</label>
                                                     <input
                                                         type="number"
-                                                        className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl px-3 py-2 text-[10px] font-bold text-[#1B2559] outline-none"
+                                                        className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg px-3 py-2 text-[10px] font-medium text-[#1B2559] outline-none"
                                                         value={monthlyAmount}
                                                         onChange={(e) => {
                                                             const mon = Number(e.target.value);
@@ -808,20 +808,20 @@ export default function ReservationsPage() {
                                             </div>
                                             <div className="grid grid-cols-2 gap-3">
                                                 <div className="space-y-1">
-                                                    <label className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest pl-1 pr-1 flex justify-between">
+                                                    <label className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1 pr-1 flex justify-between">
                                                         <span>Calculated Plan</span>
-                                                        <span className="text-[#4318FF] font-black">{planDurationMonths} Mo</span>
+                                                        <span className="text-[#3B82F6] font-medium">{planDurationMonths} Mo</span>
                                                     </label>
-                                                    <div className="w-full bg-[#F4F7FE]/50 border border-[#E0E5F2] rounded-xl px-3 py-2 text-[9px] font-bold text-[#A3AED0] flex items-center gap-2">
+                                                    <div className="w-full bg-[#F4F7FE]/50 border border-[#E0E5F2] rounded-lg px-3 py-2 text-[9px] font-medium text-[#A3AED0] flex items-center gap-2">
                                                         <Clock className="w-3 h-3" />
                                                         Auto Duration
                                                     </div>
                                                 </div>
                                                 <div className="space-y-1">
-                                                    <label className="text-[8px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Start Date</label>
+                                                    <label className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Start Date</label>
                                                     <input
                                                         type="date"
-                                                        className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl px-3 py-2 text-[10px] font-bold text-[#1B2559] outline-none"
+                                                        className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg px-3 py-2 text-[10px] font-medium text-[#1B2559] outline-none"
                                                         value={planStartDate}
                                                         onChange={(e) => setPlanStartDate(e.target.value)}
                                                     />
@@ -834,14 +834,14 @@ export default function ReservationsPage() {
                                         <button
                                             disabled={isSaving}
                                             onClick={() => setStep('treatment')}
-                                            className="flex-1 py-3 bg-[#F4F7FE] text-[#1B2559] rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
+                                            className="flex-1 py-3 bg-[#F4F7FE] text-[#1B2559] rounded-lg text-[9px] font-medium uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
                                         >
                                             Change
                                         </button>
                                         <button
                                             disabled={isSaving}
                                             onClick={handleCreateAppointment}
-                                            className="flex-1 py-3 bg-[#4318FF] text-white rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-md shadow-[#4318FF]/20 disabled:opacity-50"
+                                            className="flex-1 py-3 bg-[#3B82F6] text-white rounded-lg text-[9px] font-medium uppercase tracking-widest active:scale-95 transition-all shadow-md shadow-[#3B82F6]/20 disabled:opacity-50"
                                         >
                                             {isSaving ? 'Synchronizing...' : 'Reserve'}
                                         </button>

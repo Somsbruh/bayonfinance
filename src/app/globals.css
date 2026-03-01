@@ -32,9 +32,12 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --radius-xl: 0.75rem;
+  --radius-xl: 0.5rem;
+  /* 8px */
   --radius-2xl: 1rem;
-  --radius-3xl: 1.25rem;
+  /* 16px */
+  --radius-3xl: 1rem;
+  /* 16px */
 }
 
 :root {
@@ -50,8 +53,8 @@
   --popover: #FFFFFF;
   --popover-foreground: #1B2559;
 
-  --primary: #4318FF;
-  /* Vibrant modern blue */
+  --primary: #3B82F6;
+  /* Updated Primary 500 */
   --primary-foreground: #FFFFFF;
 
   --secondary: #F4F7FE;
@@ -69,7 +72,7 @@
 
   --border: #E0E5F2;
   --input: #FFFFFF;
-  --ring: #4318FF;
+  --ring: #3B82F6;
 
   --success: #01B574;
   --warning: #FFB547;
@@ -79,7 +82,7 @@ html,
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: DM Sans, Inter, sans-serif;
+  font-family: var(--font-kantumruy);
   letter-spacing: -.02em;
   overflow-x: hidden;
   width: 100%;
@@ -140,7 +143,7 @@ body {
 .modern-input {
   background: #FFFFFF;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 0.5rem 0.875rem;
   color: var(--foreground);
   transition: all 0.2s;
@@ -148,37 +151,37 @@ body {
 
 .modern-input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(67, 24, 255, 0.1);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
   outline: none;
 }
 
 /* Premium Standard Styles from GEMINI.md */
 .h1-premium {
-  @apply text-4xl font-black text-[#1B2559] tracking-tight;
+  @apply text-4xl font-medium text-[#1B2559] tracking-tight;
 }
 
 .h2-premium {
-  @apply text-2xl font-black text-[#1B2559] leading-none;
+  @apply text-2xl font-medium text-[#1B2559] leading-none;
 }
 
 .caption-premium {
-  @apply text-[11px] font-black text-[#A3AED0] uppercase tracking-widest leading-none;
+  @apply text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest leading-none;
 }
 
 .data-premium {
-  @apply text-[12px] font-black text-[#1B2559] tracking-tight;
+  @apply text-[12px] font-medium text-[#1B2559] tracking-tight;
 }
 
 .btn-primary-premium {
-  @apply bg-primary hover:bg-[#3311DB] text-white px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all shadow-md shadow-[#4318FF]/20 active:scale-95 flex items-center gap-2;
+  @apply bg-primary hover:bg-[#2563EB] text-white px-6 py-3 rounded-2xl text-[11px] font-medium uppercase tracking-widest transition-all shadow-md shadow-[#3B82F6]/20 active:scale-95 flex items-center gap-2;
 }
 
 .btn-secondary-premium {
-  @apply bg-[#F4F7FE] border border-[#E0E5F2] hover:border-primary/30 rounded-2xl px-5 py-3 text-[11px] font-black text-[#1B2559] uppercase transition-all shadow-sm;
+  @apply bg-[#F4F7FE] border border-[#E0E5F2] hover:border-primary/30 rounded-2xl px-5 py-3 text-[11px] font-medium text-[#1B2559] uppercase transition-all shadow-sm;
 }
 
 .card-premium {
-  @apply bg-white rounded-[24px] p-8 transition-all duration-300;
+  @apply bg-white rounded-2xl p-8 transition-all duration-300;
   border: 1px solid rgba(224, 229, 242, 0.5);
   box-shadow: 14px 17px 40px 4px rgba(112, 144, 176, 0.08);
 }
@@ -197,13 +200,13 @@ body {
   background: var(--primary);
   color: white;
   font-weight: 700;
-  border-radius: 12px;
+  border-radius: 8px;
   box-shadow: 45px 76px 113px 7px rgba(112, 144, 176, 0.08);
   transition: all 0.2s;
 }
 
 .btn-primary:hover {
-  background: #3311DB;
+  background: #2563EB;
   transform: scale(1.02);
 }
 
@@ -230,7 +233,7 @@ body {
 .tab-active {
   background: #FFFFFF;
   box-shadow: 0px 4px 14px rgba(0, 0, 0, 0.05);
-  border-radius: 12px;
+  border-radius: 8px;
   color: var(--primary);
 }
 

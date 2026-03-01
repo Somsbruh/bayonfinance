@@ -159,14 +159,14 @@ export default function DailyReportModal({ isOpen, onClose, date, branchId }: Da
                         <button
                             onClick={handleSave}
                             disabled={isSaving}
-                            className="px-4 py-2 bg-[#1B2559] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all disabled:opacity-50 flex items-center gap-2"
+                            className="px-4 py-2 bg-[#1B2559] text-white rounded-lg text-[10px] font-medium uppercase tracking-widest hover:bg-black transition-all disabled:opacity-50 flex items-center gap-2"
                         >
                             {isSaving ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                             Save Changes
                         </button>
                         <button
                             onClick={() => window.print()}
-                            className="px-4 py-2 bg-[#F4F7FE] text-[#1B2559] border border-[#E0E5F2] rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all flex items-center gap-2"
+                            className="px-4 py-2 bg-[#F4F7FE] text-[#1B2559] border border-[#E0E5F2] rounded-lg text-[10px] font-medium uppercase tracking-widest hover:bg-white transition-all flex items-center gap-2"
                         >
                             <FileText className="w-3.5 h-3.5" />
                             Print Report
@@ -185,7 +185,7 @@ export default function DailyReportModal({ isOpen, onClose, date, branchId }: Da
                     <div className="max-w-3xl mx-auto h-full flex flex-col">
                         {/* Header */}
                         <div className="mb-12">
-                            <h1 className="text-xl font-black text-black">Date: <span className="font-bold">{format(date, 'dd/MM/yyyy')}</span></h1>
+                            <h1 className="text-xl font-medium text-black">Date: <span className="font-medium">{format(date, 'dd/MM/yyyy')}</span></h1>
                         </div>
 
                         {/* Split Content */}
@@ -195,59 +195,59 @@ export default function DailyReportModal({ isOpen, onClose, date, branchId }: Da
 
                             {/* Left Column: Income (ចំណូល) */}
                             <div className="flex-1 pr-12 text-center">
-                                <h2 className="text-[28px] font-black text-black mb-12 font-kantumruy">ចំណូល</h2>
+                                <h2 className="text-[28px] font-medium text-black mb-12 font-kantumruy">ចំណូល</h2>
 
                                 <div className="space-y-8 text-left max-w-[200px] mx-auto">
                                     <div className="border-b border-black/10 pb-2">
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">ABA BANK</p>
-                                        <p className="text-xl font-bold text-black">${incomeAba.toLocaleString()}</p>
+                                        <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mb-1">ABA BANK</p>
+                                        <p className="text-xl font-medium text-black">${incomeAba.toLocaleString()}</p>
                                     </div>
                                     <div className="border-b border-black/10 pb-2">
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">USD CASH</p>
-                                        <p className="text-xl font-bold text-black">${incomeUsd.toLocaleString()}</p>
+                                        <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mb-1">USD CASH</p>
+                                        <p className="text-xl font-medium text-black">${incomeUsd.toLocaleString()}</p>
                                     </div>
                                     <div className="border-b border-black/10 pb-2">
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">KHR CASH</p>
-                                        <p className="text-xl font-bold text-black">{incomeKhr.toLocaleString()} ៛</p>
+                                        <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mb-1">KHR CASH</p>
+                                        <p className="text-xl font-medium text-black">{incomeKhr.toLocaleString()} ៛</p>
                                     </div>
 
                                     <div className="pt-4">
-                                        <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Total Income</p>
-                                        <p className="text-2xl font-black text-black">${totalIncomeUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                                        <p className="text-[10px] font-medium text-black uppercase tracking-widest mb-1">Total Income</p>
+                                        <p className="text-2xl font-medium text-black">${totalIncomeUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Right Column: Spending (ចំណាយ) */}
                             <div className="flex-1 pl-12 text-center">
-                                <h2 className="text-[28px] font-black text-black mb-12 font-kantumruy">ចំណាយ</h2>
+                                <h2 className="text-[28px] font-medium text-black mb-12 font-kantumruy">ចំណាយ</h2>
 
                                 <div className="space-y-12 text-left max-w-[240px] mx-auto">
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Spending ($)</label>
+                                        <label className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">Total Spending ($)</label>
                                         <input
                                             type="number"
                                             value={spending === 0 ? "" : spending}
                                             onChange={(e) => setSpending(Number(e.target.value))}
-                                            className="w-full bg-transparent border-b-2 border-black text-2xl font-black text-black outline-none py-2 placeholder:text-gray-200"
+                                            className="w-full bg-transparent border-b-2 border-black text-2xl font-medium text-black outline-none py-2 placeholder:text-gray-200"
                                             placeholder="0.00"
                                         />
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Notes / Remarks</label>
+                                        <label className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">Notes / Remarks</label>
                                         <textarea
                                             value={notes}
                                             onChange={(e) => setNotes(e.target.value)}
-                                            className="w-full bg-transparent border border-black/10 rounded-lg p-3 text-sm font-bold text-black outline-none min-h-[150px] resize-none focus:border-black transition-all"
+                                            className="w-full bg-transparent border border-black/10 rounded-lg p-3 text-sm font-medium text-black outline-none min-h-[150px] resize-none focus:border-black transition-all"
                                             placeholder="Enter details here..."
                                         />
                                     </div>
 
                                     <div className="pt-4 border-t-2 border-black">
-                                        <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Net Summary</p>
+                                        <p className="text-[10px] font-medium text-black uppercase tracking-widest mb-1">Net Summary</p>
                                         <p className={cn(
-                                            "text-2xl font-black",
+                                            "text-2xl font-medium",
                                             netIncome >= 0 ? "text-green-600" : "text-red-600"
                                         )}>
                                             ${netIncome.toLocaleString(undefined, { maximumFractionDigits: 2 })}

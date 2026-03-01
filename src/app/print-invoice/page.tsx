@@ -15,7 +15,7 @@ function InvoiceContent() {
     const [loading, setLoading] = useState(true);
     const [patient, setPatient] = useState<any>(null);
     const [items, setItems] = useState<any[]>([]);
-    const [invoiceColor, setInvoiceColor] = useState('#4318FF');
+    const [invoiceColor, setInvoiceColor] = useState('#3B82F6');
     const [invoiceNumber, setInvoiceNumber] = useState('');
     const [error, setError] = useState<string | null>(null);
     const printed = useRef(false);
@@ -89,7 +89,7 @@ function InvoiceContent() {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen gap-4">
                 <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Generating {type}...</p>
+                <p className="text-sm font-medium text-slate-400 uppercase tracking-widest">Generating {type}...</p>
             </div>
         );
     }
@@ -107,7 +107,7 @@ function InvoiceContent() {
             <div className="max-w-[210mm] mx-auto mb-8 flex justify-end gap-3 print:hidden">
                 <button
                     onClick={() => window.print()}
-                    className="flex items-center gap-2 bg-[#1B2559] text-white px-6 py-3 rounded-xl text-sm font-bold shadow-xl hover:bg-[#1B2559]/90 transition-all"
+                    className="flex items-center gap-2 bg-[#1B2559] text-white px-6 py-3 rounded-lg text-sm font-medium shadow-xl hover:bg-[#1B2559]/90 transition-all"
                 >
                     <Printer className="w-4 h-4" />
                     Print Document
@@ -122,7 +122,7 @@ function InvoiceContent() {
                 {/* Header Section */}
                 <div className="flex justify-between items-start mb-8">
                     <div>
-                        <h1 className="text-4xl font-black text-[#1B2559] tracking-tight mb-2 uppercase">Medical {type}</h1>
+                        <h1 className="text-4xl font-medium text-[#1B2559] tracking-tight mb-2 uppercase">Medical {type}</h1>
                         <p className="text-sm text-slate-500 font-medium max-w-xs leading-relaxed">
                             {patient.branches?.name || 'Bayon Finance Clinic'}<br />
                             {patient.branches?.location || 'Phnom Penh, Cambodia'}<br />
@@ -135,17 +135,17 @@ function InvoiceContent() {
                             style={{ borderColor: invoiceColor }}
                             className="w-20 h-20 border-4 rounded-[2rem] flex items-center justify-center ml-auto mb-4 text-[#1B2559]"
                         >
-                            <span className="font-black text-2xl">BF</span>
+                            <span className="font-medium text-2xl">BF</span>
                         </div>
-                        <p className="text-sm font-bold text-[#1B2559]">#{invoiceNumber}</p>
+                        <p className="text-sm font-medium text-[#1B2559]">#{invoiceNumber}</p>
                         <p className="text-xs text-slate-400 font-medium">{format(new Date(), 'MMMM dd, yyyy')}</p>
                     </div>
                 </div>
 
                 {/* Bill To */}
                 <div className="mb-8">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Billed To</p>
-                    <h2 className="text-2xl font-black text-[#1B2559] mb-1">{patient.name}</h2>
+                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-[0.2em] mb-4">Billed To</p>
+                    <h2 className="text-2xl font-medium text-[#1B2559] mb-1">{patient.name}</h2>
                     <p className="text-sm text-slate-500 font-medium">
                         {patient.phone ? `+${patient.phone}` : 'No phone number'}<br />
                         Patient ID: {patient.id.split('-')[0].toUpperCase()}
@@ -157,22 +157,22 @@ function InvoiceContent() {
                     <table className="w-full">
                         <thead>
                             <tr className="border-b-2 border-[#1B2559]">
-                                <th className="py-3 text-left text-[10px] font-black text-[#1B2559] uppercase tracking-widest w-1/2">Description</th>
-                                <th className="py-3 text-center text-[10px] font-black text-[#1B2559] uppercase tracking-widest">Date</th>
-                                <th className="py-3 text-right text-[10px] font-black text-[#1B2559] uppercase tracking-widest">Amount</th>
+                                <th className="py-3 text-left text-[10px] font-medium text-[#1B2559] uppercase tracking-widest w-1/2">Description</th>
+                                <th className="py-3 text-center text-[10px] font-medium text-[#1B2559] uppercase tracking-widest">Date</th>
+                                <th className="py-3 text-right text-[10px] font-medium text-[#1B2559] uppercase tracking-widest">Amount</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {items.map((item, idx) => (
                                 <tr key={idx}>
                                     <td className="py-4">
-                                        <p className="text-sm font-bold text-[#1B2559]">{item.treatments?.name || item.description}</p>
+                                        <p className="text-sm font-medium text-[#1B2559]">{item.treatments?.name || item.description}</p>
                                         {item.notes && <p className="text-xs text-slate-400 italic mt-0.5">{item.notes}</p>}
                                     </td>
                                     <td className="py-4 text-center text-xs text-slate-500 font-medium">
                                         {format(new Date(item.date), 'MMM dd, yyyy')}
                                     </td>
-                                    <td className="py-4 text-right text-sm font-black text-[#1B2559]">
+                                    <td className="py-4 text-right text-sm font-medium text-[#1B2559]">
                                         ${Number(type === 'invoice' ? item.amount_remaining : item.total_price).toLocaleString()}
                                     </td>
                                 </tr>
@@ -194,8 +194,8 @@ function InvoiceContent() {
                         </div>
                         <div className="h-px bg-slate-200 my-2" />
                         <div className="flex justify-between items-center">
-                            <span className="text-sm font-black text-[#1B2559] uppercase tracking-widest">Total</span>
-                            <span style={{ color: invoiceColor }} className="text-2xl font-black">
+                            <span className="text-sm font-medium text-[#1B2559] uppercase tracking-widest">Total</span>
+                            <span style={{ color: invoiceColor }} className="text-2xl font-medium">
                                 ${total.toLocaleString()}
                             </span>
                         </div>

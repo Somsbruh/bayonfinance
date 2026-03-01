@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Inter, Kantumruy_Pro } from "next/font/google";
+import { Kantumruy_Pro } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import { CurrencyProvider } from "@/context/CurrencyContext";
 import { cn } from "@/lib/utils";
 
-const inter = Inter({ subsets: ["latin"] });
+
 const kantumruy = Kantumruy_Pro({
   subsets: ["khmer", "latin"],
   variable: '--font-kantumruy'
@@ -27,7 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={cn(inter.className, kantumruy.variable)}>
+      <body className={cn(kantumruy.className, kantumruy.variable)}>
         <BranchProvider>
           <CurrencyProvider>
             <SidebarProvider>

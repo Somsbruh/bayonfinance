@@ -54,12 +54,12 @@ export default function Sidebar() {
                     "p-4 px-[18px] pb-1 transition-all duration-500"
                 )}>
                     <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-primary rounded-2xl shadow-lg shadow-primary/20 shrink-0">
+                        <div className="p-2.5 bg-primary rounded-lg shadow-lg shadow-primary/20 shrink-0">
                             <Stethoscope className="w-6 h-6 text-white" />
                         </div>
                         {!isCollapsed && (
                             <div className="animate-in fade-in slide-in-from-left-4 duration-500">
-                                <h1 className="text-xl font-black text-[#1B2559] tracking-tighter leading-tight">
+                                <h1 className="text-xl font-medium text-[#1B2559] tracking-tighter leading-tight">
                                     Bayon<span className="text-primary">Finance</span>
                                 </h1>
                             </div>
@@ -77,7 +77,7 @@ export default function Sidebar() {
                             onClick={() => setIsBranchMenuOpen(!isBranchMenuOpen)}
                             className={cn(
                                 "group bg-[#F4F7FE] border border-[#E0E5F2] hover:border-primary/30 transition-all active:scale-[0.98] mx-auto",
-                                isCollapsed ? "w-12 h-12 flex items-center justify-center rounded-2xl" : "w-full rounded-2xl p-2.5 flex items-center gap-3"
+                                isCollapsed ? "w-12 h-12 flex items-center justify-center rounded-lg" : "w-full rounded-lg p-2.5 flex items-center gap-3"
                             )}
                         >
                             <div className={cn(
@@ -88,8 +88,8 @@ export default function Sidebar() {
                             </div>
                             {!isCollapsed && (
                                 <div className="flex-1 text-left animate-in fade-in slide-in-from-left-2 duration-300">
-                                    <p className="text-[9px] font-black text-[#A3AED0] uppercase tracking-[0.15em] leading-none mb-0.5">Clinic</p>
-                                    <h3 className="text-xs font-black text-[#1B2559] truncate">{currentBranch?.name || "Loading..."}</h3>
+                                    <p className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-[0.15em] leading-none mb-0.5">Clinic</p>
+                                    <h3 className="text-xs font-medium text-[#1B2559] truncate">{currentBranch?.name || "Loading..."}</h3>
                                 </div>
                             )}
                             {!isCollapsed && (
@@ -102,7 +102,7 @@ export default function Sidebar() {
                                 "absolute mt-2 bg-white border border-[#E0E5F2] rounded-3xl shadow-2xl p-2 z-[200] animate-in zoom-in-95 duration-200 glass",
                                 isCollapsed ? "left-full ml-4 top-0 w-64" : "top-full left-0 w-80"
                             )}>
-                                <div className="px-4 py-2 text-[9px] font-black text-[#A3AED0] uppercase tracking-widest border-b border-[#F4F7FE] mb-2">
+                                <div className="px-4 py-2 text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest border-b border-[#F4F7FE] mb-2">
                                     Select System Node
                                 </div>
                                 {branches.map(branch => (
@@ -113,7 +113,7 @@ export default function Sidebar() {
                                             setIsBranchMenuOpen(false);
                                         }}
                                         className={cn(
-                                            "w-full flex items-center gap-3 p-3 rounded-2xl transition-all font-bold text-xs capitalize",
+                                            "w-full flex items-center gap-3 p-3 rounded-lg transition-all font-medium text-xs capitalize",
                                             currentBranch?.id === branch.id
                                                 ? "bg-primary text-white"
                                                 : "text-[#707EAE] hover:bg-[#F4F7FE] hover:text-primary"
@@ -154,7 +154,7 @@ export default function Sidebar() {
                                     href={item.href}
                                     title={isCollapsed ? item.name : ""}
                                     className={cn(
-                                        "flex items-center gap-4 rounded-2xl transition-all duration-300 group relative mx-auto",
+                                        "flex items-center gap-4 rounded-lg transition-all duration-300 group relative mx-auto",
                                         isCollapsed ? "w-12 h-12 justify-center" : "w-full pl-[27px] pr-4 py-2.5",
                                         isActive
                                             ? "bg-primary text-white shadow-xl shadow-primary/25"
@@ -167,7 +167,7 @@ export default function Sidebar() {
                                     )} />
 
                                     {!isCollapsed && (
-                                        <span className="text-[13px] font-bold tracking-tight whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-300">
+                                        <span className="text-[13px] font-medium tracking-tight whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-300">
                                             {item.name}
                                         </span>
                                     )}
@@ -184,7 +184,7 @@ export default function Sidebar() {
                         onClick={() => {/* log out logic */ }}
                         title={isCollapsed ? "System Exit" : ""}
                         className={cn(
-                            "flex items-center gap-4 rounded-2xl transition-all duration-300 group relative mt-1 mx-auto",
+                            "flex items-center gap-4 rounded-lg transition-all duration-300 group relative mt-1 mx-auto",
                             isCollapsed ? "w-12 h-12 justify-center" : "w-full pl-[27px] pr-4 py-2.5",
                             "text-[#A3AED0] hover:bg-red-50 hover:text-red-500"
                         )}
@@ -195,7 +195,7 @@ export default function Sidebar() {
                         )} />
 
                         {!isCollapsed && (
-                            <span className="text-[13px] font-bold tracking-tight whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-300">
+                            <span className="text-[13px] font-medium tracking-tight whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-300">
                                 System Exit
                             </span>
                         )}

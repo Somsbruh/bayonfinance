@@ -140,27 +140,27 @@ export default function CreateNewItemPage() {
                     </button>
                 </Link>
                 <div className="flex flex-col">
-                    <h1 className="text-4xl font-black text-[#1B2559] tracking-tight">Create new item</h1>
-                    {error && <span className="text-[10px] font-bold text-[#EE5D50] uppercase mt-1">{error}</span>}
+                    <h1 className="text-4xl font-medium text-[#1B2559] tracking-tight">Create new item</h1>
+                    {error && <span className="text-[10px] font-medium text-[#EE5D50] uppercase mt-1">{error}</span>}
                 </div>
             </div>
 
             {/* Main Content Area - Consolidated Card */}
             <div className="">
-                <div className="bg-white rounded-[24px] border border-[#E0E5F2] p-8 shadow-sm">
+                <div className="bg-white rounded-lg border border-[#E0E5F2] p-8 shadow-sm">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-2.5">
 
                         {/* Vendor Section Title */}
                         <div className="md:col-span-3">
-                            <h2 className="text-xl font-black text-[#1B2559] flex items-center gap-2">
-                                <Building2 className="w-5 h-5 text-[#4318FF]" />
-                                Vendor Information <span className="text-[10px] font-bold text-[#A3AED0] uppercase ml-2 tracking-widest">(Optional)</span>
+                            <h2 className="text-xl font-medium text-[#1B2559] flex items-center gap-2">
+                                <Building2 className="w-5 h-5 text-[#3B82F6]" />
+                                Vendor Information <span className="text-[10px] font-medium text-[#A3AED0] uppercase ml-2 tracking-widest">(Optional)</span>
                             </h2>
                         </div>
 
                         {/* Vendor Name with Autocomplete */}
                         <div className="space-y-1.5 relative">
-                            <label className="text-[11px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Vendor Name</label>
+                            <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Vendor Name</label>
                             <div className="relative group">
                                 <input
                                     type="text"
@@ -171,20 +171,20 @@ export default function CreateNewItemPage() {
                                         setVendorSearch(e.target.value);
                                         setFormData({ ...formData, vendorName: e.target.value });
                                     }}
-                                    className="w-full bg-[#F4F7FE]/50 border-none rounded-xl px-5 py-3 text-[12px] font-bold text-[#1B2559] outline-none placeholder:text-[#A3AED0] focus:ring-2 focus:ring-[#4318FF]/10 transition-all font-kantumruy"
+                                    className="w-full bg-[#F4F7FE]/50 border-none rounded-lg px-5 py-3 text-[12px] font-medium text-[#1B2559] outline-none placeholder:text-[#A3AED0] focus:ring-2 focus:ring-[#3B82F6]/10 transition-all font-kantumruy"
                                 />
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A3AED0]" />
 
                                 {showVendorSuggestions && suggestions.length > 0 && (
-                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#E0E5F2] rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#E0E5F2] rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                                         {suggestions.map((v) => (
                                             <button
                                                 key={v.name}
                                                 onClick={() => selectVendor(v)}
                                                 className="w-full px-5 py-3 text-left hover:bg-[#F4F7FE] transition-colors flex flex-col gap-0.5"
                                             >
-                                                <span className="text-[12px] font-black text-[#1B2559]">{v.name}</span>
-                                                <span className="text-[10px] text-[#A3AED0] font-bold">{v.contact} • {v.phone}</span>
+                                                <span className="text-[12px] font-medium text-[#1B2559]">{v.name}</span>
+                                                <span className="text-[10px] text-[#A3AED0] font-medium">{v.contact} • {v.phone}</span>
                                             </button>
                                         ))}
                                     </div>
@@ -194,30 +194,30 @@ export default function CreateNewItemPage() {
 
                         {/* Contact Person */}
                         <div className="space-y-1.5">
-                            <label className="text-[11px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Contact Person</label>
-                            <div className="relative bg-[#F4F7FE]/50 rounded-xl px-5 py-3 flex items-center gap-3">
-                                <User className="w-4 h-4 text-[#4318FF]" />
+                            <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Contact Person</label>
+                            <div className="relative bg-[#F4F7FE]/50 rounded-lg px-5 py-3 flex items-center gap-3">
+                                <User className="w-4 h-4 text-[#3B82F6]" />
                                 <input
                                     type="text"
                                     placeholder="James Anderson"
                                     value={formData.contactPerson}
                                     onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
-                                    className="bg-transparent border-none p-0 text-[12px] font-bold text-[#1B2559] outline-none placeholder:text-[#A3AED0] w-full font-kantumruy"
+                                    className="bg-transparent border-none p-0 text-[12px] font-medium text-[#1B2559] outline-none placeholder:text-[#A3AED0] w-full font-kantumruy"
                                 />
                             </div>
                         </div>
 
                         {/* Phone Number */}
                         <div className="space-y-1.5">
-                            <label className="text-[11px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Phone Number</label>
-                            <div className="relative bg-[#F4F7FE]/50 rounded-xl px-5 py-3 flex items-center gap-3">
-                                <Phone className="w-4 h-4 text-[#4318FF]" />
+                            <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Phone Number</label>
+                            <div className="relative bg-[#F4F7FE]/50 rounded-lg px-5 py-3 flex items-center gap-3">
+                                <Phone className="w-4 h-4 text-[#3B82F6]" />
                                 <input
                                     type="text"
                                     placeholder="084395450343"
                                     value={formData.phoneNumber}
                                     onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                                    className="bg-transparent border-none p-0 text-[#1B2559] text-[12px] font-bold outline-none placeholder:text-[#A3AED0] w-full"
+                                    className="bg-transparent border-none p-0 text-[#1B2559] text-[12px] font-medium outline-none placeholder:text-[#A3AED0] w-full"
                                 />
                             </div>
                         </div>
@@ -226,8 +226,8 @@ export default function CreateNewItemPage() {
 
                         {/* Product Section Title */}
                         <div className="md:col-span-3">
-                            <h2 className="text-xl font-black text-[#1B2559] flex items-center gap-2">
-                                <Package className="w-5 h-5 text-[#4318FF]" />
+                            <h2 className="text-xl font-medium text-[#1B2559] flex items-center gap-2">
+                                <Package className="w-5 h-5 text-[#3B82F6]" />
                                 Product Details
                             </h2>
                         </div>
@@ -235,7 +235,7 @@ export default function CreateNewItemPage() {
                         {/* Row 1: Product Name (50%), Category (25%) & SKU (25%) */}
                         <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-4 gap-8">
                             <div className="md:col-span-2 space-y-1.5">
-                                <label className="text-[11px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Product Name <span className="text-[#EE5D50] ml-0.5">*</span></label>
+                                <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Product Name <span className="text-[#EE5D50] ml-0.5">*</span></label>
                                 <input
                                     type="text"
                                     placeholder="e.g. Braces"
@@ -245,7 +245,7 @@ export default function CreateNewItemPage() {
                                         if (error) setError(null);
                                     }}
                                     className={cn(
-                                        "w-full bg-[#F4F7FE]/50 border-none rounded-xl px-5 py-3 text-[12px] font-black text-[#1B2559] outline-none placeholder:text-[#A3AED0] focus:ring-2 focus:ring-[#4318FF]/10 transition-all font-kantumruy",
+                                        "w-full bg-[#F4F7FE]/50 border-none rounded-lg px-5 py-3 text-[12px] font-medium text-[#1B2559] outline-none placeholder:text-[#A3AED0] focus:ring-2 focus:ring-[#3B82F6]/10 transition-all font-kantumruy",
                                         error === "Product name is required" && "ring-2 ring-[#EE5D50]/20 bg-[#EE5D50]/5"
                                     )}
                                 />
@@ -253,7 +253,7 @@ export default function CreateNewItemPage() {
 
                             {/* Category Selection (Typable) */}
                             <div className="space-y-1.5 relative">
-                                <label className="text-[11px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Category</label>
+                                <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Category</label>
                                 <div className="relative">
                                     <input
                                         type="text"
@@ -264,7 +264,7 @@ export default function CreateNewItemPage() {
                                             setFormData({ ...formData, category: e.target.value });
                                             setIsCategoryDropdownOpen(true);
                                         }}
-                                        className="w-full bg-[#F4F7FE]/50 rounded-xl px-5 py-3 text-[12px] font-bold text-[#1B2559] outline-none hover:bg-[#F4F7FE]/80 transition-all border border-transparent focus:border-[#4318FF]/20"
+                                        className="w-full bg-[#F4F7FE]/50 rounded-lg px-5 py-3 text-[12px] font-medium text-[#1B2559] outline-none hover:bg-[#F4F7FE]/80 transition-all border border-transparent focus:border-[#3B82F6]/20"
                                     />
                                     <ChevronDown className={cn("absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A3AED0] transition-transform pointer-events-none", isCategoryDropdownOpen && "rotate-180")} />
 
@@ -274,7 +274,7 @@ export default function CreateNewItemPage() {
                                                 className="fixed inset-0 z-40"
                                                 onClick={() => setIsCategoryDropdownOpen(false)}
                                             />
-                                            <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#E0E5F2] rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#E0E5F2] rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                                                 <div className="max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#E0E5F2] scrollbar-track-transparent">
                                                     {dbCategories
                                                         .filter(cat => !formData.category || cat.toLowerCase().includes(formData.category.toLowerCase()))
@@ -287,8 +287,8 @@ export default function CreateNewItemPage() {
                                                                     setIsCategoryDropdownOpen(false);
                                                                 }}
                                                                 className={cn(
-                                                                    "w-full px-5 py-2.5 text-left text-[12px] font-bold transition-colors hover:bg-[#F4F7FE]",
-                                                                    formData.category === cat ? "text-[#4318FF] bg-[#F4F7FE]/50" : "text-[#1B2559]"
+                                                                    "w-full px-5 py-2.5 text-left text-[12px] font-medium transition-colors hover:bg-[#F4F7FE]",
+                                                                    formData.category === cat ? "text-[#3B82F6] bg-[#F4F7FE]/50" : "text-[#1B2559]"
                                                                 )}
                                                             >
                                                                 {cat}
@@ -303,15 +303,15 @@ export default function CreateNewItemPage() {
 
                             {/* SKU */}
                             <div className="space-y-1.5">
-                                <label className="text-[11px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">SKU <span className="text-[10px] text-[#A3AED0] lowercase ml-1">(Optional)</span></label>
-                                <div className="relative bg-[#F4F7FE]/50 rounded-xl px-5 py-3 flex items-center gap-3">
+                                <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">SKU <span className="text-[10px] text-[#A3AED0] lowercase ml-1">(Optional)</span></label>
+                                <div className="relative bg-[#F4F7FE]/50 rounded-lg px-5 py-3 flex items-center gap-3">
                                     <Hash className="w-4 h-4 text-[#A3AED0]" />
                                     <input
                                         type="text"
                                         placeholder="213-2311"
                                         value={formData.sku}
                                         onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                                        className="bg-transparent border-none p-0 text-[#1B2559] text-[12px] font-bold outline-none placeholder:text-[#A3AED0] w-full"
+                                        className="bg-transparent border-none p-0 text-[#1B2559] text-[12px] font-medium outline-none placeholder:text-[#A3AED0] w-full"
                                     />
                                 </div>
                             </div>
@@ -321,22 +321,22 @@ export default function CreateNewItemPage() {
                         <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-4 gap-8">
                             {/* Quantity */}
                             <div className="space-y-1.5">
-                                <label className="text-[11px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Quantity</label>
-                                <div className="relative bg-[#F4F7FE]/50 rounded-xl px-5 py-3 flex items-center gap-3">
-                                    <Layers className="w-4 h-4 text-[#4318FF]" />
+                                <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Quantity</label>
+                                <div className="relative bg-[#F4F7FE]/50 rounded-lg px-5 py-3 flex items-center gap-3">
+                                    <Layers className="w-4 h-4 text-[#3B82F6]" />
                                     <input
                                         type="number"
                                         placeholder="0"
                                         value={formData.quantity || ""}
                                         onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
-                                        className="bg-transparent border-none p-0 text-[#1B2559] text-[12px] font-bold outline-none placeholder:text-[#A3AED0] w-full"
+                                        className="bg-transparent border-none p-0 text-[#1B2559] text-[12px] font-medium outline-none placeholder:text-[#A3AED0] w-full"
                                     />
                                 </div>
                             </div>
 
                             {/* Unit (Typable) */}
                             <div className="space-y-1.5 relative">
-                                <label className="text-[11px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Unit</label>
+                                <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Unit</label>
                                 <div className="relative">
                                     <input
                                         type="text"
@@ -347,7 +347,7 @@ export default function CreateNewItemPage() {
                                             setFormData({ ...formData, unit: e.target.value });
                                             setIsUnitDropdownOpen(true);
                                         }}
-                                        className="w-full bg-[#F4F7FE]/50 rounded-xl px-5 py-3 text-[12px] font-bold text-[#1B2559] outline-none hover:bg-[#F4F7FE]/80 transition-all border border-transparent focus:border-[#4318FF]/20"
+                                        className="w-full bg-[#F4F7FE]/50 rounded-lg px-5 py-3 text-[12px] font-medium text-[#1B2559] outline-none hover:bg-[#F4F7FE]/80 transition-all border border-transparent focus:border-[#3B82F6]/20"
                                     />
                                     <ChevronDown className={cn("absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A3AED0] transition-transform pointer-events-none", isUnitDropdownOpen && "rotate-180")} />
 
@@ -357,7 +357,7 @@ export default function CreateNewItemPage() {
                                                 className="fixed inset-0 z-40"
                                                 onClick={() => setIsUnitDropdownOpen(false)}
                                             />
-                                            <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#E0E5F2] rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#E0E5F2] rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                                                 <div className="max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#E0E5F2] scrollbar-track-transparent">
                                                     {dbUnits
                                                         .filter(unit => !formData.unit || unit.toLowerCase().includes(formData.unit.toLowerCase()))
@@ -370,8 +370,8 @@ export default function CreateNewItemPage() {
                                                                     setIsUnitDropdownOpen(false);
                                                                 }}
                                                                 className={cn(
-                                                                    "w-full px-5 py-2.5 text-left text-[12px] font-bold transition-colors hover:bg-[#F4F7FE]",
-                                                                    formData.unit === unit ? "text-[#4318FF] bg-[#F4F7FE]/50" : "text-[#1B2559]"
+                                                                    "w-full px-5 py-2.5 text-left text-[12px] font-medium transition-colors hover:bg-[#F4F7FE]",
+                                                                    formData.unit === unit ? "text-[#3B82F6] bg-[#F4F7FE]/50" : "text-[#1B2559]"
                                                                 )}
                                                             >
                                                                 {unit}
@@ -386,30 +386,30 @@ export default function CreateNewItemPage() {
 
                             {/* Buying Price */}
                             <div className="space-y-1.5">
-                                <label className="text-[11px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Cost (Buy)</label>
-                                <div className="relative bg-[#F4F7FE]/50 rounded-xl px-5 py-3 flex items-center gap-2">
+                                <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Cost (Buy)</label>
+                                <div className="relative bg-[#F4F7FE]/50 rounded-lg px-5 py-3 flex items-center gap-2">
                                     <DollarSign className="w-4 h-4 text-[#19D5C5]" />
                                     <input
                                         type="number"
                                         placeholder="0.00"
                                         value={formData.buyPrice || ""}
                                         onChange={(e) => setFormData({ ...formData, buyPrice: parseFloat(e.target.value) || 0 })}
-                                        className="bg-transparent border-none p-0 text-[13px] font-black text-[#1B2559] outline-none placeholder:text-[#A3AED0] w-full"
+                                        className="bg-transparent border-none p-0 text-[13px] font-medium text-[#1B2559] outline-none placeholder:text-[#A3AED0] w-full"
                                     />
                                 </div>
                             </div>
 
                             {/* Selling Price */}
                             <div className="space-y-1.5">
-                                <label className="text-[11px] font-black text-[#A3AED0] uppercase tracking-widest pl-1">Price (Sell)</label>
-                                <div className="relative bg-[#F4F7FE]/50 rounded-xl px-5 py-3 flex items-center gap-2">
-                                    <DollarSign className="w-4 h-4 text-[#4318FF]" />
+                                <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Price (Sell)</label>
+                                <div className="relative bg-[#F4F7FE]/50 rounded-lg px-5 py-3 flex items-center gap-2">
+                                    <DollarSign className="w-4 h-4 text-[#3B82F6]" />
                                     <input
                                         type="number"
                                         placeholder="0.00"
                                         value={formData.sellPrice || ""}
                                         onChange={(e) => setFormData({ ...formData, sellPrice: parseFloat(e.target.value) || 0 })}
-                                        className="bg-transparent border-none p-0 text-[13px] font-black text-[#1B2559] outline-none placeholder:text-[#A3AED0] w-full"
+                                        className="bg-transparent border-none p-0 text-[13px] font-medium text-[#1B2559] outline-none placeholder:text-[#A3AED0] w-full"
                                     />
                                 </div>
                             </div>
@@ -421,7 +421,7 @@ export default function CreateNewItemPage() {
                         <Link href="/inventory">
                             <button
                                 disabled={loading}
-                                className="text-[12px] font-black text-[#A3AED0] hover:text-[#1B2559] transition-all uppercase tracking-[0.1em] disabled:opacity-50"
+                                className="text-[12px] font-medium text-[#A3AED0] hover:text-[#1B2559] transition-all uppercase tracking-[0.1em] disabled:opacity-50"
                             >
                                 Cancel
                             </button>
@@ -429,7 +429,7 @@ export default function CreateNewItemPage() {
                         <button
                             onClick={handleCreate}
                             disabled={loading}
-                            className="bg-[#4318FF] px-14 py-4 rounded-[18px] text-[12px] font-black text-white hover:bg-[#3311E0] transition-all shadow-lg shadow-[#4318FF]/20 uppercase tracking-[0.2em] disabled:opacity-70 flex items-center gap-2"
+                            className="bg-[#3B82F6] px-14 py-4 rounded-[18px] text-[12px] font-medium text-white hover:bg-[#2563EB] transition-all shadow-lg shadow-[#3B82F6]/20 uppercase tracking-[0.2em] disabled:opacity-70 flex items-center gap-2"
                         >
                             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                             {loading ? "Creating..." : "Create"}
