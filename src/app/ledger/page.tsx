@@ -27,7 +27,8 @@ import {
   UserPlus,
   Clock,
   CheckCircle2,
-  FileText
+  FileText,
+  Check
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, startOfDay, addMinutes } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -134,6 +135,7 @@ export default function LedgerPage() {
   const [selectedEntries, setSelectedEntries] = useState<string[]>([]);
   const [isAddingNewMedicine, setIsAddingNewMedicine] = useState<{ entryId: string, name: string } | null>(null);
   const [newMedicineForm, setNewMedicineForm] = useState({ name: '', price: '', unit: 'Piece' });
+  const [activeTimeDropdown, setActiveTimeDropdown] = useState<{ id: string, rect: { top: number, left: number, bottom: number } } | null>(null); // entry with open time picker
 
   useEffect(() => {
     setMounted(true);
@@ -446,6 +448,15 @@ export default function LedgerPage() {
   }
 
   async function handleInitializeManualRow() {
+    // Auto-set appointment_time to current time rounded to nearest 15 minutes
+    const now = new Date();
+    const mins = now.getMinutes();
+    const roundedMins = Math.round(mins / 15) * 15;
+    const autoTime = new Date(now);
+    autoTime.setMinutes(roundedMins >= 60 ? 0 : roundedMins, 0, 0);
+    if (roundedMins >= 60) autoTime.setHours(now.getHours() + 1);
+    const autoTimeStr = format(autoTime, 'HH:mm:ss');
+
     const { data, error } = await supabase
       .from('ledger_entries')
       .insert({
@@ -458,7 +469,9 @@ export default function LedgerPage() {
         amount_remaining: 0,
         paid_aba: 0,
         paid_cash_usd: 0,
-        paid_cash_khr: 0
+        paid_cash_khr: 0,
+        appointment_time: autoTimeStr,
+        status: 'Registered'
       })
       .select()
       .single();
@@ -618,6 +631,13 @@ export default function LedgerPage() {
         <div className="flex items-center gap-3">
           {/* Date Picker / Month Selector Placeholder */}
           <div className="bg-white border border-[#E0E5F2] rounded-none p-1 flex items-center shadow-sm shrink-0">
+            {/* Today button */}
+            <button
+              onClick={() => setDate(new Date())}
+              className="px-3 py-1.5 text-[9px] font-medium text-primary uppercase tracking-widest hover:bg-[#F4F7FE] rounded-none transition-all border-r border-[#F4F7FE]"
+            >
+              Today
+            </button>
             <button
               onClick={() => {
                 const next = new Date(date);
@@ -633,7 +653,7 @@ export default function LedgerPage() {
               <DatePicker
                 value={date}
                 onChange={(d) => setDate(d)}
-                format={viewMode === 'calendar' ? 'MMM yyyy' : 'MMM do, yy'}
+                format={viewMode === 'calendar' ? 'MMM yyyy' : 'dd MMM yyyy'}
                 triggerClassName="bg-transparent border-none h-auto px-2 py-1 shadow-none"
               />
             </div>
@@ -927,33 +947,10 @@ export default function LedgerPage() {
                 <table className="w-full text-left border-collapse manual-spreadsheet">
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-[#F4F7FE] border-b border-[#E0E5F2]">
-                      <th className="px-4 py-2 border-r border-[#E0E5F2] w-12 text-center align-middle relative">
-                        <div className="inline-flex items-center justify-center">
-                          <button
-                            className={cn("p-1.5 rounded-none transition-colors cursor-pointer outline-none", isFilterMenuOpen ? "bg-white text-primary border border-primary/20 shadow-sm" : "hover:bg-white text-[#A3AED0] hover:text-primary")}
-                            onClick={(e) => {
-                              const rect = e.currentTarget.getBoundingClientRect();
-                              setFilterMenuRect(rect);
-                              setIsFilterMenuOpen(!isFilterMenuOpen);
-                            }}
-                          >
-                            <Filter className="w-4 h-4" />
-                          </button>
-                          {isFilterMenuOpen && filterMenuRect && typeof window !== 'undefined' && createPortal(
-                            <>
-                              <div className="fixed inset-0 z-[80]" onClick={() => setIsFilterMenuOpen(false)} />
-                              <div
-                                className="fixed bg-white border border-[#E0E5F2] rounded-lg shadow-xl z-[90] p-2 min-w-[200px] animate-in fade-in zoom-in-95 font-sans font-normal tracking-normal normal-case"
-                                style={{ top: filterMenuRect.bottom + 8, left: filterMenuRect.left }}
-                              >
-                                <p className="px-4 py-3 text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest border-b border-[#F4F7FE] text-left">Order By</p>
-                                <button onClick={() => setIsFilterMenuOpen(false)} className="w-full text-left px-4 py-3 text-[10px] font-medium text-[#1B2559] hover:bg-[#F4F7FE] rounded-lg transition-colors">Alphabetical (A-Z)</button>
-                                <button onClick={() => setIsFilterMenuOpen(false)} className="w-full text-left px-4 py-3 text-[10px] font-medium text-[#1B2559] hover:bg-[#F4F7FE] rounded-lg transition-colors">Amount (High to Low)</button>
-                                <button onClick={() => setIsFilterMenuOpen(false)} className="w-full text-left px-4 py-3 text-[10px] font-medium text-[#1B2559] hover:bg-[#F4F7FE] rounded-lg transition-colors">Balance Outstanding</button>
-                              </div>
-                            </>,
-                            document.body
-                          )}
+                      <th className="px-4 py-2 border-r border-[#E0E5F2] w-[100px] text-center align-middle relative">
+                        <div className="inline-flex items-center justify-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-[#A3AED0]" />
+                          <span className="text-[10px] font-medium text-[#1B2559] uppercase">Time</span>
                         </div>
                       </th>
 
@@ -1015,27 +1012,94 @@ export default function LedgerPage() {
 
                                     return (
                                       <tr key={entry.id} className="group-hover/visit:bg-[#F4F7FE]/50 transition-colors border-b border-[#E0E5F2] group">
-                                        {/* Checkbox - Merged */}
-                                        {isFirstOfGroup && (
-                                          <td rowSpan={group.length} className="px-3 py-3 border-r border-[#E0E5F2] text-center w-[40px]">
-                                            <input
-                                              type="checkbox"
-                                              className="rounded border-[#A3AED0] text-primary focus:ring-primary w-3.5 h-3.5"
-                                              checked={selectedEntries.includes(entry.id)} // Selects the primary entry? Or should selecting one select all?
-                                              // For now, let's keep it simple: Select strictly by ID. 
-                                              // Ideally, selecting the group header selects all. 
-                                              // Let's implement: Click selects ALL in group.
-                                              onChange={(e) => {
-                                                const ids = group.map(g => g.id);
-                                                if (e.target.checked) {
-                                                  setSelectedEntries(prev => [...prev, ...ids]);
-                                                } else {
-                                                  setSelectedEntries(prev => prev.filter(id => !ids.includes(id)));
-                                                }
-                                              }}
-                                            />
-                                          </td>
-                                        )}
+                                        {/* Time Column - merged per group, editable via inline time picker */}
+                                        {isFirstOfGroup && (() => {
+                                          const timeVal = firstEntry.appointment_time ? firstEntry.appointment_time.slice(0, 5) : null;
+                                          const displayTime = timeVal
+                                            ? format(new Date(`2000-01-01T${timeVal}:00`), 'h:mm a')
+                                            : '—';
+
+                                          // Generate 15-min time intervals for 7am–9pm
+                                          const intervals: string[] = [];
+                                          for (let h = 7; h <= 21; h++) {
+                                            for (let m = 0; m < 60; m += 15) {
+                                              intervals.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+                                            }
+                                          }
+
+                                          return (
+                                            <td
+                                              rowSpan={group.length}
+                                              className="px-2 py-1.5 border-r border-[#E0E5F2] text-center w-[100px] relative align-middle"
+                                            >
+                                              <button
+                                                data-time-btn={firstEntry.id}
+                                                className={cn(
+                                                  "flex items-center gap-1 mx-auto px-2.5 py-1 rounded text-[10px] font-medium transition-all",
+                                                  timeVal
+                                                    ? "text-[#1B2559] bg-[#F4F7FE] hover:bg-primary/10 hover:text-primary"
+                                                    : "text-[#A3AED0] hover:text-primary hover:bg-primary/5"
+                                                )}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  const r = e.currentTarget.getBoundingClientRect();
+                                                  setActiveTimeDropdown(activeTimeDropdown?.id === firstEntry.id ? null : { id: firstEntry.id, rect: { top: r.top, left: r.left, bottom: r.bottom } });
+                                                }}
+                                              >
+                                                <Clock className="w-3 h-3 shrink-0" />
+                                                {displayTime}
+                                              </button>
+
+                                              {activeTimeDropdown?.id === firstEntry.id && typeof window !== 'undefined' && createPortal(
+                                                <>
+                                                  <div className="fixed inset-0 z-[80]" onClick={() => setActiveTimeDropdown(null)} />
+                                                  <div
+                                                    className="fixed bg-white border border-[#E0E5F2] rounded-xl shadow-2xl z-[90] overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+                                                    style={{
+                                                      top: (activeTimeDropdown.rect.bottom) + 4,
+                                                      left: (activeTimeDropdown.rect.left) - 10,
+                                                      width: 140
+                                                    }}
+                                                  >
+                                                    <div className="px-3 py-2 border-b border-[#F4F7FE] flex items-center justify-between">
+                                                      <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">Set Time</span>
+                                                      {timeVal && (
+                                                        <button
+                                                          onClick={async () => {
+                                                            await handleUpdateEntry(firstEntry.id, { appointment_time: null });
+                                                            setActiveTimeDropdown(null);
+                                                          }}
+                                                          className="text-[#EE5D50]/60 hover:text-[#EE5D50] transition-colors"
+                                                        >
+                                                          <X className="w-3 h-3" />
+                                                        </button>
+                                                      )}
+                                                    </div>
+                                                    <div className="max-h-[220px] overflow-y-auto custom-scrollbar">
+                                                      {intervals.map(t => (
+                                                        <button
+                                                          key={t}
+                                                          onClick={async () => {
+                                                            await handleUpdateEntry(firstEntry.id, { appointment_time: `${t}:00`, status: firstEntry.status === 'pending' ? 'Registered' : firstEntry.status });
+                                                            setActiveTimeDropdown(null);
+                                                          }}
+                                                          className={cn(
+                                                            "w-full px-4 py-2 text-left text-[10px] font-medium transition-colors flex items-center justify-between",
+                                                            timeVal === t ? "bg-primary/5 text-primary" : "text-[#1B2559] hover:bg-[#F4F7FE]"
+                                                          )}
+                                                        >
+                                                          {format(new Date(`2000-01-01T${t}:00`), 'h:mm a')}
+                                                          {timeVal === t && <Check className="w-3 h-3" />}
+                                                        </button>
+                                                      ))}
+                                                    </div>
+                                                  </div>
+                                                </>,
+                                                document.body
+                                              )}
+                                            </td>
+                                          );
+                                        })()}
 
                                         {/* No. - Merged */}
                                         {isFirstOfGroup && (
