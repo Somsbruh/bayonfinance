@@ -303,7 +303,9 @@ export default function ReservationsPage() {
         switch (status) {
             case 'Finished': return { bg: 'bg-[#EE5D50]/5', border: 'border-[#EE5D50]/20', dot: 'bg-[#EE5D50]', pill: 'bg-[#EE5D50] text-white' };
             case 'Doing Treatment': return { bg: 'bg-[#3B82F6]/5', border: 'border-[#3B82F6]/20', dot: 'bg-[#3B82F6]', pill: 'bg-[#3B82F6] text-white shadow-sm shadow-[#3B82F6]/20' };
-            case 'Registered': return { bg: 'bg-[#19D5C5]/5', border: 'border-[#19D5C5]/20', dot: 'bg-[#19D5C5]', pill: 'bg-[#19D5C5] text-white' };
+            case 'Registered':
+            case 'pending':
+                return { bg: 'bg-[#19D5C5]/5', border: 'border-[#19D5C5]/20', dot: 'bg-[#19D5C5]', pill: 'bg-[#19D5C5] text-white' };
             default: return { bg: 'bg-gray-50', border: 'border-gray-200', dot: 'bg-gray-400', pill: 'bg-gray-400 text-white' };
         }
     };

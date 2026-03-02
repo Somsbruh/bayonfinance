@@ -184,24 +184,33 @@ function NewAppointmentContent() {
         if (selectedItems.length === 0) return alert("Please select at least one item");
 
         try {
-            // Create ledger entries for each selected item
-            const entries = selectedItems.map(item => ({
-                patient_id: patientId,
-                doctor_id: selectedDoctorId,
-                treatment_id: item.item_type === 'treatment' ? item.originalId : null,
-                inventory_id: item.item_type === 'medicine' ? item.originalId : null,
-                description: item.name,
-                quantity: item.quantity || 1,
-                unit_price: item.price,
-                total_price: Number(item.price) * (item.quantity || 1),
-                amount_paid: 0,
-                amount_remaining: Number(item.price) * (item.quantity || 1),
-                date: selectedDate,
-                appointment_time: `${selectedTime}:00`,
-                branch_id: currentBranch?.id,
-                status: 'pending',
-                item_type: item.item_type
-            }));
+            // The FIRST treatment item becomes the primary calendar entry (with appointment_time + duration_minutes).
+            // Subsequent items are linked to the same patient/date/doctor but don't create extra calendar cards.
+            const primaryTreatmentIdx = selectedItems.findIndex(i => i.item_type === 'treatment');
+
+            const entries = selectedItems.map((item, idx) => {
+                const isPrimary = idx === primaryTreatmentIdx;
+                return {
+                    patient_id: patientId,
+                    doctor_id: selectedDoctorId,
+                    treatment_id: item.item_type === 'treatment' ? item.originalId : null,
+                    inventory_id: item.item_type === 'medicine' ? item.originalId : null,
+                    description: item.name,
+                    quantity: item.quantity || 1,
+                    unit_price: item.price,
+                    total_price: Number(item.price) * (item.quantity || 1),
+                    amount_paid: 0,
+                    amount_remaining: Number(item.price) * (item.quantity || 1),
+                    date: selectedDate,
+                    // Only the primary treatment entry gets appointment_time so it appears as one card on calendar
+                    appointment_time: isPrimary ? `${selectedTime}:00` : null,
+                    // Save duration from the treatment record so the calendar block spans correctly
+                    duration_minutes: isPrimary ? (item.duration_minutes || item.treatments?.duration_minutes || 30) : null,
+                    branch_id: currentBranch?.id,
+                    status: 'Registered',
+                    item_type: item.item_type
+                };
+            });
 
             const { error } = await supabase
                 .from('ledger_entries')
