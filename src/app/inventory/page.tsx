@@ -4,13 +4,14 @@ import React, { useState, useEffect, useMemo, Suspense } from "react";
 import {
     Package, Plus, Search, Filter, MoreVertical,
     Building2, DollarSign, CheckCircle2,
-    ArrowUpDown, Check
+    ArrowUpDown, Check, ArrowLeftRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useBranch } from "@/context/BranchContext";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import TransferStockModal from "@/components/TransferStockModal";
 
 interface InventoryItem {
     id: string;
@@ -24,6 +25,8 @@ interface InventoryItem {
     item_type: 'medicine' | 'inventory';
     status: 'IN STOCK' | 'LOW STOCK' | 'OUT OF STOCK';
     last_stock_in: string | null;
+    buy_price: number;
+    low_stock_threshold: number;
 }
 
 type SortConfig = {
@@ -48,8 +51,9 @@ function InventoryPageInner() {
     const [showFilters, setShowFilters] = useState(false);
     const [activeFilter, setActiveFilter] = useState<ActiveFilter>('none');
     const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'name', direction: 'asc' });
+    const [transferItem, setTransferItem] = useState<InventoryItem | null>(null);
 
-    const { currentBranch } = useBranch();
+    const { currentBranch, branches } = useBranch();
 
     useEffect(() => {
         if (currentBranch) fetchInventory();
@@ -83,6 +87,8 @@ function InventoryPageInner() {
                     stock_level: stock,
                     unit: item.unit || 'Piece',
                     sell_price: price,
+                    buy_price: item.buy_price || 0,
+                    low_stock_threshold: item.low_stock_threshold || 10,
                     status
                 };
             });
@@ -193,6 +199,16 @@ function InventoryPageInner() {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            {/* Transfer Stock Modal */}
+            {transferItem && currentBranch && (
+                <TransferStockModal
+                    item={transferItem}
+                    currentBranch={currentBranch}
+                    allBranches={branches}
+                    onClose={() => setTransferItem(null)}
+                    onSuccess={() => { setTransferItem(null); fetchInventory(); }}
+                />
+            )}
             {/* Page Header Area */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-0">
                 <h1 className="text-4xl font-medium text-[#1B2559] tracking-tight">Inventory</h1>
@@ -428,11 +444,22 @@ function InventoryPageInner() {
                                                         )}
                                                     </td>
                                                     <td className="px-5 py-4 text-right">
-                                                        <Link href={`/inventory/${item.id}`}>
-                                                            <button className="p-2 text-[#A3AED0] hover:text-[#3B82F6] transition-all bg-[#F4F7FE]/50 rounded-lg">
-                                                                <MoreVertical className="w-4.5 h-4.5" />
-                                                            </button>
-                                                        </Link>
+                                                        <div className="flex items-center justify-end gap-1.5">
+                                                            {branches.length > 1 && (
+                                                                <button
+                                                                    onClick={() => setTransferItem(item)}
+                                                                    title="Transfer to another branch"
+                                                                    className="p-2 text-[#A3AED0] hover:text-[#6366F1] transition-all bg-[#F4F7FE]/50 hover:bg-[#6366F1]/10 rounded-lg"
+                                                                >
+                                                                    <ArrowLeftRight className="w-4 h-4" />
+                                                                </button>
+                                                            )}
+                                                            <Link href={`/inventory/${item.id}`}>
+                                                                <button className="p-2 text-[#A3AED0] hover:text-[#3B82F6] transition-all bg-[#F4F7FE]/50 rounded-lg">
+                                                                    <MoreVertical className="w-4.5 h-4.5" />
+                                                                </button>
+                                                            </Link>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))}
