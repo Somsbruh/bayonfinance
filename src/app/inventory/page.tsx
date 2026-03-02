@@ -23,12 +23,15 @@ interface InventoryItem {
     sell_price: number;
     item_type: 'medicine' | 'inventory';
     status: 'IN STOCK' | 'LOW STOCK' | 'OUT OF STOCK';
+    last_stock_in: string | null;
 }
 
 type SortConfig = {
     key: keyof InventoryItem | 'asset_value';
     direction: 'asc' | 'desc';
 };
+
+type ActiveFilter = 'none' | 'in-stock' | 'low-stock' | 'out-of-stock' | 'last-adjusted';
 
 function InventoryPageInner() {
     const searchParams = useSearchParams();
@@ -42,6 +45,8 @@ function InventoryPageInner() {
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
+    const [showFilters, setShowFilters] = useState(false);
+    const [activeFilter, setActiveFilter] = useState<ActiveFilter>('none');
     const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'name', direction: 'asc' });
 
     const { currentBranch } = useBranch();
@@ -99,6 +104,15 @@ function InventoryPageInner() {
 
     const sortedItems = useMemo(() => {
         const sortableItems = [...items];
+        // If last-adjusted filter is active, sort by last_stock_in descending
+        if (activeFilter === 'last-adjusted') {
+            sortableItems.sort((a, b) => {
+                const dateA = a.last_stock_in ? new Date(a.last_stock_in).getTime() : 0;
+                const dateB = b.last_stock_in ? new Date(b.last_stock_in).getTime() : 0;
+                return dateB - dateA;
+            });
+            return sortableItems;
+        }
         sortableItems.sort((a, b) => {
             let valA: any = a[sortConfig.key as keyof InventoryItem];
             let valB: any = b[sortConfig.key as keyof InventoryItem];
@@ -113,7 +127,7 @@ function InventoryPageInner() {
             return 0;
         });
         return sortableItems;
-    }, [items, sortConfig]);
+    }, [items, sortConfig, activeFilter]);
 
     const categories = useMemo(() => {
         const tabType = activeTab === 'Medicine' ? 'medicine' : 'inventory';
@@ -133,7 +147,14 @@ function InventoryPageInner() {
         }
 
         const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
-        return matchesSearch && matchesCategory && matchesTab;
+
+        // Status filter
+        let matchesFilter = true;
+        if (activeFilter === 'in-stock') matchesFilter = item.status === 'IN STOCK';
+        else if (activeFilter === 'low-stock') matchesFilter = item.status === 'LOW STOCK';
+        else if (activeFilter === 'out-of-stock') matchesFilter = item.status === 'OUT OF STOCK';
+
+        return matchesSearch && matchesCategory && matchesTab && matchesFilter;
     });
 
     const toggleSelectItem = (id: string) => {
@@ -252,13 +273,63 @@ function InventoryPageInner() {
                 </div>
 
                 <div className="flex items-center gap-2.5 w-full md:w-auto">
-                    <button className="flex items-center justify-center gap-2 bg-white px-5 py-3 rounded-lg border border-[#E0E5F2] text-[11px] font-medium text-[#1B2559] hover:bg-gray-50 transition-all shadow-sm">
-                        <Filter className="w-4 h-4 text-[#A3AED0]" />
-                        Filters
-                    </button>
-                    <button className="flex items-center justify-center gap-2 bg-white px-6 py-3 rounded-lg border border-[#E0E5F2] text-[11px] font-medium text-[#3B82F6] hover:bg-gray-50 transition-all shadow-sm">
-                        Order Stock
-                    </button>
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowFilters(f => !f)}
+                            className={cn(
+                                "flex items-center justify-center gap-2 px-5 py-3 rounded-lg border text-[11px] font-medium transition-all shadow-sm",
+                                activeFilter !== 'none'
+                                    ? "bg-[#3B82F6] border-[#3B82F6] text-white"
+                                    : "bg-white border-[#E0E5F2] text-[#1B2559] hover:bg-gray-50"
+                            )}
+                        >
+                            <Filter className="w-4 h-4" />
+                            Filters{activeFilter !== 'none' && ' ●'}
+                        </button>
+
+                        {showFilters && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setShowFilters(false)} />
+                                <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-[#E0E5F2] rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="px-3 py-2 border-b border-[#F4F7FE]">
+                                        <p className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">Filter by Status</p>
+                                    </div>
+                                    {([
+                                        { label: 'All', value: 'none' },
+                                        { label: 'In Stock', value: 'in-stock' },
+                                        { label: 'Low Stock', value: 'low-stock' },
+                                        { label: 'Out of Stock', value: 'out-of-stock' },
+                                    ] as const).map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            onClick={() => { setActiveFilter(opt.value); setShowFilters(false); }}
+                                            className={cn(
+                                                "w-full text-left px-4 py-2.5 text-[11px] font-medium transition-colors flex items-center justify-between",
+                                                activeFilter === opt.value ? "text-[#3B82F6] bg-[#F4F7FE]" : "text-[#1B2559] hover:bg-[#F4F7FE]"
+                                            )}
+                                        >
+                                            {opt.label}
+                                            {activeFilter === opt.value && <div className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />}
+                                        </button>
+                                    ))}
+                                    <div className="px-3 py-2 border-t border-[#F4F7FE]">
+                                        <p className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">Sort By</p>
+                                    </div>
+                                    <button
+                                        onClick={() => { setActiveFilter('last-adjusted'); setShowFilters(false); }}
+                                        className={cn(
+                                            "w-full text-left px-4 py-2.5 text-[11px] font-medium transition-colors flex items-center justify-between",
+                                            activeFilter === 'last-adjusted' ? "text-[#3B82F6] bg-[#F4F7FE]" : "text-[#1B2559] hover:bg-[#F4F7FE]"
+                                        )}
+                                    >
+                                        Last Adjusted
+                                        {activeFilter === 'last-adjusted' && <div className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />}
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+
                     <Link href={`/inventory/new?tab=${activeTab === 'Medicine' ? 'medicine' : 'inventory'}`}>
                         <button className="flex items-center justify-center gap-2 bg-[#3B82F6] px-6 py-3 rounded-lg text-[11px] font-medium text-white hover:bg-[#2563EB] transition-all shadow-md shadow-[#3B82F6]/20">
                             <Plus className="w-4 h-4" />
@@ -293,7 +364,7 @@ function InventoryPageInner() {
                                                 <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Vendor</span></th>
                                                 <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Stock</span></th>
                                                 <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Status</span></th>
-                                                <th className="px-5 py-5 text-right"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Asset Value</span></th>
+                                                <th className="px-5 py-5 text-right"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">{activeFilter === 'last-adjusted' ? 'Last Adjusted' : 'Asset Value'}</span></th>
                                                 <th className="px-5 py-5 w-12"></th>
                                             </tr>
                                         </thead>
@@ -346,7 +417,15 @@ function InventoryPageInner() {
                                                         </div>
                                                     </td>
                                                     <td className="px-5 py-4 text-right">
-                                                        <span className="text-[12px] font-medium text-[#1B2559]">${(item.stock_level * item.sell_price).toLocaleString()}</span>
+                                                        {activeFilter === 'last-adjusted' ? (
+                                                            <span className="text-[12px] font-medium text-[#A3AED0]">
+                                                                {item.last_stock_in
+                                                                    ? new Date(item.last_stock_in).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                                                                    : '—'}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-[12px] font-medium text-[#1B2559]">${(item.stock_level * item.sell_price).toLocaleString()}</span>
+                                                        )}
                                                     </td>
                                                     <td className="px-5 py-4 text-right">
                                                         <Link href={`/inventory/${item.id}`}>
