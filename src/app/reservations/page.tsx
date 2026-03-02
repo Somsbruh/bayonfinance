@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
     Calendar as CalendarIcon,
     ChevronLeft,
@@ -21,12 +21,14 @@ import {
     ChevronDown,
     Stethoscope,
     MoreHorizontal,
-    Wallet
+    Wallet,
+    ArrowUpDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBranch } from "@/context/BranchContext";
 import { supabase } from "@/lib/supabase";
 import { format, startOfWeek, addDays, isSameDay, addMonths } from "date-fns";
+import AppointmentDetailModal from "@/components/AppointmentDetailModal";
 
 // Time Configuration
 const START_HOUR = 8;
@@ -56,6 +58,11 @@ export default function ReservationsPage() {
     const [selectedTreatment, setSelectedTreatment] = useState<any>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [activePatientPlans, setActivePatientPlans] = useState<any[]>([]);
+
+    // Filter & Detail State
+    const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
+    const [showDoctorFilter, setShowDoctorFilter] = useState(false);
+    const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
 
     // Installment Plan State
     const [isInstallmentPlan, setIsInstallmentPlan] = useState(false);
@@ -108,9 +115,11 @@ export default function ReservationsPage() {
         const isoDate = format(selectedDate, 'yyyy-MM-dd');
         const { data: apptData } = await supabase
             .from('ledger_entries')
-            .select('*, patients(name, phone), treatments(name, duration_minutes)')
+            .select('*, patients(name, phone, gender, age), treatments(name, duration_minutes), staff!doctor_id(name)')
             .eq('branch_id', currentBranch?.id)
-            .eq('date', isoDate);
+            .eq('date', isoDate)
+            .not('appointment_time', 'is', null)
+            .order('appointment_time', { ascending: true });
 
         if (apptData) setAppointments(apptData);
 
@@ -128,6 +137,11 @@ export default function ReservationsPage() {
         const timeVal = h + m / 60;
         return timeVal >= 13 && timeVal < 14;
     };
+
+    // Filter doctors based on selectedDoctorId
+    const visibleDoctors = useMemo(() =>
+        selectedDoctorId ? doctors.filter(d => d.id === selectedDoctorId) : doctors
+        , [doctors, selectedDoctorId]);
 
     const handleOpenModal = (doc: any, slot: any, date: Date) => {
         setSelectedSlot({ doc, slot, date });
@@ -345,16 +359,54 @@ export default function ReservationsPage() {
                         <button onClick={() => setView('day')} className={cn("px-6 py-2 rounded-lg text-[12px] font-medium uppercase transition-all", view === 'day' ? "bg-white text-primary shadow-sm" : "text-[#A3AED0] hover:text-[#1B2559]")}>Day</button>
                         <button onClick={() => setView('week')} className={cn("px-6 py-2 rounded-lg text-[12px] font-medium uppercase transition-all", view === 'week' ? "bg-white text-primary shadow-sm" : "text-[#A3AED0] hover:text-[#1B2559]")}>Week</button>
                     </div>
-                    <button className="bg-white px-5 py-2.5 rounded-xl border border-[#E0E5F2] text-[12px] font-medium text-[#1B2559] uppercase flex items-center gap-2 shadow-sm">
-                        <Filter className="w-5 h-5 text-[#A3AED0]" />
-                        All Dentist
-                        <ChevronDown className="w-4 h-4 text-[#A3AED0]" />
-                    </button>
+                    {/* Doctor Filter Dropdown */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowDoctorFilter(f => !f)}
+                            className={cn(
+                                "bg-white px-5 py-2.5 rounded-xl border text-[12px] font-medium uppercase flex items-center gap-2 shadow-sm transition-all",
+                                selectedDoctorId
+                                    ? "border-[#3B82F6] text-[#3B82F6]"
+                                    : "border-[#E0E5F2] text-[#1B2559] hover:bg-[#F4F7FE]"
+                            )}
+                        >
+                            <Filter className="w-5 h-5 text-[#A3AED0]" />
+                            {selectedDoctorId ? doctors.find(d => d.id === selectedDoctorId)?.name?.split(' ')[1] || 'Filtered' : 'All Dentist'}
+                            <ChevronDown className="w-4 h-4 text-[#A3AED0]" />
+                        </button>
+                        {showDoctorFilter && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setShowDoctorFilter(false)} />
+                                <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-[#E0E5F2] rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="px-3 py-2 border-b border-[#F4F7FE]">
+                                        <p className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">Filter by Doctor</p>
+                                    </div>
+                                    <button
+                                        onClick={() => { setSelectedDoctorId(null); setShowDoctorFilter(false); }}
+                                        className={cn("w-full text-left px-4 py-3 text-[12px] font-medium transition-colors flex items-center justify-between", !selectedDoctorId ? "text-[#3B82F6] bg-[#F4F7FE]" : "text-[#1B2559] hover:bg-[#F4F7FE]")}
+                                    >
+                                        All Doctors
+                                        {!selectedDoctorId && <div className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />}
+                                    </button>
+                                    {doctors.map(doc => (
+                                        <button
+                                            key={doc.id}
+                                            onClick={() => { setSelectedDoctorId(doc.id); setShowDoctorFilter(false); }}
+                                            className={cn("w-full text-left px-4 py-3 text-[12px] font-medium transition-colors flex items-center justify-between", selectedDoctorId === doc.id ? "text-[#3B82F6] bg-[#F4F7FE]" : "text-[#1B2559] hover:bg-[#F4F7FE]")}
+                                        >
+                                            {doc.name}
+                                            {selectedDoctorId === doc.id && <div className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />}
+                                        </button>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            {/* Unified Horizontal Scroll Container with Refined Vertical Scale (18px slots) */}
-            <div className="flex-1 overflow-x-auto overflow-y-hidden relative border-t border-[#f5f7fd] custom-scrollbar">
+            {/* Calendar Grid — only when calendar tab active */}
+            {activeTab === 'calendar' && <div className="flex-1 overflow-x-auto overflow-y-hidden relative border-t border-[#f5f7fd] custom-scrollbar">
                 <div className="flex flex-col min-w-max h-full">
                     {/* Doctor Header Row */}
                     <div className="flex shrink-0 sticky top-0 z-40 bg-white">
@@ -362,7 +414,7 @@ export default function ReservationsPage() {
                             <span className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest leading-none">GMT</span>
                             <span className="text-[11px] font-medium text-[#1B2559] mt-0.5">+07:00</span>
                         </div>
-                        {doctors.map(doc => (
+                        {visibleDoctors.map(doc => (
                             <div key={doc.id} className="min-w-[260px] flex-1 border-r border-b border-[#f5f7fd] px-4 py-3 flex items-center justify-between group bg-white shadow-[inset_0_-1px_0_0_#f5f7fd]">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full border border-[#E0E5F2] flex items-center justify-center bg-white shadow-sm shrink-0">
@@ -394,7 +446,7 @@ export default function ReservationsPage() {
 
                             {/* Data Columns */}
                             <div className="flex flex-1">
-                                {doctors.map(doc => {
+                                {visibleDoctors.map(doc => {
                                     let slotsToSkip = 0;
                                     return (
                                         <div key={doc.id} className="min-w-[240px] flex-1 border-r border-[#f5f7fd] relative">
@@ -413,22 +465,24 @@ export default function ReservationsPage() {
                                                 }
 
                                                 if (appt) {
-                                                    const duration = appt.duration_minutes || 15;
+                                                    const duration = appt.duration_minutes || appt.treatments?.duration_minutes || 30;
                                                     const span = Math.max(1, Math.ceil(duration / INCREMENT_MINUTES));
                                                     slotsToSkip = span - 1;
                                                     const styles = getStatusStyles(appt.status);
 
                                                     return (
                                                         <div key={slot.iso} className={cn(
-                                                            "border-b border-[#f5f7fd] relative group",
+                                                            "border-b border-[#f5f7fd] relative group cursor-pointer",
                                                             isBreak ? "bg-stripes-gray micro-opacity" : ""
-                                                        )} style={{ height: `${span * 27}px` }}>
+                                                        )} style={{ height: `${span * 27}px` }}
+                                                            onClick={() => setSelectedAppointment(appt)}
+                                                        >
                                                             <div className={cn(
-                                                                "absolute inset-1 rounded-lg px-3 py-1.5 border shadow-sm z-20 flex items-center transition-all hover:bg-opacity-100 gap-2",
+                                                                "absolute inset-1 rounded-lg px-3 py-1.5 border shadow-sm z-20 flex items-center transition-all hover:scale-[1.01] hover:shadow-md gap-2",
                                                                 styles?.bg, styles?.border
                                                             )}>
                                                                 <div className={cn("w-2 h-2 rounded-full shrink-0", styles?.dot)} />
-                                                                <span className="text-[11px] font-black text-[#1B2559] truncate uppercase leading-none">{appt.patients?.name}</span>
+                                                                <span className="text-[11px] font-black text-[#1B2559] truncate uppercase leading-none">{appt.patients?.name || appt.manual_patient_name}</span>
                                                                 <span className="ml-auto text-[10px] font-medium text-[#A3AED0] opacity-70 truncate pl-2 uppercase">{appt.treatments?.name?.slice(0, 18)}</span>
                                                             </div>
                                                         </div>
@@ -455,7 +509,109 @@ export default function ReservationsPage() {
                         </div>
                     </div>
                 </div>
-            </div>
+            </div>}
+
+            {/* Log History Tab */}
+            {activeTab === 'history' && (
+                <div className="flex-1 overflow-auto px-7 py-6">
+                    <div className="bg-white rounded-[24px] border border-[#E0E5F2] shadow-sm overflow-hidden">
+                        <div className="px-6 py-5 border-b border-[#E0E5F2] flex items-center justify-between">
+                            <div>
+                                <h2 className="text-[18px] font-black text-[#1B2559] tracking-tight">Appointment Log</h2>
+                                <p className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest mt-0.5">
+                                    {format(selectedDate, 'EEEE, MMMM d, yyyy')} · {appointments.length} total
+                                </p>
+                            </div>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="border-b border-[#F4F7FE]">
+                                        {['Time', 'Patient', 'Treatment', 'Doctor', 'Duration', 'Price', 'Remaining', 'Status'].map(h => (
+                                            <th key={h} className="px-5 py-4">
+                                                <span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">{h}</span>
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-[#F4F7FE]">
+                                    {appointments.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={8} className="px-5 py-16 text-center">
+                                                <p className="text-[12px] font-medium text-[#A3AED0] uppercase tracking-widest">No appointments on this day</p>
+                                            </td>
+                                        </tr>
+                                    ) : appointments.map(appt => {
+                                        const patientName = appt.patients?.name || appt.manual_patient_name || '—';
+                                        const treatName = appt.treatments?.name || appt.description || '—';
+                                        const docName = appt.staff?.name || '—';
+                                        const stStyles = getStatusStyles(appt.status);
+                                        return (
+                                            <tr
+                                                key={appt.id}
+                                                className="hover:bg-[#F4F7FE]/30 transition-colors cursor-pointer"
+                                                onClick={() => setSelectedAppointment(appt)}
+                                            >
+                                                <td className="px-5 py-4">
+                                                    <span className="text-[12px] font-black text-[#1B2559]">{appt.appointment_time?.slice(0, 5) || '—'}</span>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="w-8 h-8 rounded-xl bg-[#F4F7FE] border border-[#E0E5F2] flex items-center justify-center text-[13px] font-black text-[#1B2559] shrink-0">
+                                                            {patientName[0]?.toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[12px] font-black text-[#1B2559]">{patientName}</p>
+                                                            <p className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-tight">{appt.patients?.phone || ''}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <span className="text-[12px] font-medium text-[#1B2559]">{treatName}</span>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <span className="text-[12px] font-medium text-[#1B2559]">{docName}</span>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <span className="text-[12px] font-medium text-[#1B2559]">{appt.duration_minutes || appt.treatments?.duration_minutes || 15} min</span>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <span className="text-[12px] font-black text-[#1B2559]">${(appt.total_price || 0).toLocaleString()}</span>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <span className={cn("text-[12px] font-black", (appt.amount_remaining || 0) > 0 ? 'text-[#EE5D50]' : 'text-[#19D5C5]')}>
+                                                        ${(appt.amount_remaining || 0).toLocaleString()}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <div className={cn(
+                                                        "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tight",
+                                                        stStyles?.bg,
+                                                        appt.status === 'Finished' ? 'text-[#EE5D50]' :
+                                                            appt.status === 'Doing Treatment' ? 'text-[#3B82F6]' : 'text-[#19D5C5]'
+                                                    )}>
+                                                        <div className={cn("w-1.5 h-1.5 rounded-full", stStyles?.dot)} />
+                                                        {appt.status}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Appointment Detail Modal */}
+            {selectedAppointment && (
+                <AppointmentDetailModal
+                    appointment={selectedAppointment}
+                    onClose={() => setSelectedAppointment(null)}
+                    onRefresh={() => { fetchInitialData(); setSelectedAppointment(null); }}
+                />
+            )}
 
             {/* Modal */}
             {isModalOpen && (
