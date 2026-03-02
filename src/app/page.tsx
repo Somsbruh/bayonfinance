@@ -17,6 +17,7 @@ import {
     Wallet,
     ShieldCheck
 } from "lucide-react";
+import { RevenueBreakdownChart } from "@/components/RevenueBreakdownChart";
 import { supabase } from "@/lib/supabase";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-fns";
 import { clsx, type ClassValue } from "clsx";
@@ -39,9 +40,11 @@ export default function ReportsPage() {
         overdueCount: 0,
         forecastedRevenue: 0,
         debtAging30: 0,
-        overdueItems: [] as any[]
+        overdueItems: [] as any[],
+        chartRevenueData: [] as { category: string; amount: number }[]
     });
     const [timeframe, setTimeframe] = useState<'1' | '7' | '30' | '90' | '180' | '365'>('30');
+    const [chartTimeframe, setChartTimeframe] = useState<'1' | '7' | '30' | '90' | '180' | '365'>('30');
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [isLoading, setIsLoading] = useState(true);
 
@@ -60,7 +63,7 @@ export default function ReportsPage() {
 
     useEffect(() => {
         fetchStats();
-    }, [timeframe, selectedYear]);
+    }, [timeframe, selectedYear, chartTimeframe]);
 
     async function fetchStats() {
         setIsLoading(true);
@@ -112,6 +115,48 @@ export default function ReportsPage() {
                 .lte('date', today);
             stats.periodRevenue = pData?.reduce((acc, curr) => acc + Number(curr.amount_paid), 0) || 0;
         }
+
+        // --- NEW: Category-aware data for RevenueBreakdownChart (Based on chartTimeframe) ---
+        const refStart = new Date();
+        const refEnd = new Date();
+
+        if (chartTimeframe === '1') {
+            // Today
+        } else if (chartTimeframe === '7') {
+            refStart.setDate(refStart.getDate() - 7);
+        } else if (chartTimeframe === '30') {
+            refStart.setDate(refStart.getDate() - 30);
+        } else if (chartTimeframe === '90') {
+            refStart.setDate(refStart.getDate() - 90);
+        } else if (chartTimeframe === '180') {
+            refStart.setDate(refStart.getDate() - 180);
+        } else if (chartTimeframe === '365') {
+            refStart.setDate(refStart.getDate() - 365);
+        }
+
+        const { data: chartDetailData } = await supabase
+            .from('ledger_entries')
+            .select(`
+                total_price,
+                item_type,
+                treatments ( category )
+            `)
+            .gte('date', format(refStart, 'yyyy-MM-dd'))
+            .lte('date', format(refEnd, 'yyyy-MM-dd'));
+
+        const chartCatSums: Record<string, number> = {};
+        chartDetailData?.forEach((e: any) => {
+            const value = Number(e.total_price) || 0;
+            if (value > 0) {
+                if (e.item_type === 'medicine' || e.item_type === 'inventory') {
+                    chartCatSums['Medicine (Sales)'] = (chartCatSums['Medicine (Sales)'] || 0) + value;
+                } else {
+                    const cat = e.treatments?.category || 'Other';
+                    chartCatSums[cat] = (chartCatSums[cat] || 0) + value;
+                }
+            }
+        });
+        // ----------------------------------------------------------
 
         // Growth Chart Logic - DYNAMIC GROUPING
         const chartValues: number[] = [];
@@ -256,13 +301,14 @@ export default function ReportsPage() {
             overdueCount: overdueData?.length || 0,
             forecastedRevenue: forecastData?.reduce((acc, curr) => acc + Number(curr.total_price), 0) || 0,
             debtAging30: overdueData?.filter(item => item.date < thirtyDaysAgo).reduce((acc, curr) => acc + Number(curr.total_price), 0) || 0,
-            overdueItems: overdueData || []
+            overdueItems: overdueData || [],
+            chartRevenueData: Object.entries(chartCatSums).map(([category, amount]) => ({ category, amount }))
         });
         setIsLoading(false);
     }
 
     return (
-        <div className="space-y-8 max-w-6xl mx-auto">
+        <div className="space-y-8 max-w-6xl mx-auto pb-10">
             <div className="flex items-center justify-between">
                 <div className="space-y-1">
                     <h1 className="h1-premium border-b border-transparent">Clinic Dashboard</h1>
@@ -300,6 +346,66 @@ export default function ReportsPage() {
                         <Download className="w-4 h-4" />
                         Export Report
                     </button>
+                </div>
+            </div>
+
+            {/* Consolidated Income Chart & Top Staff Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <div className="h-full">
+                    <RevenueBreakdownChart
+                        data={stats.chartRevenueData}
+                        title="Revenue Breakdown"
+                        selectedTimeframe={chartTimeframe}
+                        onTimeframeChange={(t: any) => setChartTimeframe(t)}
+                    />
+                </div>
+
+                {/* Redesigned Top Staff Card */}
+                <div className="bg-white rounded-[24px] shadow-sm p-7 border border-[#E0E5F2] flex flex-col h-full">
+                    <h2 className="text-[22px] font-black tracking-tight text-[#1B2559] mb-8">Top Staff</h2>
+
+                    <div className="flex-1 flex flex-col justify-center gap-6">
+                        {stats.topStaff.map((s, idx) => {
+                            const maxTotal = Math.max(...stats.topStaff.map(st => st.total), 1);
+                            const percent = (s.total / maxTotal) * 100;
+                            // Colors for the top 3
+                            const colors = ['#4318FF', '#19D5C5', '#FFB547'];
+                            const color = colors[idx] || '#A3AED0';
+
+                            return (
+                                <div key={idx} className="group relative">
+                                    <div className="flex items-center justify-between mb-2 absolute inset-0 z-10 pointer-events-none px-4">
+                                        <div className="flex items-center gap-3">
+                                            {/* Animated SVG Avatar */}
+                                            <div className="relative w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:shadow-md pointer-events-auto">
+                                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" fill={color} fillOpacity="0.2" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                    <path d="M6 21V19C6 17.8954 6.89543 17 8 17H16C17.1046 17 18 17.8954 18 19V21" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                </svg>
+                                            </div>
+                                            <span className="text-[14px] font-black text-[#1B2559] group-hover:text-black transition-colors">{s.name}</span>
+                                        </div>
+                                        <span className="text-[14px] font-black tracking-tight text-[#1B2559]">${s.total.toLocaleString()}</span>
+                                    </div>
+
+                                    {/* Progress background track */}
+                                    <div className="h-[48px] w-full bg-[#F4F7FE] rounded-2xl overflow-hidden relative">
+                                        {/* Progress Fill */}
+                                        <div
+                                            className="absolute top-0 left-0 h-full rounded-2xl transition-all duration-1000 ease-out"
+                                            style={{ width: `${percent}%`, backgroundColor: color, opacity: 0.1 }}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        {stats.topStaff.length === 0 && (
+                            <div className="flex flex-col items-center justify-center py-10 text-center opacity-50">
+                                <Users className="w-12 h-12 text-[#A3AED0] mb-3" />
+                                <p className="text-[14px] font-bold text-[#1B2559]">No staff data available</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -399,8 +505,8 @@ export default function ReportsPage() {
                 </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-2 bg-card border border-border rounded-3xl p-8 shadow-xl">
+            <div className="grid grid-cols-1 md:grid-cols-1">
+                <div className="bg-card border border-border rounded-3xl p-8 shadow-xl">
                     <h3 className="text-lg font-medium mb-6">Revenue Growth</h3>
                     <div className={cn(
                         "h-64 flex items-end justify-between px-4",
@@ -423,27 +529,6 @@ export default function ReportsPage() {
                             <span key={i} className="flex-1 text-center min-w-[30px]">{label}</span>
                         ))}
                     </div>
-                </div>
-
-                <div className="bg-card border border-border rounded-3xl p-8 shadow-xl space-y-6">
-                    <h3 className="text-lg font-medium">Top Staff</h3>
-                    <div className="space-y-4">
-                        {stats.topStaff.map((s, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 font-medium">
-                                        {s.name[0]}
-                                    </div>
-                                    <span className="text-sm font-medium">{s.name}</span>
-                                </div>
-                                <span className="text-xs font-mono">${s.total.toLocaleString()}</span>
-                            </div>
-                        ))}
-                        {stats.topStaff.length === 0 && (
-                            <p className="text-center text-xs text-muted-foreground pt-10">No data available</p>
-                        )}
-                    </div>
-                    <p className="text-[10px] text-muted-foreground italic text-center">Calculated based on ledger entries associated with specific doctors.</p>
                 </div>
             </div>
         </div>

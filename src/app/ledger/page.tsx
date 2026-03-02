@@ -40,6 +40,7 @@ import DailyReportModal from "@/components/DailyReportModal";
 import { useCurrency } from "@/context/CurrencyContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { useBranch } from "@/context/BranchContext";
+import { TREATMENT_CATEGORIES } from "@/lib/constants";
 import {
   LayoutGrid,
   ArrowUpRight,
@@ -99,7 +100,7 @@ export default function LedgerPage() {
     gender: "F" as "F" | "M",
     doctor_id: ""
   });
-  const [quickTreatment, setQuickTreatment] = useState({ name: '', duration: 15, price: 0 });
+  const [quickTreatment, setQuickTreatment] = useState({ name: '', duration: 15, price: 0, category: 'Diagnostic' });
 
   const [managedEntry, setManagedEntry] = useState<any>(null);
   const [undoItem, setUndoItem] = useState<any>(null);
@@ -1286,7 +1287,11 @@ export default function LedgerPage() {
                                                     <button
                                                       onMouseDown={(e) => {
                                                         e.preventDefault();
-                                                        setQuickTreatment({ name: activeTreatmentLookup.query, duration: 15, price: 0 });
+                                                        if (!isAddingTreatment) {
+                                                          setQuickTreatment({ name: activeTreatmentLookup?.query || '', duration: 15, price: 0, category: 'Diagnostic' });
+                                                        } else {
+                                                          setQuickTreatment({ name: '', duration: 15, price: 0, category: 'Diagnostic' });
+                                                        }
                                                         setSelectedEntryIdForTreatment(entry.id);
                                                         setIsAddingTreatment(true);
                                                         setActiveTreatmentLookup(null);
@@ -2286,6 +2291,23 @@ export default function LedgerPage() {
                     />
                   </div>
                 </div>
+
+                {/* Category Dropdown */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-medium text-[#707EAE] uppercase tracking-widest pl-1 border-l-2 border-[#1B2559]">Category</label>
+                  <div className="relative group">
+                    <select
+                      className="w-full bg-[#F4F7FE] border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-xl px-5 py-4 text-sm font-medium text-[#1B2559] outline-none transition-all placeholder:text-[#A3AED0] appearance-none"
+                      value={quickTreatment.category}
+                      onChange={(e) => setQuickTreatment({ ...quickTreatment, category: e.target.value })}
+                    >
+                      {TREATMENT_CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A3AED0] pointer-events-none" />
+                  </div>
+                </div>
               </div>
 
               <button
@@ -2298,7 +2320,7 @@ export default function LedgerPage() {
                       name: quickTreatment.name,
                       price: quickTreatment.price,
                       duration_minutes: quickTreatment.duration,
-                      category: 'Unassigned',
+                      category: quickTreatment.category,
                       branch_id: currentBranch?.id
                     })
                     .select()
@@ -2318,8 +2340,9 @@ export default function LedgerPage() {
                     }
 
                     setIsAddingTreatment(false);
-                    setQuickTreatment({ name: '', duration: 15, price: 0 });
+                    setQuickTreatment({ name: '', duration: 15, price: 0, category: 'Diagnostic' });
                     setSelectedEntryIdForTreatment(null);
+
                   } else {
                     console.error("Error creating treatment:", error);
                     alert("Failed to create treatment.");

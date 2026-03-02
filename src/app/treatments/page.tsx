@@ -148,13 +148,21 @@ export default function TreatmentsPage() {
         t.category?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const groupedTreatments = CATEGORIES.reduce((acc, category) => {
+    // Grouping logic: Explicitly gather 'Unassigned' first
+    const unassignedGroup = filteredTreatments.filter(t => t.category === "Unassigned" || !t.category);
+
+    const restGroups = CATEGORIES.reduce((acc, category) => {
         const filtered = filteredTreatments.filter(t => t.category === category);
         if (filtered.length > 0) {
             acc[category] = filtered;
         }
         return acc;
     }, {} as Record<string, Treatment[]>);
+
+    // If there are unassigned treatments, prepend them. Otherwise just use restGroups.
+    const groupedTreatments = unassignedGroup.length > 0
+        ? { "Unassigned": unassignedGroup, ...restGroups }
+        : restGroups;
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
