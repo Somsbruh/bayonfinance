@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
+import { useBranch } from "@/context/BranchContext";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
@@ -43,16 +44,20 @@ function InventoryPageInner() {
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'name', direction: 'asc' });
 
+    const { currentBranch } = useBranch();
+
     useEffect(() => {
-        fetchInventory();
-    }, []);
+        if (currentBranch) fetchInventory();
+    }, [currentBranch]);
 
     async function fetchInventory() {
+        if (!currentBranch) return;
         try {
             setLoading(true);
             const { data, error } = await supabase
                 .from('inventory')
                 .select('*')
+                .eq('branch_id', currentBranch.id)
                 .order('name', { ascending: true });
 
             if (error) throw error;

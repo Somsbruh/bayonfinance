@@ -18,6 +18,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
+import { useBranch } from "@/context/BranchContext";
 import DatePicker from "@/components/DatePicker";
 
 // Placeholder vendor database
@@ -35,6 +36,7 @@ function CreateNewItemPageInner() {
     const searchParams = useSearchParams();
     const tabParam = searchParams.get('tab') || 'medicine';
     const itemType = tabParam === 'inventory' ? 'inventory' : 'medicine';
+    const { currentBranch } = useBranch();
 
     const [vendorSearch, setVendorSearch] = useState("");
     const [showVendorSuggestions, setShowVendorSuggestions] = useState(false);
@@ -62,10 +64,12 @@ function CreateNewItemPageInner() {
 
     useEffect(() => {
         const fetchExistingOptions = async () => {
+            if (!currentBranch) return;
             try {
                 const { data, error } = await supabase
                     .from('inventory')
                     .select('category, unit')
+                    .eq('branch_id', currentBranch.id)
                     .eq('item_type', itemType);
                 if (error) throw error;
 
@@ -88,7 +92,7 @@ function CreateNewItemPageInner() {
         };
 
         fetchExistingOptions();
-    }, [itemType]);
+    }, [itemType, currentBranch]);
 
     const suggestions = useMemo(() => {
         if (!vendorSearch) return [];
@@ -122,6 +126,7 @@ function CreateNewItemPageInner() {
                 .from('inventory')
                 .insert([{
                     name: formData.productName,
+                    branch_id: currentBranch?.id,
                     vendor: formData.vendorName || null,
                     contact_person: formData.contactPerson || null,
                     phone_number: formData.phoneNumber || null,

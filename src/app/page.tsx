@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { RevenueBreakdownChart } from "@/components/RevenueBreakdownChart";
 import { supabase } from "@/lib/supabase";
+import { useBranch } from "@/context/BranchContext";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-fns";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -28,6 +29,7 @@ function cn(...inputs: ClassValue[]) {
 }
 
 export default function ReportsPage() {
+    const { currentBranch } = useBranch();
     const [stats, setStats] = useState({
         daily: 0,
         weekly: 0,
@@ -62,10 +64,11 @@ export default function ReportsPage() {
     };
 
     useEffect(() => {
-        fetchStats();
-    }, [timeframe, selectedYear, chartTimeframe]);
+        if (currentBranch) fetchStats();
+    }, [timeframe, selectedYear, chartTimeframe, currentBranch]);
 
     async function fetchStats() {
+        if (!currentBranch) return;
         setIsLoading(true);
         const refDate = new Date();
 
@@ -75,6 +78,7 @@ export default function ReportsPage() {
         const { data: mData } = await supabase
             .from('ledger_entries')
             .select('amount_paid')
+            .eq('branch_id', currentBranch.id)
             .gte('date', startM)
             .lte('date', endM);
 
@@ -84,6 +88,7 @@ export default function ReportsPage() {
         const { data: wData } = await supabase
             .from('ledger_entries')
             .select('amount_paid')
+            .eq('branch_id', currentBranch.id)
             .gte('date', startW)
             .lte('date', endW);
 
@@ -92,6 +97,7 @@ export default function ReportsPage() {
         const { data: dData } = await supabase
             .from('ledger_entries')
             .select('amount_paid')
+            .eq('branch_id', currentBranch.id)
             .eq('date', today);
 
         // Period Based (Filter)
@@ -102,6 +108,7 @@ export default function ReportsPage() {
             const { data: pData } = await supabase
                 .from('ledger_entries')
                 .select('amount_paid')
+                .eq('branch_id', currentBranch.id)
                 .gte('date', format(periodStartDate, 'yyyy-MM-dd'))
                 .lte('date', format(periodEndDate, 'yyyy-MM-dd'));
             stats.periodRevenue = pData?.reduce((acc, curr) => acc + Number(curr.amount_paid), 0) || 0;
@@ -111,6 +118,7 @@ export default function ReportsPage() {
             const { data: pData } = await supabase
                 .from('ledger_entries')
                 .select('amount_paid')
+                .eq('branch_id', currentBranch.id)
                 .gte('date', periodStartStr)
                 .lte('date', today);
             stats.periodRevenue = pData?.reduce((acc, curr) => acc + Number(curr.amount_paid), 0) || 0;
@@ -141,6 +149,7 @@ export default function ReportsPage() {
                 item_type,
                 treatments ( category )
             `)
+            .eq('branch_id', currentBranch.id)
             .gte('date', format(refStart, 'yyyy-MM-dd'))
             .lte('date', format(refEnd, 'yyyy-MM-dd'));
 
@@ -170,6 +179,7 @@ export default function ReportsPage() {
             const { data: dayEntries } = await supabase
                 .from('ledger_entries')
                 .select('amount_paid, created_at')
+                .eq('branch_id', currentBranch.id)
                 .eq('date', today);
 
             hours.forEach(hour => {
@@ -188,6 +198,7 @@ export default function ReportsPage() {
             const { data: weekEntries } = await supabase
                 .from('ledger_entries')
                 .select('amount_paid, date')
+                .eq('branch_id', currentBranch.id)
                 .gte('date', startW)
                 .lte('date', endW);
 
@@ -213,6 +224,7 @@ export default function ReportsPage() {
             const { data: monthEntries } = await supabase
                 .from('ledger_entries')
                 .select('amount_paid, date')
+                .eq('branch_id', currentBranch.id)
                 .gte('date', startM)
                 .lte('date', endM);
 
@@ -239,6 +251,7 @@ export default function ReportsPage() {
                 const { data: hist } = await supabase
                     .from('ledger_entries')
                     .select('amount_paid')
+                    .eq('branch_id', currentBranch.id)
                     .gte('date', s)
                     .lte('date', e);
                 const total = hist?.reduce((acc, curr) => acc + Number(curr.amount_paid), 0) || 0;
@@ -252,7 +265,8 @@ export default function ReportsPage() {
             .select(`
                 amount_paid,
                 staff:doctor_id (name)
-            `);
+            `)
+            .eq('branch_id', currentBranch.id);
 
         const staffAgg = (staffData || []).reduce((acc: any, curr: any) => {
             const name = curr.staff?.name || "Unknown";
@@ -267,7 +281,7 @@ export default function ReportsPage() {
             .slice(0, 3);
 
         // Patients
-        const { count } = await supabase.from('patients').select('*', { count: 'exact', head: true });
+        const { count } = await supabase.from('patients').select('*', { count: 'exact', head: true }).eq('branch_id', currentBranch.id);
 
         // Installment Logic
         const startOfMonthStr = format(startOfMonth(refDate), 'yyyy-MM-dd');
@@ -277,6 +291,7 @@ export default function ReportsPage() {
         const { data: overdueData } = await supabase
             .from('ledger_entries')
             .select('*, patients(name, phone), payment_plans(description)')
+            .eq('branch_id', currentBranch.id)
             .not('payment_plan_id', 'is', null)
             .eq('status', 'pending')
             .lt('date', today);
@@ -284,6 +299,7 @@ export default function ReportsPage() {
         const { data: forecastData } = await supabase
             .from('ledger_entries')
             .select('total_price')
+            .eq('branch_id', currentBranch.id)
             .not('payment_plan_id', 'is', null)
             .eq('status', 'pending')
             .gte('date', startOfMonthStr)

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Search, Plus, UserPlus, X, User } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import { useBranch } from "@/context/BranchContext";
 
 export default function PatientSearch({ onSelect }: { onSelect?: (patient: any) => void }) {
     const [query, setQuery] = useState("");
@@ -12,6 +13,7 @@ export default function PatientSearch({ onSelect }: { onSelect?: (patient: any) 
     const [selectionGuard, setSelectionGuard] = useState(false);
     const [newPatient, setNewPatient] = useState({ name: "", gender: "F", age: "", phone: "" });
     const router = useRouter();
+    const { currentBranch } = useBranch();
 
     useEffect(() => {
         if (selectionGuard) {
@@ -24,27 +26,29 @@ export default function PatientSearch({ onSelect }: { onSelect?: (patient: any) 
         } else {
             setResults([]);
         }
-    }, [query]);
+    }, [query, currentBranch]);
 
     async function searchPatients() {
-        if (!query || query.length <= 1) return;
+        if (!query || query.length <= 1 || !currentBranch) return;
         const { data } = await supabase
             .from('patients')
             .select('*')
+            .eq('branch_id', currentBranch.id)
             .ilike('name', `%${query}%`)
             .limit(5);
         if (data) setResults(data);
     }
 
     async function handleAddPatient() {
-        if (!newPatient.name) return;
+        if (!newPatient.name || !currentBranch) return;
         const { data, error } = await supabase
             .from('patients')
             .insert({
                 name: newPatient.name,
                 gender: newPatient.gender,
                 age: parseInt(newPatient.age) || 0,
-                phone: newPatient.phone
+                phone: newPatient.phone,
+                branch_id: currentBranch.id
             })
             .select()
             .single();

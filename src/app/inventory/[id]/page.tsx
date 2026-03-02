@@ -25,6 +25,7 @@ import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
+import { useBranch } from "@/context/BranchContext";
 import DatePicker from "@/components/DatePicker";
 
 // Placeholder vendor database
@@ -41,6 +42,7 @@ export default function ItemDetailsPage() {
     const router = useRouter();
     const params = useParams();
     const id = params.id as string;
+    const { currentBranch } = useBranch();
 
     const [vendorSearch, setVendorSearch] = useState("");
     const [showVendorSuggestions, setShowVendorSuggestions] = useState(false);
@@ -141,10 +143,11 @@ export default function ItemDetailsPage() {
                     setVendorSearch(item.vendor || "");
                 }
 
-                // Fetch suggestions scoped to the same item_type
+                // Fetch suggestions scoped to the same item_type and branch
                 const { data: suggestions, error: sugError } = await supabase
                     .from('inventory')
                     .select('category, unit')
+                    .eq('branch_id', currentBranch?.id)
                     .eq('item_type', item?.item_type || 'medicine');
                 if (sugError) throw sugError;
 
@@ -175,8 +178,8 @@ export default function ItemDetailsPage() {
             }
         };
 
-        if (id) fetchData();
-    }, [id]);
+        if (id && currentBranch) fetchData();
+    }, [id, currentBranch]);
 
     const suggestions = useMemo(() => {
         if (!vendorSearch) return [];

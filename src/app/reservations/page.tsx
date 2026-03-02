@@ -145,10 +145,11 @@ export default function ReservationsPage() {
 
     async function handlePatientSearch(q: string) {
         setPatientSearchQuery(q);
-        if (q.length > 1) {
+        if (q.length > 1 && currentBranch) {
             const { data } = await supabase
                 .from('patients')
                 .select('*')
+                .eq('branch_id', currentBranch.id)
                 .ilike('name', `%${q}%`)
                 .limit(5);
             if (data) setPatientResults(data);
