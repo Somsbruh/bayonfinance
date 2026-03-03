@@ -9,6 +9,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import Link from "next/link";
 
 const STATUS_FLOW = ['Registered', 'Doing Treatment', 'Finished'] as const;
 type AppointmentStatus = typeof STATUS_FLOW[number];
@@ -110,7 +111,13 @@ export default function AppointmentDetailModal({ appointment, onClose, onRefresh
                     {/* Header */}
                     <div className="flex items-start justify-between">
                         <div>
-                            <h2 className="text-[16px] font-black text-[#1B2559] tracking-tight">{patientName}</h2>
+                            {appt.patient_id ? (
+                                <Link href={`/patients/${appt.patient_id}`} className="hover:opacity-80 transition-opacity">
+                                    <h2 className="text-[16px] font-black text-[#1B2559] tracking-tight underline decoration-[#E0E5F2] underline-offset-4 decoration-2">{patientName}</h2>
+                                </Link>
+                            ) : (
+                                <h2 className="text-[16px] font-black text-[#1B2559] tracking-tight">{patientName}</h2>
+                            )}
                             <p className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest mt-0.5">
                                 {appt.date && format(new Date(appt.date + 'T00:00:00'), 'EEE, MMM d yyyy')}
                                 {appt.appointment_time && ` · ${appt.appointment_time.slice(0, 5)}`}
@@ -145,7 +152,18 @@ export default function AppointmentDetailModal({ appointment, onClose, onRefresh
 
                     {/* Status Section */}
                     <div>
-                        <p className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest mb-2">Status</p>
+                        <div className="flex items-center justify-between mb-2">
+                            <p className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">Status</p>
+                            {status === 'Finished' && appt.amount_remaining > 0 && appt.patient_id && (
+                                <Link
+                                    href={`/ledger?patient=${appt.patient_id}`}
+                                    className="flex items-center gap-1.5 px-3 py-1 bg-[#EE5D50]/10 text-[#EE5D50] rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-[#EE5D50] hover:text-white transition-all shadow-sm group"
+                                >
+                                    Receive Payment
+                                    <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                                </Link>
+                            )}
+                        </div>
                         <div className="flex gap-2">
                             {STATUS_FLOW.map((s, i) => {
                                 const st = STATUS_STYLES[s];

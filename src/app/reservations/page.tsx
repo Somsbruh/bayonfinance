@@ -28,7 +28,25 @@ import { cn } from "@/lib/utils";
 import { useBranch } from "@/context/BranchContext";
 import { supabase } from "@/lib/supabase";
 import { format, startOfWeek, addDays, isSameDay, addMonths } from "date-fns";
+import Link from "next/link";
 import AppointmentDetailModal from "@/components/AppointmentDetailModal";
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    horizontalListSortingStrategy,
+    useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 // Time Configuration
 const START_HOUR = 8;
@@ -64,6 +82,19 @@ export default function ReservationsPage() {
     const [showDoctorFilter, setShowDoctorFilter] = useState(false);
     const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
 
+    // Override State
+    const [customStartTime, setCustomStartTime] = useState<string>("09:00");
+    const [customDuration, setCustomDuration] = useState<number>(30);
+
+    // Drag to Select State
+    const [dragSelection, setDragSelection] = useState({
+        isDragging: false,
+        startDocId: null as string | null,
+        startDateStr: null as string | null,
+        startIdx: null as number | null,
+        currentIdx: null as number | null
+    });
+
     // Installment Plan State
     const [isInstallmentPlan, setIsInstallmentPlan] = useState(false);
     const [totalTreatmentPrice, setTotalTreatmentPrice] = useState<number>(0);
@@ -71,6 +102,28 @@ export default function ReservationsPage() {
     const [monthlyAmount, setMonthlyAmount] = useState<number>(100);
     const [planStartDate, setPlanStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [planDurationMonths, setPlanDurationMonths] = useState(12);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleColumnSortEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            setDoctors((items) => {
+                const oldIndex = items.findIndex((i) => i.id === active.id);
+                const newIndex = items.findIndex((i) => i.id === over.id);
+                return arrayMove(items, oldIndex, newIndex);
+            });
+        }
+    };
 
     // Generate time slots
     const timeSlots = useMemo(() => {
@@ -99,6 +152,17 @@ export default function ReservationsPage() {
     useEffect(() => {
         if (currentBranch) {
             fetchInitialData();
+
+            const channel = supabase
+                .channel('public:ledger_entries')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'ledger_entries' }, () => {
+                    fetchInitialData();
+                })
+                .subscribe();
+
+            return () => {
+                supabase.removeChannel(channel);
+            };
         }
     }, [currentBranch, selectedDate, view]);
 
@@ -112,14 +176,24 @@ export default function ReservationsPage() {
 
         if (staffData) setDoctors(staffData);
 
-        const isoDate = format(selectedDate, 'yyyy-MM-dd');
-        const { data: apptData } = await supabase
+        let apptQuery = supabase
             .from('ledger_entries')
             .select('*, patients(name, phone, gender, age), treatments(name, duration_minutes), staff!doctor_id(name)')
             .eq('branch_id', currentBranch?.id)
-            .eq('date', isoDate)
             .not('appointment_time', 'is', null)
             .order('appointment_time', { ascending: true });
+
+        if (view === 'day') {
+            apptQuery = apptQuery.eq('date', format(selectedDate, 'yyyy-MM-dd'));
+        } else {
+            const weekSt = startOfWeek(selectedDate, { weekStartsOn: 1 });
+            const weekEnd = addDays(weekSt, 6);
+            apptQuery = apptQuery
+                .gte('date', format(weekSt, 'yyyy-MM-dd'))
+                .lte('date', format(weekEnd, 'yyyy-MM-dd'));
+        }
+
+        const { data: apptData } = await apptQuery;
 
         if (apptData) setAppointments(apptData);
 
@@ -143,8 +217,10 @@ export default function ReservationsPage() {
         selectedDoctorId ? doctors.filter(d => d.id === selectedDoctorId) : doctors
         , [doctors, selectedDoctorId]);
 
-    const handleOpenModal = (doc: any, slot: any, date: Date) => {
+    const handleOpenModal = (doc: any, slot: any, date: Date, overrideDuration?: number) => {
         setSelectedSlot({ doc, slot, date });
+        setCustomStartTime(slot.iso.slice(0, 5));
+        setCustomDuration(overrideDuration || 30);
         setPatientSearchQuery("");
         setPatientResults([]);
         setTreatmentSearchQuery("");
@@ -155,6 +231,82 @@ export default function ReservationsPage() {
         setActivePatientPlans([]);
         setStep('search');
         setIsModalOpen(true);
+    };
+
+    // --- Drag to Select Handlers ---
+    const handleCellMouseDown = (docId: string, dateStr: string, slotIdx: number) => {
+        setDragSelection({
+            isDragging: true,
+            startDocId: docId,
+            startDateStr: dateStr,
+            startIdx: slotIdx,
+            currentIdx: slotIdx
+        });
+    };
+
+    const handleCellMouseEnter = (docId: string, dateStr: string, slotIdx: number) => {
+        if (!dragSelection.isDragging || dragSelection.startDocId !== docId || dragSelection.startDateStr !== dateStr) return;
+        setDragSelection(prev => ({ ...prev, currentIdx: slotIdx }));
+    };
+
+    const handleCellMouseUp = (doc: any, date: Date, slotIdx: number, startIso: string) => {
+        if (!dragSelection.isDragging) {
+            handleOpenModal(doc, { iso: startIso }, date);
+            return;
+        }
+
+        const { startIdx, currentIdx } = dragSelection;
+        const low = Math.min(startIdx || slotIdx, currentIdx || slotIdx);
+        const high = Math.max(startIdx || slotIdx, currentIdx || slotIdx);
+        const blocks = high - low + 1;
+        const finalDuration = blocks * INCREMENT_MINUTES;
+
+        // Reset drag
+        setDragSelection({ isDragging: false, startDocId: null, startDateStr: null, startIdx: null, currentIdx: null });
+
+        // Calculate ISO for the start slot using the full index
+        const startBlockIso = timeSlots[low]?.iso || startIso;
+        handleOpenModal(doc, { iso: startBlockIso }, date, finalDuration);
+    };
+
+    const isCellInDragSelection = (docId: string, dateStr: string, slotIdx: number) => {
+        if (!dragSelection.isDragging || dragSelection.startDocId !== docId || dragSelection.startDateStr !== dateStr) return false;
+        if (dragSelection.startIdx === null || dragSelection.currentIdx === null) return false;
+        const low = Math.min(dragSelection.startIdx, dragSelection.currentIdx);
+        const high = Math.max(dragSelection.startIdx, dragSelection.currentIdx);
+        return slotIdx >= low && slotIdx <= high;
+    };
+
+    // --- Drag & Drop Reschedule Handlers ---
+    const handleApptDragStart = (e: React.DragEvent, apptId: string) => {
+        e.dataTransfer.setData('apptId', apptId);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleApptDrop = async (e: React.DragEvent, docId: string, dateStr: string, timeIso: string) => {
+        e.preventDefault();
+        const apptId = e.dataTransfer.getData('apptId');
+        if (!apptId) return;
+
+        const appt = appointments.find(a => a.id === apptId);
+        if (!appt) return;
+
+        // Optimistic update
+        setAppointments(prev => prev.map(a =>
+            a.id === apptId
+                ? { ...a, doctor_id: docId, date: dateStr, appointment_time: timeIso }
+                : a
+        ));
+
+        // Supabase update
+        await supabase
+            .from('ledger_entries')
+            .update({
+                doctor_id: docId,
+                date: dateStr,
+                appointment_time: timeIso
+            })
+            .eq('id', apptId);
     };
 
     async function handlePatientSearch(q: string) {
@@ -247,8 +399,8 @@ export default function ReservationsPage() {
                     amount_paid: 0,
                     amount_remaining: isInstallmentPlan ? depositAmount : totalTreatmentPrice,
                     date: format(selectedSlot.date, 'yyyy-MM-dd'),
-                    appointment_time: selectedSlot.slot.iso,
-                    duration_minutes: selectedTreatment?.duration_minutes || 15,
+                    appointment_time: `${customStartTime}:00`,
+                    duration_minutes: customDuration,
                     branch_id: currentBranch.id,
                     status: 'Registered',
                     item_type: 'treatment',
@@ -310,6 +462,10 @@ export default function ReservationsPage() {
         }
     };
 
+    // Calculate Week Days
+    const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 }); // Monday start
+    const weekDays = useMemo(() => Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i)), [weekStart]);
+
     return (
         <div className="w-full flex flex-col h-screen animate-in fade-in duration-500 overflow-hidden bg-white">
             {/* Header Tabs */}
@@ -348,9 +504,19 @@ export default function ReservationsPage() {
                         <button onClick={() => setSelectedDate(new Date())} className="px-6 py-2.5 bg-white border border-[#E0E5F2] rounded-lg text-[12px] font-medium text-[#1B2559] uppercase hover:bg-[#F4F7FE] transition-all shadow-sm">Today</button>
                         <div className="flex items-center gap-2 ml-1">
                             <button onClick={() => setSelectedDate(addDays(selectedDate, -1))} className="p-2 border border-[#E0E5F2] rounded-lg text-[#A3AED0] hover:text-[#1B2559] hover:bg-gray-50"><ChevronLeft className="w-4 h-4" /></button>
-                            <span className="text-[14px] font-medium text-[#1B2559] min-w-[150px] text-center tracking-tight">
+                            <label className="text-[14px] font-medium text-[#1B2559] min-w-[150px] text-center tracking-tight relative group cursor-pointer">
                                 {format(selectedDate, 'EEE, d MMM yyyy')}
-                            </span>
+                                <input
+                                    type="date"
+                                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                    value={format(selectedDate, 'yyyy-MM-dd')}
+                                    onChange={(e) => {
+                                        if (e.target.value) {
+                                            setSelectedDate(new Date(e.target.value));
+                                        }
+                                    }}
+                                />
+                            </label>
                             <button onClick={() => setSelectedDate(addDays(selectedDate, 1))} className="p-2 border border-[#E0E5F2] rounded-lg text-[#A3AED0] hover:text-[#1B2559] hover:bg-gray-50"><ChevronRight className="w-4 h-4" /></button>
                         </div>
                     </div>
@@ -410,29 +576,57 @@ export default function ReservationsPage() {
             {/* Calendar Grid — only when calendar tab active */}
             {activeTab === 'calendar' && <div className="flex-1 overflow-x-auto overflow-y-hidden relative border-t border-[#f5f7fd] custom-scrollbar">
                 <div className="flex flex-col min-w-max h-full">
-                    {/* Doctor Header Row */}
-                    <div className="flex shrink-0 sticky top-0 z-40 bg-white">
-                        <div className="w-[80px] border-r border-b border-[#f5f7fd] flex flex-col items-center justify-center py-4 bg-[#F4F7FE]/20 shrink-0 sticky left-0 z-[45] backdrop-blur-sm">
-                            <span className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest leading-none">GMT</span>
-                            <span className="text-[11px] font-medium text-[#1B2559] mt-0.5">+07:00</span>
-                        </div>
-                        {visibleDoctors.map(doc => (
-                            <div key={doc.id} className="min-w-[260px] flex-1 border-r border-b border-[#f5f7fd] px-4 py-3 flex items-center justify-between group bg-white shadow-[inset_0_-1px_0_0_#f5f7fd]">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full border border-[#E0E5F2] flex items-center justify-center bg-white shadow-sm shrink-0">
-                                        <User className="w-5 h-5 text-[#A3AED0]" />
+                    {/* Headers */}
+                    {view === 'day' ? (
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleColumnSortEnd}
+                        >
+                            <SortableContext
+                                items={visibleDoctors.map(d => d.id)}
+                                strategy={horizontalListSortingStrategy}
+                            >
+                                <div className="flex shrink-0 sticky top-0 z-40 bg-white">
+                                    <div className="w-[80px] border-r border-b border-[#f5f7fd] flex flex-col items-center justify-center py-4 bg-[#F4F7FE]/20 shrink-0 sticky left-0 z-[45] backdrop-blur-sm">
+                                        <span className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest leading-none">GMT</span>
+                                        <span className="text-[11px] font-medium text-[#1B2559] mt-0.5">+07:00</span>
                                     </div>
-                                    <div className="truncate">
-                                        <h4 className="text-[14px] font-black text-[#1B2559] truncate uppercase leading-tight tracking-tight">{doc.name}</h4>
-                                        <p className="text-[11px] font-medium text-[#A3AED0] uppercase truncate leading-none mt-0.5">
-                                            <span className="text-[#1B2559] font-bold">{(appointments.filter(a => a.doctor_id === doc.id).length)} PTS</span>
-                                        </p>
-                                    </div>
+                                    {visibleDoctors.map(doc => (
+                                        <SortableDoctorHeader
+                                            key={doc.id}
+                                            doc={doc}
+                                            appointments={appointments}
+                                            onClickFilter={(id: string) => setSelectedDoctorId(id)}
+                                        />
+                                    ))}
                                 </div>
-                                <button className="p-1.5 text-[#A3AED0] opacity-0 group-hover:opacity-100 transition-opacity"><MoreHorizontal className="w-4 h-4" /></button>
+                            </SortableContext>
+                        </DndContext>
+                    ) : (
+                        <div className="flex shrink-0 sticky top-0 z-40 bg-white">
+                            <div className="w-[80px] border-r border-b border-[#f5f7fd] flex flex-col items-center justify-center py-4 bg-[#F4F7FE]/20 shrink-0 sticky left-0 z-[45] backdrop-blur-sm">
+                                <span className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest leading-none">GMT</span>
+                                <span className="text-[11px] font-medium text-[#1B2559] mt-0.5">+07:00</span>
                             </div>
-                        ))}
-                    </div>
+                            {weekDays.map((day, idx) => {
+                                const isToday = isSameDay(day, new Date());
+                                return (
+                                    <div key={idx} className={cn(
+                                        "w-[280px] min-w-[280px] flex-1 border-r border-b border-[#f5f7fd] px-4 py-3 flex flex-col items-center justify-center bg-white shadow-[inset_0_-1px_0_0_#f5f7fd]",
+                                        isToday && "bg-[#F4F7FE]/30"
+                                    )}>
+                                        <span className={cn("text-[11px] font-black uppercase tracking-widest", isToday ? "text-[#3B82F6]" : "text-[#A3AED0]")}>
+                                            {format(day, 'EEEE')}
+                                        </span>
+                                        <span className={cn("text-[15px] font-black mt-0.5", isToday ? "text-[#3B82F6]" : "text-[#1B2559]")}>
+                                            {format(day, 'MMM d')}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
 
                     {/* Scrollable Grid Body */}
                     <div className="flex-1 overflow-y-auto custom-scrollbar relative">
@@ -448,60 +642,110 @@ export default function ReservationsPage() {
 
                             {/* Data Columns */}
                             <div className="flex flex-1">
-                                {visibleDoctors.map(doc => {
+                                {(view === 'day' ? visibleDoctors : weekDays).map((colItem: any, colIdx: number) => {
+                                    const isDayView = view === 'day';
+                                    const doc = isDayView ? colItem : (visibleDoctors[0] || doctors[0]);
+                                    const day = isDayView ? selectedDate : colItem;
+                                    const dateStr = format(day, 'yyyy-MM-dd');
+
                                     let slotsToSkip = 0;
                                     return (
-                                        <div key={doc.id} className="min-w-[240px] flex-1 border-r border-[#f5f7fd] relative">
-                                            {timeSlots.map(slot => {
-                                                const appt = appointments.find(a => a.doctor_id === doc.id && a.appointment_time === slot.iso);
+                                        <div
+                                            key={isDayView ? doc.id : colIdx}
+                                            className={cn(
+                                                "flex-none border-r border-[#f5f7fd] relative select-none",
+                                                isDayView ? "w-[260px]" : "w-[280px]"
+                                            )}
+                                        >
+                                            {timeSlots.map((slot, slotIdx) => {
+                                                const apptsInSlot = appointments.filter(a => a.doctor_id === doc?.id && a.appointment_time === slot.iso && a.date === dateStr);
+                                                const appt = apptsInSlot[0];
                                                 const isBreak = isBreakTime(slot.iso);
+                                                const isSelected = isCellInDragSelection(doc?.id, dateStr, slotIdx);
 
                                                 if (slotsToSkip > 0) {
                                                     slotsToSkip--;
                                                     return (
                                                         <div key={slot.iso} className={cn(
                                                             "h-[27px] border-b border-[#f5f7fd] relative group",
-                                                            isBreak ? "bg-stripes-gray micro-opacity" : ""
+                                                            isBreak ? "bg-stripes-gray micro-opacity" : "",
+                                                            isSelected ? "bg-[#3B82F6]/20 border-[#3B82F6]/30 border-y shadow-[inset_0_0_0_1px_rgba(59,130,246,0.2)]" : ""
                                                         )} />
                                                     );
                                                 }
 
-                                                if (appt) {
-                                                    const duration = appt.duration_minutes || appt.treatments?.duration_minutes || 30;
-                                                    const span = Math.max(1, Math.ceil(duration / INCREMENT_MINUTES));
+                                                if (apptsInSlot.length > 0) {
+                                                    const maxDuration = Math.max(...apptsInSlot.map(a => a.duration_minutes || a.treatments?.duration_minutes || 30));
+                                                    const span = Math.max(1, Math.ceil(maxDuration / INCREMENT_MINUTES));
                                                     slotsToSkip = span - 1;
-                                                    const styles = getStatusStyles(appt.status);
 
                                                     return (
                                                         <div key={slot.iso} className={cn(
-                                                            "border-b border-[#f5f7fd] relative group cursor-pointer",
+                                                            "border-b border-[#f5f7fd] relative group cursor-pointer flex gap-1 px-1 py-1",
                                                             isBreak ? "bg-stripes-gray micro-opacity" : ""
-                                                        )} style={{ height: `${span * 27}px` }}
-                                                            onClick={() => setSelectedAppointment(appt)}
+                                                        )}
+                                                            style={{ height: `${span * 27}px` }}
+                                                            onDragOver={(e) => { if (!isBreak) e.preventDefault(); }}
+                                                            onDrop={(e) => {
+                                                                if (isBreak) return;
+                                                                handleApptDrop(e, doc?.id, dateStr, slot.iso);
+                                                            }}
+                                                            onMouseUp={() => {
+                                                                if (dragSelection.isDragging) {
+                                                                    handleCellMouseUp(doc, day, slotIdx, slot.iso);
+                                                                }
+                                                            }}
                                                         >
-                                                            <div className={cn(
-                                                                "absolute inset-1 rounded-lg px-3 py-1.5 border shadow-sm z-20 flex items-center transition-all hover:scale-[1.01] hover:shadow-md gap-2",
-                                                                styles?.bg, styles?.border
-                                                            )}>
-                                                                <div className={cn("w-2 h-2 rounded-full shrink-0", styles?.dot)} />
-                                                                <span className="text-[11px] font-black text-[#1B2559] truncate uppercase leading-none">{appt.patients?.name || appt.manual_patient_name}</span>
-                                                                <span className="ml-auto text-[10px] font-medium text-[#A3AED0] opacity-70 truncate pl-2 uppercase">{appt.treatments?.name?.slice(0, 18)}</span>
-                                                            </div>
+                                                            {apptsInSlot.map((item, i) => {
+                                                                const styles = getStatusStyles(item.status);
+                                                                return (
+                                                                    <div key={item.id} className={cn(
+                                                                        "flex-1 rounded-lg px-2 py-1.5 border shadow-sm z-20 flex flex-col transition-all hover:scale-[1.01] hover:shadow-md cursor-pointer overflow-hidden select-none",
+                                                                        styles?.bg, styles?.border
+                                                                    )}
+                                                                        onClick={(e) => { e.stopPropagation(); setSelectedAppointment(item); }}
+                                                                        draggable
+                                                                        onDragStart={(e) => handleApptDragStart(e, item.id)}
+                                                                    >
+                                                                        <div className="flex items-center gap-1.5">
+                                                                            <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", styles?.dot)} />
+                                                                            <span className="text-[10px] font-black text-[#1B2559] truncate uppercase leading-none">{item.patients?.name || item.manual_patient_name}</span>
+                                                                        </div>
+                                                                        {span > 1 && (
+                                                                            <span className="text-[9px] font-medium text-[#A3AED0] opacity-80 truncate uppercase mt-1">{item.treatments?.name?.slice(0, 18) || item.staff?.name}</span>
+                                                                        )}
+                                                                    </div>
+                                                                )
+                                                            })}
                                                         </div>
                                                     );
                                                 }
 
                                                 return (
                                                     <div key={slot.iso} className={cn(
-                                                        "h-[27px] border-b border-[#f5f7fd] relative group",
-                                                        isBreak ? "bg-stripes-gray micro-opacity" : ""
-                                                    )}>
-                                                        {!isBreak && (
-                                                            <button onClick={() => handleOpenModal(doc, slot, selectedDate)} className="absolute inset-0 border border-dashed border-[#f5f7fd]/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all bg-white/50 z-10">
-                                                                <Plus className="w-4 h-4 text-[#A3AED0]" />
-                                                            </button>
-                                                        )}
-                                                    </div>
+                                                        "h-[27px] border-b border-[#f5f7fd] relative group select-none",
+                                                        isBreak ? "bg-stripes-gray micro-opacity" : "",
+                                                        isSelected ? "bg-[#3B82F6]/20 border-[#3B82F6]/30 border-y shadow-[inset_0_0_0_1px_rgba(59,130,246,0.2)]" : "hover:bg-[#F4F7FE]/30"
+                                                    )}
+                                                        onMouseDown={(e) => {
+                                                            if (e.button !== 0 || isBreak) return;
+                                                            e.preventDefault(); // Prevent text selection
+                                                            handleCellMouseDown(doc?.id, dateStr, slotIdx);
+                                                        }}
+                                                        onMouseEnter={() => {
+                                                            if (isBreak) return;
+                                                            handleCellMouseEnter(doc?.id, dateStr, slotIdx);
+                                                        }}
+                                                        onMouseUp={() => {
+                                                            if (isBreak && !dragSelection.isDragging) return;
+                                                            handleCellMouseUp(doc, day, slotIdx, slot.iso);
+                                                        }}
+                                                        onDragOver={(e) => { if (!isBreak) e.preventDefault(); }}
+                                                        onDrop={(e) => {
+                                                            if (isBreak) return;
+                                                            handleApptDrop(e, doc?.id, dateStr, slot.iso);
+                                                        }}
+                                                    />
                                                 );
                                             })}
                                         </div>
@@ -889,6 +1133,30 @@ export default function ReservationsPage() {
                                             </p>
                                         </div>
                                     </div>
+
+                                    {/* Modal Overrides */}
+                                    <div className="grid grid-cols-2 gap-3 pt-2">
+                                        <div className="space-y-1">
+                                            <label className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Start Time</label>
+                                            <input
+                                                type="time"
+                                                className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg px-3 py-2 text-[10px] font-medium text-[#1B2559] outline-none"
+                                                value={customStartTime}
+                                                onChange={(e) => setCustomStartTime(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[8px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Duration (Mins)</label>
+                                            <input
+                                                type="number"
+                                                step={15}
+                                                min={15}
+                                                className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg px-3 py-2 text-[10px] font-medium text-[#1B2559] outline-none"
+                                                value={customDuration}
+                                                onChange={(e) => setCustomDuration(Number(e.target.value))}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Installment Toggle & Config */}
@@ -1013,7 +1281,8 @@ export default function ReservationsPage() {
                 </div>
             )}
 
-            <style jsx global>{`
+            <style dangerouslySetInnerHTML={{
+                __html: `
                 .bg-stripes-gray {
                     background: repeating-linear-gradient(-45deg, #F4F7FE, #F4F7FE 3px, #FFFFFF 3px, #FFFFFF 6px);
                 }
@@ -1023,7 +1292,54 @@ export default function ReservationsPage() {
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: #E0E5F2; border-radius: 10px; }
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #A3AED0; }
-            `}</style>
+            `}} />
+        </div>
+    );
+}
+
+function SortableDoctorHeader({ doc, appointments, onClickFilter }: any) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: doc.id });
+
+    const style = {
+        transform: CSS.Translate.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : 0,
+        opacity: isDragging ? 0.5 : 1,
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className="w-[260px] flex-none border-r border-b border-[#f5f7fd] px-4 py-3 flex items-center justify-between group bg-white shadow-[inset_0_-1px_0_0_#f5f7fd] cursor-grab active:cursor-grabbing select-none"
+            {...attributes}
+            {...listeners}
+        >
+            <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full border border-[#E0E5F2] flex items-center justify-center bg-white shadow-sm shrink-0">
+                    <User className="w-5 h-5 text-[#A3AED0]" />
+                </div>
+                <div className="truncate">
+                    <h4 className="text-[14px] font-black text-[#1B2559] truncate uppercase leading-tight tracking-tight">{doc.name}</h4>
+                    <p className="text-[11px] font-medium text-[#A3AED0] uppercase truncate leading-none mt-0.5">
+                        <span className="text-[#1B2559] font-bold">{(appointments.filter((a: any) => a.doctor_id === doc.id).length)} PTS</span>
+                    </p>
+                </div>
+            </div>
+            <button
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); onClickFilter(doc.id); }}
+                className="p-1.5 text-[#A3AED0] opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+                <MoreHorizontal className="w-4 h-4" />
+            </button>
         </div>
     );
 }

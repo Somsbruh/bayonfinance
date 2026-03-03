@@ -22,9 +22,93 @@ import { supabase } from "@/lib/supabase";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useCurrency } from "@/context/CurrencyContext";
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
+}
+
+// Draggable Staff Row Component
+function SortableStaffRow({ staff, handleUpdateCommission }: { staff: any; handleUpdateCommission: (id: string, rate: number) => void }) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: staff.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 10 : 1,
+        position: 'relative' as const,
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={cn(
+                "flex items-center justify-between p-4 bg-slate-900/50 border rounded-lg transition-colors group",
+                isDragging ? "border-primary shadow-2xl shadow-primary/20 bg-slate-800" : "border-white/5",
+            )}
+        >
+            <div className="flex items-center gap-3">
+                <div
+                    {...attributes}
+                    {...listeners}
+                    className="flex flex-col gap-[3px] p-2 hover:bg-white/10 rounded cursor-grab active:cursor-grabbing text-slate-500 hover:text-white transition-colors"
+                >
+                    <div className="flex gap-[3px]">
+                        <div className="w-1 h-1 bg-current rounded-full" />
+                        <div className="w-1 h-1 bg-current rounded-full" />
+                    </div>
+                    <div className="flex gap-[3px]">
+                        <div className="w-1 h-1 bg-current rounded-full" />
+                        <div className="w-1 h-1 bg-current rounded-full" />
+                    </div>
+                    <div className="flex gap-[3px]">
+                        <div className="w-1 h-1 bg-current rounded-full" />
+                        <div className="w-1 h-1 bg-current rounded-full" />
+                    </div>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-medium text-sm shrink-0">
+                    {staff.name.charAt(0)}
+                </div>
+                <div>
+                    <p className="text-sm font-medium text-white">{staff.name}</p>
+                    <p className="text-[10px] text-slate-500 uppercase">{staff.role}</p>
+                </div>
+            </div>
+            <div className="flex flex-col items-end gap-1 shrink-0">
+                <span className="text-[9px] text-slate-500 font-medium uppercase tracking-widest">Comm. Rate (%)</span>
+                <input
+                    type="number"
+                    className="w-20 bg-slate-950 border border-white/10 rounded-lg px-2 py-1 text-right text-sm font-medium text-white focus:border-primary/50 focus:outline-none"
+                    value={staff.commission_rate || 0}
+                    onChange={(e) => handleUpdateCommission(staff.id, Number(e.target.value))}
+                />
+            </div>
+        </div>
+    );
 }
 
 export default function SettingsPage() {
@@ -67,7 +151,7 @@ export default function SettingsPage() {
 
     async function fetchStaff() {
         setIsLoadingData(true);
-        const { data } = await supabase.from('staff').select('*').order('name');
+        const { data } = await supabase.from('staff').select('*').order('order_index', { ascending: true });
         if (data) setStaffList(data);
         setIsLoadingData(false);
     }
@@ -97,6 +181,72 @@ export default function SettingsPage() {
         if (!error) {
             // Optimistic update
             setStaffList(prev => prev.map(s => s.id === id ? { ...s, commission_rate: rate } : s));
+        }
+    }
+
+    async function handleMoveStaff(index: number, direction: 'up' | 'down') {
+        if ((direction === 'up' && index === 0) || (direction === 'down' && index === staffList.length - 1)) return;
+
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        const newStaffList = [...staffList];
+
+        // Swap their relative positions in our local state
+        const temp = newStaffList[index];
+        newStaffList[index] = newStaffList[newIndex];
+        newStaffList[newIndex] = temp;
+
+        // Apply visual update immediately
+        setStaffList(newStaffList);
+
+        // Update database with new full order
+        const updates = newStaffList.map((staff, currentIdx) => ({
+            id: staff.id,
+            order_index: currentIdx
+        }));
+
+        for (const update of updates) {
+            await supabase
+                .from('staff')
+                .update({ order_index: update.order_index })
+                .eq('id', update.id);
+        }
+    }
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 5,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    async function handleDragEnd(event: DragEndEvent) {
+        const { active, over } = event;
+
+        if (over && active.id !== over.id) {
+            const oldIndex = staffList.findIndex((item) => item.id === active.id);
+            const newIndex = staffList.findIndex((item) => item.id === over.id);
+
+            const newStaffList = arrayMove(staffList, oldIndex, newIndex);
+
+            // Visual Update Instantly
+            setStaffList(newStaffList);
+
+            // Database Sync
+            const updates = newStaffList.map((staff, currentIdx) => ({
+                id: staff.id,
+                order_index: currentIdx
+            }));
+
+            for (const update of updates) {
+                await supabase
+                    .from('staff')
+                    .update({ order_index: update.order_index })
+                    .eq('id', update.id);
+            }
         }
     }
 
@@ -390,28 +540,24 @@ export default function SettingsPage() {
                                                 ) : activeAdminSection === 'staff' ? (
                                                     /* Staff List with Commission Edits */
                                                     <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                                                        {staffList.map((staff) => (
-                                                            <div key={staff.id} className="flex items-center justify-between p-4 bg-slate-900/50 border border-white/5 rounded-lg">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-medium text-sm">
-                                                                        {staff.name.charAt(0)}
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="text-sm font-medium text-white">{staff.name}</p>
-                                                                        <p className="text-[10px] text-slate-500 uppercase">{staff.role}</p>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="flex flex-col items-end gap-1">
-                                                                    <span className="text-[9px] text-slate-500 font-medium uppercase tracking-widest">Comm. Rate (%)</span>
-                                                                    <input
-                                                                        type="number"
-                                                                        className="w-20 bg-slate-950 border border-white/10 rounded-lg px-2 py-1 text-right text-sm font-medium text-white focus:border-primary/50 focus:outline-none"
-                                                                        value={staff.commission_rate || 0}
-                                                                        onChange={(e) => handleUpdateCommission(staff.id, Number(e.target.value))}
+                                                        <DndContext
+                                                            sensors={sensors}
+                                                            collisionDetection={closestCenter}
+                                                            onDragEnd={handleDragEnd}
+                                                        >
+                                                            <SortableContext
+                                                                items={staffList.map(s => s.id)}
+                                                                strategy={verticalListSortingStrategy}
+                                                            >
+                                                                {staffList.map((staff) => (
+                                                                    <SortableStaffRow
+                                                                        key={staff.id}
+                                                                        staff={staff}
+                                                                        handleUpdateCommission={handleUpdateCommission}
                                                                     />
-                                                                </div>
-                                                            </div>
-                                                        ))}
+                                                                ))}
+                                                            </SortableContext>
+                                                        </DndContext>
                                                     </div>
                                                 ) : activeAdminSection === 'logs' ? (
                                                     /* Financial Logs View - Professional Invoice Style */
