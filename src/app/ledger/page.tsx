@@ -656,25 +656,27 @@ export default function LedgerPage() {
     )}>
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-4">
-          {/* View Toggle - Compact - Now on the left */}
-          <div className="bg-[#F4F7FE] p-1 rounded-none border border-[#E0E5F2] flex items-center gap-1 shrink-0">
-            {(['manual', 'list', 'calendar'] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setViewMode(v)}
-                className={cn(
-                  "px-4 py-1.5 rounded-none text-[9px] font-medium uppercase tracking-widest transition-all whitespace-nowrap",
-                  viewMode === v ? "bg-white text-primary shadow-sm border border-[#E0E5F2]" : "text-[#A3AED0] hover:text-[#1B2559]"
-                )}
-              >
-                {v === 'manual' && 'Manual View'}
-                {v === 'list' && 'Daily View'}
-                {v === 'calendar' && 'Calendar'}
-              </button>
-            ))}
+          {/* View Toggle - Premium Tabs */}
+          <div className="flex items-center gap-8 border-b border-[#E0E5F2] pt-2 min-w-[280px]">
+            {(['manual', 'list', 'calendar'] as const).map((v) => {
+              const isActive = viewMode === v;
+              return (
+                <button
+                  key={v}
+                  onClick={() => setViewMode(v)}
+                  className={cn(
+                    "pb-2.5 text-[12px] font-bold transition-all relative uppercase tracking-wider",
+                    isActive ? "text-[#4318FF]" : "text-[#A3AED0] hover:text-[#1B2559]"
+                  )}
+                >
+                  {v === 'manual' && 'Manual View'}
+                  {v === 'list' && 'Daily View'}
+                  {v === 'calendar' && 'Calendar'}
+                  {isActive && <div className="absolute -bottom-[0.5px] left-0 right-0 h-[2px] bg-[#4318FF] rounded-t-full" />}
+                </button>
+              );
+            })}
           </div>
-
-          <div className="h-6 w-px bg-[#E0E5F2] mx-2 hidden xl:block" />
         </div>
 
         <div className="flex items-center gap-3">
@@ -1013,20 +1015,20 @@ export default function LedgerPage() {
                 <table className="w-full text-left border-collapse manual-spreadsheet">
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-[#F4F7FE] border-b border-[#E0E5F2]">
-                      <th className="px-2 py-2 border-r border-[#E0E5F2] w-[80px] text-center align-middle relative">
-                        <span className="text-[10px] font-medium text-[#1B2559] uppercase">Time</span>
+                      <th className="px-3 py-3 border-r border-[#E0E5F2] w-[80px] text-center align-middle relative">
+                        <span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Time</span>
                       </th>
 
-                      <th className="px-2 py-2 text-[10px] font-medium text-[#1B2559] uppercase border-r border-[#E0E5F2] w-12 text-center">No.</th>
-                      <th className="px-4 py-2 text-[10px] font-medium text-[#1B2559] uppercase border-r border-[#E0E5F2]">Patient</th>
-                      <th className="px-4 py-2 text-[10px] font-medium text-[#1B2559] uppercase border-r border-[#E0E5F2]">Medical Service</th>
-                      <th className="px-4 py-2 text-[10px] font-medium text-[#1B2559] uppercase border-r border-[#E0E5F2] w-20 text-center">Price</th>
-                      <th className="px-2 py-2 text-[10px] font-medium text-[#1B2559] uppercase border-r border-[#E0E5F2] w-12 text-center">Qty</th>
-                      <th className="px-4 py-2 text-[10px] font-medium text-[#1B2559] uppercase border-r border-[#E0E5F2] w-24 text-center">Total</th>
-                      <th className="px-4 py-2 text-[10px] font-medium text-[#1B2559] uppercase border-r border-[#E0E5F2] w-24 text-center">Paid</th>
-                      <th className="px-4 py-2 text-[10px] font-medium text-[#1B2559] uppercase border-r border-[#E0E5F2] w-24 text-center text-[#EE5D50]">Remaining</th>
-                      <th className="px-4 py-2 text-[10px] font-medium text-[#1B2559] uppercase border-r border-[#E0E5F2] w-[120px] text-center">Dentist</th>
-                      <th className="px-4 py-2 text-[10px] font-medium text-[#1B2559] uppercase w-[120px] text-center">Cashier</th>
+                      <th className="px-3 py-3 text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest border-r border-[#E0E5F2] w-12 text-center">No.</th>
+                      <th className="px-5 py-3 text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest border-r border-[#E0E5F2] min-w-[200px]">Patient</th>
+                      <th className="px-5 py-3 text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest border-r border-[#E0E5F2] min-w-[160px]">Medical Service</th>
+                      <th className="px-4 py-3 text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest border-r border-[#E0E5F2] w-24 text-center">Price</th>
+                      <th className="px-2 py-3 text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest border-r border-[#E0E5F2] w-12 text-center">Qty</th>
+                      <th className="px-4 py-3 text-[11px] font-black text-[#A3AED0] uppercase tracking-widest border-r border-[#E0E5F2] w-28 text-center">Total</th>
+                      <th className="px-4 py-3 text-[11px] font-black text-[#A3AED0] uppercase tracking-widest border-r border-[#E0E5F2] w-28 text-center">Paid</th>
+                      <th className="px-4 py-3 text-[11px] font-black text-[#A3AED0] uppercase tracking-widest border-r border-[#E0E5F2] w-28 text-center text-[#EE5D50]">Remaining</th>
+                      <th className="px-4 py-3 text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest border-r border-[#E0E5F2] w-[140px] text-center">Dentist</th>
+                      <th className="px-4 py-3 text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest w-[140px] text-center">Cashier</th>
                     </tr>
                   </thead>
                   {isLoading ? (
@@ -1174,7 +1176,7 @@ export default function LedgerPage() {
 
                                         {/* No. - Merged */}
                                         {isFirstOfGroup && (
-                                          <td rowSpan={group.length} className="px-3 py-1.5 border-r border-[#E0E5F2] text-[11px] font-medium text-[#A3AED0] text-center w-[40px] group-hover:text-primary transition-colors">
+                                          <td rowSpan={group.length} className="px-3 py-1.5 border-r border-[#E0E5F2] text-[12px] font-medium text-[#A3AED0] text-center w-[40px] group-hover:text-primary transition-colors">
                                             {groupIndex + 1}
                                           </td>
                                         )}
@@ -1198,7 +1200,7 @@ export default function LedgerPage() {
                                                 <input
                                                   data-patient-input={firstEntry.id}
                                                   className={cn(
-                                                    "w-full bg-transparent outline-none focus:bg-[#F4F7FE] py-0.5 rounded transition-all text-[11px] font-medium placeholder:text-[#A3AED0]/70",
+                                                    "w-full bg-transparent outline-none focus:bg-[#F4F7FE] py-0.5 rounded transition-all text-[12px] font-medium font-kantumruy placeholder:text-[#A3AED0]/70",
                                                     firstEntry.patient_id ? "text-[#1B2559] group-hover:text-primary cursor-pointer hover:underline decoration-[2px] underline-offset-4" : "text-[#1B2559]",
                                                     isDayLocked && "opacity-50 cursor-not-allowed grayscale"
                                                   )}
@@ -1212,12 +1214,12 @@ export default function LedgerPage() {
                                                 />
                                                 {/* Gender & Age - Only show if data exists */}
                                                 {(firstEntry.patients?.gender || firstEntry.manual_gender || firstEntry.patients?.age || firstEntry.manual_age) ? (
-                                                  <div className="flex items-center gap-1.5 text-[#1B2559] mt-0.5 min-h-[14px]">
-                                                    <span className="text-[10px] font-medium">{firstEntry.patients?.gender === 'Male' ? 'M' : firstEntry.patients?.gender === 'Female' ? 'F' : firstEntry.manual_gender || ''}</span>
+                                                  <div className="flex items-center gap-1.5 mt-0.5 min-h-[14px]">
+                                                    <span className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-tighter">{firstEntry.patients?.gender === 'Male' ? 'M' : firstEntry.patients?.gender === 'Female' ? 'F' : firstEntry.manual_gender || ''}</span>
                                                     {(firstEntry.patients?.gender || firstEntry.manual_gender) && (firstEntry.patients?.age || firstEntry.manual_age) && (
-                                                      <span className="text-[10px] text-[#1B2559] opacity-80 font-medium px-0.5">•</span>
+                                                      <span className="text-[10px] font-medium text-[#A3AED0] opacity-80 px-0.5">•</span>
                                                     )}
-                                                    <span className="text-[10px] font-medium">{firstEntry.patients?.age || firstEntry.manual_age ? `${firstEntry.patients?.age || firstEntry.manual_age} YRS` : ''}</span>
+                                                    <span className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-tighter">{firstEntry.patients?.age || firstEntry.manual_age ? `${firstEntry.patients?.age || firstEntry.manual_age} YRS` : ''}</span>
                                                   </div>
                                                 ) : null}
                                               </div>
@@ -1499,9 +1501,9 @@ export default function LedgerPage() {
                                         </td>
 
 
-                                        <td className="px-4 py-1.5 border-r border-[#E0E5F2] text-[11px] font-medium text-[#1B2559] text-center">
+                                        <td className="px-4 py-1.5 border-r border-[#E0E5F2] text-[12px] font-medium text-[#1B2559] text-center">
                                           <div className="flex items-center justify-center w-full group/input relative text-[#1B2559] gap-[1px]">
-                                            <span className="text-[11px] font-medium pointer-events-none transition-transform duration-200 group-hover/input:-translate-x-1">$</span>
+                                            <span className="text-[12px] font-medium pointer-events-none transition-transform duration-200 group-hover/input:-translate-x-1 border-r border-transparent">$</span>
                                             <input
                                               type="text"
                                               inputMode="numeric"
@@ -1630,7 +1632,7 @@ export default function LedgerPage() {
                                         </td>
 
                                         {/* Qty - INDIVIDUAL (Custom Dropdown) */}
-                                        <td className="px-2 py-1.5 border-r border-[#E0E5F2] text-[11px] font-medium text-[#A3AED0] text-center bg-[#F4F7FE]/5 relative">
+                                        <td className="px-2 py-1.5 border-r border-[#E0E5F2] text-[12px] font-medium text-[#A3AED0] text-center relative">
                                           <button
                                             data-qty-btn={entry.id}
                                             onClick={(e) => {
@@ -1638,9 +1640,9 @@ export default function LedgerPage() {
                                               setQtyDropdownRect(rect);
                                               setActiveQtyDropdown(activeQtyDropdown === entry.id ? null : entry.id);
                                             }}
-                                            className="w-full text-center text-[11px] font-medium text-[#1B2559] hover:bg-[#F4F7FE] rounded-lg py-1.5 px-2 transition-all group/qty relative flex items-center justify-center overflow-hidden"
+                                            className="w-full text-center text-[12px] font-medium text-[#1B2559] hover:bg-[#F4F7FE] rounded py-1 px-2 transition-all group/qty relative flex items-center justify-center overflow-hidden"
                                           >
-                                            <span className="text-[11px] font-medium text-[#1B2559] transition-transform duration-200 block z-10 group-hover/qty:-translate-x-2">
+                                            <span className="text-[12px] font-medium text-[#1B2559] transition-transform duration-200 block z-10 group-hover/qty:-translate-x-2">
                                               {entry.quantity || 1}
                                             </span>
                                             <ChevronDown className="w-2.5 h-2.5 text-[#A3AED0] opacity-0 group-hover/qty:opacity-100 transition-all duration-200 absolute right-1/2 translate-x-3" />
@@ -1713,7 +1715,7 @@ export default function LedgerPage() {
                                                   {hasDiscount && originalTotal > groupTotal && (
                                                     <div className="text-[9px] font-medium text-[#A3AED0] line-through">${originalTotal.toLocaleString()}</div>
                                                   )}
-                                                  <span className={cn("text-[11px] font-black", hasDiscount ? "text-emerald-600" : "text-[#1B2559]")}>${groupTotal.toLocaleString()}</span>
+                                                  <span className={cn("text-[12px] font-black", hasDiscount ? "text-emerald-600" : "text-[#1B2559]")}>${groupTotal.toLocaleString()}</span>
                                                   {hasDiscount && <div className="text-[8px] font-black uppercase tracking-widest text-emerald-500">Disc</div>}
                                                 </td>
                                                 {/* Paid Cell + Progress Bar */}
@@ -1724,10 +1726,10 @@ export default function LedgerPage() {
                                                     className={cn("w-full text-center rounded-lg py-1 px-2 transition-all", isReadOnly ? "cursor-default" : "hover:bg-[#F4F7FE] cursor-pointer")}
                                                   >
                                                     <div className="flex items-center justify-center gap-1 mb-1">
-                                                      <span className={cn("text-[11px] font-black",
+                                                      <span className={cn("text-[12px] font-black",
                                                         paidPercent >= 100 ? "text-[#19D5C5]" : groupPaid > 0 ? "text-[#FFB547]" : "text-[#A3AED0]"
                                                       )}>${groupPaid.toLocaleString()}</span>
-                                                      {groupTotal > 0 && <span className="text-[9px] text-[#A3AED0] font-medium">/ ${groupTotal.toLocaleString()}</span>}
+                                                      {groupTotal > 0 && <span className="text-[10px] text-[#A3AED0] font-bold">/ ${groupTotal.toLocaleString()}</span>}
                                                     </div>
                                                     {groupTotal > 0 && (
                                                       <div className="h-[3px] w-full bg-[#E0E5F2] rounded-full overflow-hidden">
@@ -1913,9 +1915,9 @@ export default function LedgerPage() {
                                                                   <div className="border-t border-[#E0E5F2] pt-2 mt-3 flex justify-between items-center">
                                                                     <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">Remaining</span>
                                                                     <div className="text-right">
-                                                                      <span className={`text-[12px] font-medium ${groupRemaining > 0 ? 'text-[#EE5D50]' : 'text-[#19D5C5]'}`}>${groupRemaining.toLocaleString()}</span>
+                                                                      <span className={`text-[12px] font-black ${groupRemaining > 0 ? 'text-[#EE5D50]' : 'text-[#19D5C5]'}`}>${groupRemaining.toLocaleString()}</span>
                                                                       {groupRemaining > 0 && (
-                                                                        <p className={`text-[12px] font-medium ${groupRemaining > 0 ? 'text-[#A3AED0]' : 'text-[#19D5C5]'} font-kantumruy leading-tight mt-0.5`}>ឬ ៛{khrRemaining.toLocaleString()}</p>
+                                                                        <p className={`text-[10px] font-bold ${groupRemaining > 0 ? 'text-[#A3AED0]' : 'text-[#19D5C5]'} font-kantumruy leading-tight mt-0.5 uppercase tracking-tighter`}>ឬ ៛{khrRemaining.toLocaleString()}</p>
                                                                       )}
                                                                     </div>
                                                                   </div>
@@ -1929,15 +1931,15 @@ export default function LedgerPage() {
                                                     );
                                                   })()}
                                                 </td>
-                                                <td rowSpan={group.length} className="px-4 py-1.5 border-r border-[#E0E5F2] text-[11px] font-medium text-[#EE5D50] text-center align-middle">
+                                                <td rowSpan={group.length} className="px-4 py-1.5 border-r border-[#E0E5F2] text-[12px] font-black text-[#EE5D50] text-center align-middle">
                                                   <div className="flex items-center justify-center w-full group/input relative text-[#EE5D50] gap-[1px]">
-                                                    <span className="text-[11px] font-medium pointer-events-none transition-transform duration-200 group-hover/input:-translate-x-1">$</span>
+                                                    <span className="text-[12px] font-black pointer-events-none transition-transform duration-200 group-hover/input:-translate-x-1">$</span>
                                                     <input
                                                       type="text"
                                                       inputMode="numeric"
                                                       style={{ width: `${Math.max(String(firstEntry.amount_remaining ?? '').length, 1) + 0.5}ch` }}
                                                       className={cn(
-                                                        "bg-transparent outline-none focus:bg-[#F4F7FE] border border-transparent focus:border-[#E0E5F2] rounded-lg transition-transform duration-200 text-left font-medium p-0",
+                                                        "bg-transparent outline-none focus:bg-[#F4F7FE] border border-transparent focus:border-[#E0E5F2] rounded-lg transition-transform duration-200 text-left font-black p-0",
                                                         "group-hover/input:translate-x-1 text-[#EE5D50] inline-block"
                                                       )}
                                                       value={firstEntry.amount_remaining ?? ''}
@@ -1962,7 +1964,7 @@ export default function LedgerPage() {
                                               <button
                                                 data-staff-trigger={`doctor-${firstEntry.id}`}
                                                 onClick={() => setActiveStaffDropdown(prev => prev?.groupKey === firstEntry.id && prev?.type === 'doctor' ? null : { groupKey: firstEntry.id, type: 'doctor' })}
-                                                className="w-full text-center text-[11px] font-medium text-[#1B2559] hover:bg-[#F4F7FE] rounded-lg py-1 px-2 transition-all group/btn relative flex items-center justify-center overflow-hidden"
+                                                className="w-full text-center text-[12px] font-medium text-[#1B2559] hover:bg-[#F4F7FE] rounded-lg py-1 px-2 transition-all group/btn relative flex items-center justify-center overflow-hidden"
                                               >
                                                 <span className={cn(
                                                   "transition-transform duration-200 block z-10",
@@ -2027,7 +2029,7 @@ export default function LedgerPage() {
                                               <button
                                                 data-staff-trigger={`cashier-${firstEntry.id}`}
                                                 onClick={() => setActiveStaffDropdown(prev => prev?.groupKey === firstEntry.id && prev?.type === 'cashier' ? null : { groupKey: firstEntry.id, type: 'cashier' })}
-                                                className="w-full text-center text-[11px] font-medium text-[#19D5C5] hover:bg-[#F4F7FE] rounded-lg py-1 px-2 transition-all group/btn relative flex items-center justify-center overflow-hidden"
+                                                className="w-full text-center text-[12px] font-medium text-[#19D5C5] hover:bg-[#F4F7FE] rounded-lg py-1 px-2 transition-all group/btn relative flex items-center justify-center overflow-hidden"
                                               >
                                                 <span className={cn(
                                                   "transition-transform duration-200 block z-10",
@@ -2367,25 +2369,25 @@ export default function LedgerPage() {
       >
         <div className="flex items-center gap-20">
           <div className="flex flex-col">
-            <span className="text-[9px] text-[#A3AED0] uppercase font-medium tracking-[0.2em] mb-1 leading-none">Daily Realization</span>
+            <span className="text-[10px] text-[#A3AED0] uppercase font-black tracking-[0.2em] mb-1 leading-none">Daily Realization</span>
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl md:text-3xl font-medium text-[#1B2559] tracking-tighter">${totalRealized.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-              <span className="text-[9px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-lg whitespace-nowrap">Daily Status</span>
+              <span className="text-2xl md:text-3xl font-black text-[#1B2559] tracking-tighter">${totalRealized.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+              <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-1 rounded-[10px] whitespace-nowrap uppercase">Daily Status</span>
             </div>
           </div>
           <div className="h-12 w-px bg-[#E0E5F2]" />
           <div className="flex flex-col">
-            <span className="text-[9px] text-[#A3AED0] uppercase font-medium tracking-[0.2em] mb-1 leading-none">Equipped KHR</span>
+            <span className="text-[10px] text-[#A3AED0] uppercase font-black tracking-[0.2em] mb-1 leading-none">Equipped KHR</span>
             <div className="flex items-baseline gap-2">
-              <span className="text-xl md:text-2xl font-medium text-primary tracking-tighter">{khrCashIntake.toLocaleString('en-KH')}</span>
-              <span className="text-[9px] font-medium opacity-30 uppercase tracking-widest ml-1">KHR</span>
+              <span className="text-xl md:text-2xl font-black text-primary tracking-tighter">{khrCashIntake.toLocaleString('en-KH')}</span>
+              <span className="text-[10px] font-black opacity-30 uppercase tracking-widest ml-1">KHR</span>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-6 md:gap-10">
           <div className="hidden lg:flex flex-col items-end">
-            <span className="text-[9px] text-[#A3AED0] uppercase font-medium tracking-[0.1em] mb-2">Goal Projection</span>
+            <span className="text-[10px] text-[#A3AED0] uppercase font-black tracking-[0.1em] mb-2">Goal Projection</span>
             <div className="w-48 h-2.5 bg-[#F4F7FE] rounded-full overflow-hidden border border-[#E0E5F2]/50 shadow-inner p-0.5">
               <div
                 className="h-full bg-gradient-to-r from-primary to-[#2563EB] rounded-full shadow-[0_0_15px_rgba(67,24,255,0.4)] transition-all duration-1000"
@@ -2393,7 +2395,7 @@ export default function LedgerPage() {
               />
             </div>
           </div>
-          <button className="bg-[#1B2559] text-white px-8 md:px-12 py-3.5 md:py-4 rounded-lg text-[10px] font-medium hover:bg-black hover:scale-[1.05] active:scale-95 transition-all uppercase tracking-[0.2em] shadow-2xl shadow-[#1B2559]/30">
+          <button className="bg-[#4318FF] text-white px-8 md:px-12 py-3.5 md:py-4 rounded-2xl text-[11px] font-black hover:bg-[#1B2559] hover:scale-[1.05] active:scale-95 transition-all uppercase tracking-[0.2em] shadow-lg shadow-[#4318FF]/20">
             Submit Daily Ledger
           </button>
         </div>
