@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, Suspense } from "react";
 import {
     Package, Plus, Search, Filter, MoreVertical,
     Building2, DollarSign, CheckCircle2,
-    ArrowUpDown, Check, ArrowLeftRight, Columns3, ChevronDown
+    ArrowUpDown, Check, ArrowLeftRight, Columns3, ChevronDown, ZoomIn
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -58,6 +58,7 @@ function InventoryPageInner() {
     const [internalTransferAmount, setInternalTransferAmount] = useState<string>("1");
     const [internalTransferDirection, setInternalTransferDirection] = useState<'to_reception' | 'to_stock'>('to_reception');
     const [isTransferring, setIsTransferring] = useState(false);
+    const [nameFontSize, setNameFontSize] = useState<14 | 16 | 18>(14);
     const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
     const toggleCategory = (cat: string) => {
@@ -168,6 +169,10 @@ function InventoryPageInner() {
         } finally {
             setIsTransferring(false);
         }
+    };
+
+    const cycleFontSize = () => {
+        setNameFontSize(prev => prev === 14 ? 16 : prev === 16 ? 18 : 14);
     };
 
     const handleSort = (key: SortConfig['key']) => {
@@ -370,7 +375,25 @@ function InventoryPageInner() {
             )}
             {/* Page Header Area */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-0">
-                <h1 className="text-4xl font-medium text-[#1B2559] tracking-tight">Inventory</h1>
+                <div className="flex items-center gap-4">
+                    <h1 className="text-4xl font-medium text-[#1B2559] tracking-tight">Inventory</h1>
+
+                    {/* Accessibility Zoom Toggle */}
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={cycleFontSize}
+                            className="p-2.5 text-[#A3AED0] hover:text-[#3B82F6] hover:bg-white border border-transparent hover:border-[#E0E5F2] hover:shadow-sm rounded-[14px] transition-all"
+                            title="Adjust item name size (14px, 16px, 18px)"
+                        >
+                            <ZoomIn className="w-5 h-5" />
+                        </button>
+                        {nameFontSize !== 14 && (
+                            <span className="text-[11px] font-bold text-[#A3AED0] bg-white border border-[#E0E5F2] shadow-sm px-2 py-1 rounded-md animate-in fade-in zoom-in duration-200">
+                                {nameFontSize}px
+                            </span>
+                        )}
+                    </div>
+                </div>
 
                 {/* Compact Header Stats Banner - Compressed Scaling */}
                 <div className="flex flex-col lg:flex-row items-center gap-7 pt-0">
@@ -419,7 +442,7 @@ function InventoryPageInner() {
             <div className="sticky top-0 z-30 bg-[#F4F7FE] pb-4 pt-2 -mx-7 px-7 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] border-b border-[#E0E5F2]/50">
                 {/* Selection Area (Tabs) */}
                 <div className="flex items-center gap-8 border-b border-[#E0E5F2] pt-2">
-                    {(['Medicine', 'Consumable Medical', 'Inventory', 'Order Stock'] as const).map((tab) => (
+                    {(['Medicine', 'Consumable Medical', 'Inventory'] as const).map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
@@ -434,6 +457,21 @@ function InventoryPageInner() {
                             )}
                         </button>
                     ))}
+
+                    <div className="w-[1px] h-4 bg-[#E0E5F2]" />
+
+                    <button
+                        onClick={() => setActiveTab('Order Stock')}
+                        className={cn(
+                            "pb-2.5 text-[12px] font-medium transition-all relative whitespace-nowrap",
+                            activeTab === 'Order Stock' ? "text-[#3B82F6]" : "text-[#A3AED0] hover:text-[#1B2559]"
+                        )}
+                    >
+                        Order Stock
+                        {activeTab === 'Order Stock' && (
+                            <div className="absolute -bottom-[0.5px] left-0 right-0 h-[2px] bg-[#3B82F6] rounded-t-full" />
+                        )}
+                    </button>
                 </div>
 
                 {/* Utility Bar */}
@@ -603,7 +641,12 @@ function InventoryPageInner() {
                                                             </td>
                                                             <td className="px-5 py-4">
                                                                 <Link href={`/inventory/${item.id}`} className="flex flex-col group/name cursor-pointer">
-                                                                    <span className="text-[14px] font-bold text-[#1B2559] group-hover/name:text-[#3B82F6] leading-tight font-kantumruy transition-colors">{item.name}</span>
+                                                                    <span
+                                                                        className="font-bold text-[#1B2559] group-hover/name:text-[#3B82F6] leading-tight font-kantumruy transition-all duration-300"
+                                                                        style={{ fontSize: `${nameFontSize}px` }}
+                                                                    >
+                                                                        {item.name}
+                                                                    </span>
                                                                     <span className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-tighter mt-0.5">{item.unit}</span>
                                                                 </Link>
                                                             </td>
