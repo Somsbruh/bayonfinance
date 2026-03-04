@@ -1250,20 +1250,20 @@ export default function LedgerPage() {
                                               }}
                                             />
                                             {/* Add + Delete buttons on hover */}
-                                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                                            <div className="flex flex-row items-center justify-between w-14 ml-3 opacity-0 group-hover:opacity-100 transition-all shrink-0">
                                               <button
                                                 onClick={() => handleDuplicateRow(firstEntry)}
-                                                className="p-1 hover:bg-primary/10 rounded-md transition-all"
-                                                title="Add treatment"
+                                                className="p-1.5 bg-primary/5 hover:bg-primary/20 hover:scale-110 rounded-md transition-all border border-primary/20 shadow-sm"
+                                                title="Add treatment row"
                                               >
-                                                <Plus className="w-3 h-3 text-primary" />
+                                                <Plus className="w-3.5 h-3.5 text-primary" />
                                               </button>
                                               <button
                                                 onClick={() => voidTreatment(entry)}
-                                                className="p-1 hover:bg-[#EE5D50]/10 rounded-md transition-all"
-                                                title="Delete treatment"
+                                                className="p-1.5 bg-[#EE5D50]/5 hover:bg-[#EE5D50]/20 hover:scale-110 rounded-md transition-all border border-[#EE5D50]/20 shadow-sm ml-2"
+                                                title="Delete this row"
                                               >
-                                                <Trash2 className="w-3 h-3 text-[#EE5D50]" />
+                                                <Trash2 className="w-3.5 h-3.5 text-[#EE5D50]" />
                                               </button>
                                             </div>
                                           </div>
@@ -1513,15 +1513,21 @@ export default function LedgerPage() {
                                                     const rect = triggerEl?.getBoundingClientRect();
                                                     if (!rect) return null;
 
+                                                    const isSuong = currentBranch?.name?.toLowerCase().includes('suong');
+
                                                     const groupAba = group.reduce((s, g) => s + (Number(g.paid_aba) || 0), 0);
+                                                    const groupAcledaUsd = group.reduce((s, g) => s + (Number(g.paid_acleda_usd) || 0), 0);
+                                                    const groupAcledaKhr = group.reduce((s, g) => s + (Number(g.paid_acleda_khr) || 0), 0);
                                                     const groupCashUsd = group.reduce((s, g) => s + (Number(g.paid_cash_usd) || 0), 0);
                                                     const groupCashKhr = group.reduce((s, g) => s + (Number(g.paid_cash_khr) || 0), 0);
 
-                                                    const applyPayment = (field: 'paid_aba' | 'paid_cash_usd' | 'paid_cash_khr', value: number) => {
+                                                    const applyPayment = (field: 'paid_aba' | 'paid_cash_usd' | 'paid_cash_khr' | 'paid_acleda_usd' | 'paid_acleda_khr', value: number) => {
                                                       const exchangeRate = Number(firstEntry.applied_exchange_rate) || 4100;
                                                       // Capture previous state for undo
                                                       const prevState = {
                                                         paid_aba: Number(firstEntry.paid_aba) || 0,
+                                                        paid_acleda_usd: Number(firstEntry.paid_acleda_usd) || 0,
+                                                        paid_acleda_khr: Number(firstEntry.paid_acleda_khr) || 0,
                                                         paid_cash_usd: Number(firstEntry.paid_cash_usd) || 0,
                                                         paid_cash_khr: Number(firstEntry.paid_cash_khr) || 0,
                                                         amount_paid: Number(firstEntry.amount_paid) || 0,
@@ -1530,10 +1536,14 @@ export default function LedgerPage() {
                                                       const updates: any = { [field]: value };
                                                       // Recalc total paid for this entry (convert KHR to USD)
                                                       const newAba = field === 'paid_aba' ? value : prevState.paid_aba;
+                                                      const newAcledaUsd = field === 'paid_acleda_usd' ? value : prevState.paid_acleda_usd;
+                                                      const newAcledaKhr = field === 'paid_acleda_khr' ? value : prevState.paid_acleda_khr;
                                                       const newCashUsd = field === 'paid_cash_usd' ? value : prevState.paid_cash_usd;
                                                       const newCashKhr = field === 'paid_cash_khr' ? value : prevState.paid_cash_khr;
+
                                                       const khrInUsd = Math.round((newCashKhr / exchangeRate) * 100) / 100;
-                                                      const totalPaidOnFirst = newAba + newCashUsd + khrInUsd;
+                                                      const acledaKhrInUsd = Math.round((newAcledaKhr / exchangeRate) * 100) / 100;
+                                                      const totalPaidOnFirst = newAba + newAcledaUsd + acledaKhrInUsd + newCashUsd + khrInUsd;
 
                                                       // Add or subtract from the existing remaining amount based on payment difference
                                                       const paymentDiff = totalPaidOnFirst - prevState.amount_paid;
@@ -1556,24 +1566,63 @@ export default function LedgerPage() {
                                                           style={{ top: rect.bottom + 4, left: rect.left - 80 }}
                                                         >
 
-                                                          {/* ABA */}
-                                                          <div className="mb-2">
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                              <div className="w-2 h-2 rounded-full bg-[#3B82F6]" />
-                                                              <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">ABA Bank</span>
+                                                          {/* ABA or ACLEDA based on branch */}
+                                                          {!isSuong ? (
+                                                            <div className="mb-2">
+                                                              <div className="flex items-center gap-2 mb-1">
+                                                                <div className="w-2 h-2 rounded-full bg-[#3B82F6]" />
+                                                                <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">ABA Bank</span>
+                                                              </div>
+                                                              <div className="relative">
+                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-[#A3AED0]">$</span>
+                                                                <input
+                                                                  type="text"
+                                                                  inputMode="numeric"
+                                                                  className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg pl-7 pr-3 py-2 text-[11px] font-medium text-[#3B82F6] outline-none focus:border-[#3B82F6]/30 text-right"
+                                                                  defaultValue={groupAba || ''}
+                                                                  onBlur={(e) => applyPayment('paid_aba', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
+                                                                  onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                                                />
+                                                              </div>
                                                             </div>
-                                                            <div className="relative">
-                                                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-[#A3AED0]">$</span>
-                                                              <input
-                                                                type="text"
-                                                                inputMode="numeric"
-                                                                className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg pl-7 pr-3 py-2 text-[11px] font-medium text-[#3B82F6] outline-none focus:border-[#3B82F6]/30 text-right"
-                                                                defaultValue={groupAba || ''}
-                                                                onBlur={(e) => applyPayment('paid_aba', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
-                                                                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                                                              />
-                                                            </div>
-                                                          </div>
+                                                          ) : (
+                                                            <>
+                                                              <div className="mb-2">
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                  <div className="w-2 h-2 rounded-full bg-[#4A32A5]" />
+                                                                  <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">ACLEDA Bank USD</span>
+                                                                </div>
+                                                                <div className="relative">
+                                                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-[#A3AED0]">$</span>
+                                                                  <input
+                                                                    type="text"
+                                                                    inputMode="numeric"
+                                                                    className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg pl-7 pr-3 py-2 text-[11px] font-medium text-[#4A32A5] outline-none focus:border-[#4A32A5]/30 text-right"
+                                                                    defaultValue={groupAcledaUsd || ''}
+                                                                    onBlur={(e) => applyPayment('paid_acleda_usd', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
+                                                                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                                                  />
+                                                                </div>
+                                                              </div>
+                                                              <div className="mb-2">
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                  <div className="w-2 h-2 rounded-full bg-[#4A32A5]" />
+                                                                  <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">ACLEDA Bank KHR</span>
+                                                                </div>
+                                                                <div className="relative">
+                                                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-[#A3AED0]">៛</span>
+                                                                  <input
+                                                                    type="text"
+                                                                    inputMode="numeric"
+                                                                    className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg pl-7 pr-3 py-2 text-[11px] font-medium text-[#4A32A5] outline-none focus:border-[#4A32A5]/30 text-right"
+                                                                    defaultValue={groupAcledaKhr || ''}
+                                                                    onBlur={(e) => applyPayment('paid_acleda_khr', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
+                                                                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                                                  />
+                                                                </div>
+                                                              </div>
+                                                            </>
+                                                          )}
 
                                                           {/* Cash USD */}
                                                           <div className="mb-2">
@@ -1623,7 +1672,7 @@ export default function LedgerPage() {
                                                                 <div className="text-right">
                                                                   <span className={`text-[12px] font-medium ${groupRemaining > 0 ? 'text-[#EE5D50]' : 'text-[#19D5C5]'}`}>${groupRemaining.toLocaleString()}</span>
                                                                   {groupRemaining > 0 && (
-                                                                    <p className="text-[9px] font-medium text-[#A3AED0] mt-0.5">ឬ ៛{khrRemaining.toLocaleString()}</p>
+                                                                    <p className={`text-[12px] font-medium ${groupRemaining > 0 ? 'text-[#A3AED0]' : 'text-[#19D5C5]'} font-kantumruy leading-tight mt-0.5`}>ឬ ៛{khrRemaining.toLocaleString()}</p>
                                                                   )}
                                                                 </div>
                                                               </div>
