@@ -1,0 +1,3 @@
+name,category,sku,vendor,stock_level,sell_price,buy_price,unit,item_type,expiry_date,low_stock_threshold,branch_id
+Aspirin,Medicine,MED-001,PharmaCorp,100,5.00,3.00,Box,medicine,2026-12-31,10,d1949c13-629f-4b03-9ab5-861deb4ab15a
+Dental Mirror,Inventory,INV-001,DentalSupplies,20,15.00,10.00,Piece,inventory,,5,d1949c13-629f-4b03-9ab5-861deb4ab15a

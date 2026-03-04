@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, Suspense } from "react";
 import {
     Package, Plus, Search, Filter, MoreVertical,
     Building2, DollarSign, CheckCircle2,
-    ArrowUpDown, Check, ArrowLeftRight
+    ArrowUpDown, Check, ArrowLeftRight, Columns3, ChevronDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -22,7 +22,7 @@ interface InventoryItem {
     stock_level: number;
     unit: string;
     sell_price: number;
-    item_type: 'medicine' | 'inventory';
+    item_type: 'medicine' | 'inventory' | 'consumable_medical';
     status: 'IN STOCK' | 'LOW STOCK' | 'OUT OF STOCK';
     last_stock_in: string | null;
     buy_price: number;
@@ -42,9 +42,10 @@ function InventoryPageInner() {
 
     const [items, setItems] = useState<InventoryItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'Medicine' | 'Inventory' | 'Order Stock'>(
-        tabParam === 'inventory' ? 'Inventory' : 'Medicine'
+    const [activeTab, setActiveTab] = useState<'Medicine' | 'Consumable Medical' | 'Inventory' | 'Order Stock'>(
+        tabParam === 'inventory' ? 'Inventory' : tabParam === 'consumable' ? 'Consumable Medical' : 'Medicine'
     );
+    const [showExtraColumns, setShowExtraColumns] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -52,6 +53,15 @@ function InventoryPageInner() {
     const [activeFilter, setActiveFilter] = useState<ActiveFilter>('none');
     const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'name', direction: 'asc' });
     const [transferItem, setTransferItem] = useState<InventoryItem | null>(null);
+    const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+
+    const toggleCategory = (cat: string) => {
+        setCollapsedCategories(prev => {
+            const next = new Set(prev);
+            next.has(cat) ? next.delete(cat) : next.add(cat);
+            return next;
+        });
+    };
 
     const { currentBranch, branches } = useBranch();
 
@@ -136,7 +146,7 @@ function InventoryPageInner() {
     }, [items, sortConfig, activeFilter]);
 
     const categories = useMemo(() => {
-        const tabType = activeTab === 'Medicine' ? 'medicine' : 'inventory';
+        const tabType = activeTab === 'Medicine' ? 'medicine' : activeTab === 'Consumable Medical' ? 'consumable_medical' : 'inventory';
         const relevantItems = items.filter(i => i.item_type === tabType);
         return ["All", ...Array.from(new Set(relevantItems.map(item => item.category).filter(Boolean)))];
     }, [items, activeTab]);
@@ -148,6 +158,8 @@ function InventoryPageInner() {
         let matchesTab = false;
         if (activeTab === 'Medicine') {
             matchesTab = item.item_type === 'medicine';
+        } else if (activeTab === 'Consumable Medical') {
+            matchesTab = item.item_type === 'consumable_medical';
         } else if (activeTab === 'Inventory') {
             matchesTab = item.item_type === 'inventory';
         }
@@ -180,6 +192,7 @@ function InventoryPageInner() {
     const stats = useMemo(() => {
         let currentItems = items;
         if (activeTab === 'Medicine') currentItems = items.filter(i => i.item_type === 'medicine');
+        else if (activeTab === 'Consumable Medical') currentItems = items.filter(i => i.item_type === 'consumable_medical');
         else if (activeTab === 'Inventory') currentItems = items.filter(i => i.item_type === 'inventory');
 
         const totalValue = currentItems.reduce((acc, item) => acc + (item.stock_level * item.sell_price), 0);
@@ -256,215 +269,266 @@ function InventoryPageInner() {
                 </div>
             </div>
 
-            {/* Selection Area (Tabs) */}
-            <div className="flex items-center gap-8 border-b border-[#E0E5F2] pt-2">
-                {(['Medicine', 'Inventory', 'Order Stock'] as const).map((tab) => (
-                    <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        className={cn(
-                            "pb-2.5 text-[12px] font-medium transition-all relative",
-                            activeTab === tab ? "text-[#3B82F6]" : "text-[#A3AED0] hover:text-[#1B2559]"
-                        )}
-                    >
-                        {tab}
-                        {activeTab === tab && (
-                            <div className="absolute -bottom-[0.5px] left-0 right-0 h-[2px] bg-[#3B82F6] rounded-t-full" />
-                        )}
-                    </button>
-                ))}
-            </div>
-
-            {/* Utility Bar */}
-            <div className="flex flex-col md:flex-row items-center gap-4 py-1">
-                <div className="relative flex-1 w-full group">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#A3AED0] group-focus-within:text-[#3B82F6] transition-colors" />
-                    <input
-                        type="text"
-                        placeholder="Search name or reservation ID..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-white border border-[#E0E5F2] rounded-lg pl-11 pr-4 py-3.5 text-[12px] font-medium text-[#1B2559] shadow-sm focus:border-[#3B82F6]/30 transition-all outline-none placeholder:text-[#A3AED0]"
-                    />
+            {/* Sticky Header Wrapper */}
+            <div className="sticky top-0 z-30 bg-[#F4F7FE] pb-4 pt-2 -mx-7 px-7 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] border-b border-[#E0E5F2]/50">
+                {/* Selection Area (Tabs) */}
+                <div className="flex items-center gap-8 border-b border-[#E0E5F2] pt-2">
+                    {(['Medicine', 'Consumable Medical', 'Inventory', 'Order Stock'] as const).map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={cn(
+                                "pb-2.5 text-[12px] font-medium transition-all relative whitespace-nowrap",
+                                activeTab === tab ? "text-[#3B82F6]" : "text-[#A3AED0] hover:text-[#1B2559]"
+                            )}
+                        >
+                            {tab}
+                            {activeTab === tab && (
+                                <div className="absolute -bottom-[0.5px] left-0 right-0 h-[2px] bg-[#3B82F6] rounded-t-full" />
+                            )}
+                        </button>
+                    ))}
                 </div>
 
-                <div className="flex items-center gap-2.5 w-full md:w-auto">
-                    <div className="relative">
+                {/* Utility Bar */}
+                <div className="flex flex-col md:flex-row items-center gap-4 py-3 mt-1">
+                    <div className="relative flex-1 w-full group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#A3AED0] group-focus-within:text-[#3B82F6] transition-colors" />
+                        <input
+                            type="text"
+                            placeholder="Search name or reservation ID..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-white border border-[#E0E5F2] rounded-lg pl-11 pr-4 py-3.5 text-[12px] font-medium text-[#1B2559] shadow-sm focus:border-[#3B82F6]/30 transition-all outline-none placeholder:text-[#A3AED0]"
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-2.5 w-full md:w-auto">
+                        {/* Columns Toggle */}
                         <button
-                            onClick={() => setShowFilters(f => !f)}
+                            onClick={() => setShowExtraColumns(c => !c)}
                             className={cn(
                                 "flex items-center justify-center gap-2 px-5 py-3 rounded-lg border text-[11px] font-medium transition-all shadow-sm",
-                                activeFilter !== 'none'
+                                showExtraColumns
                                     ? "bg-[#3B82F6] border-[#3B82F6] text-white"
                                     : "bg-white border-[#E0E5F2] text-[#1B2559] hover:bg-gray-50"
                             )}
+                            title={showExtraColumns ? "Hide SKU / Vendor / Asset Value" : "Show SKU / Vendor / Asset Value"}
                         >
-                            <Filter className="w-4 h-4" />
-                            Filters{activeFilter !== 'none' && ' ●'}
+                            <Columns3 className="w-4 h-4" />
+                            Columns
                         </button>
 
-                        {showFilters && (
-                            <>
-                                <div className="fixed inset-0 z-40" onClick={() => setShowFilters(false)} />
-                                <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-[#E0E5F2] rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                    <div className="px-3 py-2 border-b border-[#F4F7FE]">
-                                        <p className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">Filter by Status</p>
-                                    </div>
-                                    {([
-                                        { label: 'All', value: 'none' },
-                                        { label: 'In Stock', value: 'in-stock' },
-                                        { label: 'Low Stock', value: 'low-stock' },
-                                        { label: 'Out of Stock', value: 'out-of-stock' },
-                                    ] as const).map(opt => (
+                        {/* Status Filters */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowFilters(f => !f)}
+                                className={cn(
+                                    "flex items-center justify-center gap-2 px-5 py-3 rounded-lg border text-[11px] font-medium transition-all shadow-sm",
+                                    activeFilter !== 'none'
+                                        ? "bg-[#3B82F6] border-[#3B82F6] text-white"
+                                        : "bg-white border-[#E0E5F2] text-[#1B2559] hover:bg-gray-50"
+                                )}
+                            >
+                                <Filter className="w-4 h-4" />
+                                Filters{activeFilter !== 'none' && ' ●'}
+                            </button>
+
+                            {showFilters && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setShowFilters(false)} />
+                                    <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-[#E0E5F2] rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                        <div className="px-3 py-2 border-b border-[#F4F7FE]">
+                                            <p className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">Filter by Status</p>
+                                        </div>
+                                        {([
+                                            { label: 'All', value: 'none' },
+                                            { label: 'In Stock', value: 'in-stock' },
+                                            { label: 'Low Stock', value: 'low-stock' },
+                                            { label: 'Out of Stock', value: 'out-of-stock' },
+                                        ] as const).map(opt => (
+                                            <button
+                                                key={opt.value}
+                                                onClick={() => { setActiveFilter(opt.value); setShowFilters(false); }}
+                                                className={cn(
+                                                    "w-full text-left px-4 py-2.5 text-[11px] font-medium transition-colors flex items-center justify-between",
+                                                    activeFilter === opt.value ? "text-[#3B82F6] bg-[#F4F7FE]" : "text-[#1B2559] hover:bg-[#F4F7FE]"
+                                                )}
+                                            >
+                                                {opt.label}
+                                                {activeFilter === opt.value && <div className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />}
+                                            </button>
+                                        ))}
+                                        <div className="px-3 py-2 border-t border-[#F4F7FE]">
+                                            <p className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">Sort By</p>
+                                        </div>
                                         <button
-                                            key={opt.value}
-                                            onClick={() => { setActiveFilter(opt.value); setShowFilters(false); }}
+                                            onClick={() => { setActiveFilter('last-adjusted'); setShowFilters(false); }}
                                             className={cn(
                                                 "w-full text-left px-4 py-2.5 text-[11px] font-medium transition-colors flex items-center justify-between",
-                                                activeFilter === opt.value ? "text-[#3B82F6] bg-[#F4F7FE]" : "text-[#1B2559] hover:bg-[#F4F7FE]"
+                                                activeFilter === 'last-adjusted' ? "text-[#3B82F6] bg-[#F4F7FE]" : "text-[#1B2559] hover:bg-[#F4F7FE]"
                                             )}
                                         >
-                                            {opt.label}
-                                            {activeFilter === opt.value && <div className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />}
+                                            Last Adjusted
+                                            {activeFilter === 'last-adjusted' && <div className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />}
                                         </button>
-                                    ))}
-                                    <div className="px-3 py-2 border-t border-[#F4F7FE]">
-                                        <p className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">Sort By</p>
                                     </div>
-                                    <button
-                                        onClick={() => { setActiveFilter('last-adjusted'); setShowFilters(false); }}
-                                        className={cn(
-                                            "w-full text-left px-4 py-2.5 text-[11px] font-medium transition-colors flex items-center justify-between",
-                                            activeFilter === 'last-adjusted' ? "text-[#3B82F6] bg-[#F4F7FE]" : "text-[#1B2559] hover:bg-[#F4F7FE]"
-                                        )}
-                                    >
-                                        Last Adjusted
-                                        {activeFilter === 'last-adjusted' && <div className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />}
-                                    </button>
-                                </div>
-                            </>
-                        )}
-                    </div>
+                                </>
+                            )}
+                        </div>
 
-                    <Link href={`/inventory/new?tab=${activeTab === 'Medicine' ? 'medicine' : 'inventory'}`}>
-                        <button className="flex items-center justify-center gap-2 bg-[#3B82F6] px-6 py-3 rounded-lg text-[11px] font-medium text-white hover:bg-[#2563EB] transition-all shadow-md shadow-[#3B82F6]/20">
-                            <Plus className="w-4 h-4" />
-                            New Product
-                        </button>
-                    </Link>
+                        <Link href={`/inventory/new?tab=${activeTab === 'Medicine' ? 'medicine' : 'inventory'}`}>
+                            <button className="flex items-center justify-center gap-2 bg-[#3B82F6] px-6 py-3 rounded-lg text-[11px] font-medium text-white hover:bg-[#2563EB] transition-all shadow-md shadow-[#3B82F6]/20">
+                                <Plus className="w-4 h-4" />
+                                New Product
+                            </button>
+                        </Link>
+                    </div>
                 </div>
             </div>
 
             {/* Content Area */}
-            {activeTab === 'Medicine' || activeTab === 'Inventory' ? (
+            {activeTab === 'Medicine' || activeTab === 'Consumable Medical' || activeTab === 'Inventory' ? (
                 <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
                     {Array.from(new Set(filteredItems.map(i => i.category))).map((category) => (
                         <div key={category} className="space-y-4">
-                            <div className="px-4 flex items-center justify-between">
-                                <h3 className="text-[10px] font-medium uppercase tracking-widest text-[#A3AED0]">{category || "Uncategorized"}</h3>
-                                <div className="h-px flex-1 bg-[#E0E5F2] ml-4 opacity-50" />
-                            </div>
+                            <button
+                                onClick={() => toggleCategory(category)}
+                                className="w-full px-4 flex items-center gap-4 group text-left"
+                            >
+                                <h3 className="text-[30px] font-black uppercase tracking-widest text-[#A3AED0] leading-none group-hover:text-[#1B2559] transition-colors">
+                                    {category || "Uncategorized"}
+                                </h3>
+                                <div className="h-px flex-1 bg-[#E0E5F2] opacity-50" />
+                                <ChevronDown className={cn(
+                                    "w-5 h-5 text-[#A3AED0] shrink-0 transition-transform duration-300",
+                                    collapsedCategories.has(category) ? "-rotate-90" : "rotate-0"
+                                )} />
+                            </button>
 
-                            <div className="bg-white rounded-lg border border-[#E0E5F2] shadow-sm overflow-hidden">
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left">
-                                        <thead>
-                                            <tr className="border-b border-[#F4F7FE]">
-                                                <th className="px-5 py-5 w-10">
-                                                    <div className="w-5 h-5 rounded-md border-2 border-[#E0E5F2] flex items-center justify-center bg-white cursor-pointer" onClick={toggleSelectAll}>
-                                                        {selectedItems.length === filteredItems.length && filteredItems.length > 0 && <Check className="w-3.5 h-3.5 text-[#3B82F6]" />}
-                                                    </div>
-                                                </th>
-                                                <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Name</span></th>
-                                                <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">SKU</span></th>
-                                                <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Vendor</span></th>
-                                                <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Stock</span></th>
-                                                <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Status</span></th>
-                                                <th className="px-5 py-5 text-right"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">{activeFilter === 'last-adjusted' ? 'Last Adjusted' : 'Asset Value'}</span></th>
-                                                <th className="px-5 py-5 w-12"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-[#F4F7FE]">
-                                            {filteredItems.filter(i => i.category === category).map((item) => (
-                                                <tr key={item.id} className="hover:bg-[#F4F7FE]/20 transition-colors group">
-                                                    <td className="px-5 py-4">
-                                                        <div
-                                                            onClick={() => toggleSelectItem(item.id)}
-                                                            className={cn(
-                                                                "w-5 h-5 rounded-md border-2 border-[#E0E5F2] flex items-center justify-center transition-all cursor-pointer",
-                                                                selectedItems.includes(item.id) ? "bg-[#3B82F6] border-[#3B82F6]" : "bg-white group-hover:border-[#3B82F6]/50"
-                                                            )}
-                                                        >
-                                                            {selectedItems.includes(item.id) && <Check className="w-3.5 h-3.5 text-white" />}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-5 py-4">
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[12px] font-medium text-[#1B2559] leading-tight font-kantumruy">{item.name}</span>
-                                                            <span className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-tighter mt-0.5">{item.unit}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-5 py-4">
-                                                        <span className="text-[12px] font-medium text-[#1B2559]">{item.sku || '—'}</span>
-                                                    </td>
-                                                    <td className="px-5 py-4">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-7 h-7 bg-[#F4F7FE] rounded-lg flex items-center justify-center shrink-0">
-                                                                <Building2 className="w-3.5 h-3.5 text-[#3B82F6]" />
+                            {/* Animated collapsible with scale, fade, and CSS grid trick: 0fr ↔ 1fr */}
+                            <div
+                                style={{
+                                    display: 'grid',
+                                    gridTemplateRows: collapsedCategories.has(category) ? '0fr' : '1fr',
+                                    opacity: collapsedCategories.has(category) ? 0 : 1,
+                                    transition: 'all 500ms cubic-bezier(0.4, 0, 0.2, 1)',
+                                }}
+                            >
+                                <div className="overflow-hidden">
+                                    <div
+                                        className={cn(
+                                            "bg-white rounded-lg border border-[#E0E5F2] shadow-sm overflow-hidden transition-all duration-500 transform origin-top",
+                                            collapsedCategories.has(category) ? "scale-[0.98] -translate-y-4" : "scale-100 translate-y-0"
+                                        )}
+                                    >
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left">
+                                                <thead>
+                                                    <tr className="border-b border-[#F4F7FE]">
+                                                        <th className="px-5 py-5 w-10">
+                                                            <div className="w-5 h-5 rounded-md border-2 border-[#E0E5F2] flex items-center justify-center bg-white cursor-pointer" onClick={toggleSelectAll}>
+                                                                {selectedItems.length === filteredItems.length && filteredItems.length > 0 && <Check className="w-3.5 h-3.5 text-[#3B82F6]" />}
                                                             </div>
-                                                            <span className="text-[12px] font-medium text-[#1B2559]">{item.vendor || '—'}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-5 py-4">
-                                                        <span className="text-[12px] font-medium text-[#1B2559]">{item.stock_level}</span>
-                                                    </td>
-                                                    <td className="px-5 py-4">
-                                                        <div className={cn(
-                                                            "inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-tight",
-                                                            item.status === 'IN STOCK' ? "text-[#19D5C5]" :
-                                                                item.status === 'LOW STOCK' ? "text-[#FFB547]" : "text-[#EE5D50]"
-                                                        )}>
-                                                            <div className={cn(
-                                                                "w-2 h-2 rounded-full",
-                                                                item.status === 'IN STOCK' ? "bg-[#19D5C5]" :
-                                                                    item.status === 'LOW STOCK' ? "bg-[#FFB547]" : "bg-[#EE5D50]"
-                                                            )} />
-                                                            {item.status}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-5 py-4 text-right">
-                                                        {activeFilter === 'last-adjusted' ? (
-                                                            <span className="text-[12px] font-medium text-[#A3AED0]">
-                                                                {item.last_stock_in
-                                                                    ? new Date(item.last_stock_in).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-                                                                    : '—'}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-[12px] font-medium text-[#1B2559]">${(item.stock_level * item.sell_price).toLocaleString()}</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-5 py-4 text-right">
-                                                        <div className="flex items-center justify-end gap-1.5">
-                                                            {branches.length > 1 && (
-                                                                <button
-                                                                    onClick={() => setTransferItem(item)}
-                                                                    title="Transfer to another branch"
-                                                                    className="p-2 text-[#A3AED0] hover:text-[#6366F1] transition-all bg-[#F4F7FE]/50 hover:bg-[#6366F1]/10 rounded-lg"
+                                                        </th>
+                                                        <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Name</span></th>
+                                                        {showExtraColumns && <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">SKU</span></th>}
+                                                        {showExtraColumns && <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Vendor</span></th>}
+                                                        <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Stock</span></th>
+                                                        <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Status</span></th>
+                                                        {showExtraColumns && <th className="px-5 py-5 text-right"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">{activeFilter === 'last-adjusted' ? 'Last Adjusted' : 'Asset Value'}</span></th>}
+                                                        <th className="px-5 py-5 w-12"></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-[#F4F7FE]">
+                                                    {filteredItems.filter(i => i.category === category).map((item) => (
+                                                        <tr key={item.id} className="hover:bg-[#F4F7FE]/20 transition-colors group">
+                                                            <td className="px-5 py-4">
+                                                                <div
+                                                                    onClick={() => toggleSelectItem(item.id)}
+                                                                    className={cn(
+                                                                        "w-5 h-5 rounded-md border-2 border-[#E0E5F2] flex items-center justify-center transition-all cursor-pointer",
+                                                                        selectedItems.includes(item.id) ? "bg-[#3B82F6] border-[#3B82F6]" : "bg-white group-hover:border-[#3B82F6]/50"
+                                                                    )}
                                                                 >
-                                                                    <ArrowLeftRight className="w-4 h-4" />
-                                                                </button>
+                                                                    {selectedItems.includes(item.id) && <Check className="w-3.5 h-3.5 text-white" />}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-5 py-4">
+                                                                <Link href={`/inventory/${item.id}`} className="flex flex-col group/name cursor-pointer">
+                                                                    <span className="text-[14px] font-bold text-[#1B2559] group-hover/name:text-[#3B82F6] leading-tight font-kantumruy transition-colors">{item.name}</span>
+                                                                    <span className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-tighter mt-0.5">{item.unit}</span>
+                                                                </Link>
+                                                            </td>
+                                                            {showExtraColumns && (
+                                                                <td className="px-5 py-4">
+                                                                    <span className="text-[12px] font-medium text-[#1B2559]">{item.sku || '—'}</span>
+                                                                </td>
                                                             )}
-                                                            <Link href={`/inventory/${item.id}`}>
-                                                                <button className="p-2 text-[#A3AED0] hover:text-[#3B82F6] transition-all bg-[#F4F7FE]/50 rounded-lg">
-                                                                    <MoreVertical className="w-4.5 h-4.5" />
-                                                                </button>
-                                                            </Link>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                                            {showExtraColumns && (
+                                                                <td className="px-5 py-4">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="w-7 h-7 bg-[#F4F7FE] rounded-lg flex items-center justify-center shrink-0">
+                                                                            <Building2 className="w-3.5 h-3.5 text-[#3B82F6]" />
+                                                                        </div>
+                                                                        <span className="text-[12px] font-medium text-[#1B2559]">{item.vendor || '—'}</span>
+                                                                    </div>
+                                                                </td>
+                                                            )}
+                                                            <td className="px-5 py-4">
+                                                                <span className="text-[12px] font-medium text-[#1B2559]">{item.stock_level}</span>
+                                                            </td>
+                                                            <td className="px-5 py-4">
+                                                                <div className={cn(
+                                                                    "inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-tight",
+                                                                    item.status === 'IN STOCK' ? "text-[#19D5C5]" :
+                                                                        item.status === 'LOW STOCK' ? "text-[#FFB547]" : "text-[#EE5D50]"
+                                                                )}>
+                                                                    <div className={cn(
+                                                                        "w-2 h-2 rounded-full",
+                                                                        item.status === 'IN STOCK' ? "bg-[#19D5C5]" :
+                                                                            item.status === 'LOW STOCK' ? "bg-[#FFB547]" : "bg-[#EE5D50]"
+                                                                    )} />
+                                                                    {item.status}
+                                                                </div>
+                                                            </td>
+                                                            {showExtraColumns && (
+                                                                <td className="px-5 py-4 text-right">
+                                                                    {activeFilter === 'last-adjusted' ? (
+                                                                        <span className="text-[12px] font-medium text-[#A3AED0]">
+                                                                            {item.last_stock_in
+                                                                                ? new Date(item.last_stock_in).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                                                                                : '—'}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="text-[12px] font-medium text-[#1B2559]">${(item.stock_level * item.sell_price).toLocaleString()}</span>
+                                                                    )}
+                                                                </td>
+                                                            )}
+                                                            <td className="px-5 py-4 text-right">
+                                                                <div className="flex items-center justify-end gap-1.5">
+                                                                    {branches.length > 1 && (
+                                                                        <button
+                                                                            onClick={() => setTransferItem(item)}
+                                                                            title="Transfer to another branch"
+                                                                            className="p-2 text-[#A3AED0] hover:text-[#6366F1] transition-all bg-[#F4F7FE]/50 hover:bg-[#6366F1]/10 rounded-lg"
+                                                                        >
+                                                                            <ArrowLeftRight className="w-4 h-4" />
+                                                                        </button>
+                                                                    )}
+                                                                    <Link href={`/inventory/${item.id}`}>
+                                                                        <button className="p-2 text-[#A3AED0] hover:text-[#3B82F6] transition-all bg-[#F4F7FE]/50 rounded-lg">
+                                                                            <MoreVertical className="w-4.5 h-4.5" />
+                                                                        </button>
+                                                                    </Link>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -665,8 +729,9 @@ function InventoryPageInner() {
                         </table>
                     </div>
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 }
 

@@ -20,28 +20,43 @@ export default function LoginPage() {
         setError("");
 
         // Case-insensitive check for UX
-        console.debug('Login Attempt:', { username: username.trim().toLowerCase() });
-        if (username.trim().toLowerCase() === "kanika" && password === "123123") {
-            const { data, error: authError } = await supabase.auth.signInWithPassword({
-                email: "kanika@bayon.com",
-                password: "123123",
-            });
+        const normalizedUsername = username.trim().toLowerCase();
+        console.debug('Login Attempt:', { username: normalizedUsername });
 
-            if (authError) {
-                console.error('Login: Auth Error:', authError.message);
-                setError(authError.message);
-                setIsLoading(false);
-            } else if (data.session) {
-                console.debug('Login: Success, session active');
-                // Set a simple flag cookie for the middleware
-                document.cookie = "bayon_authenticated=true; path=/; max-age=86400; SameSite=Lax";
-                router.push("/");
-                router.refresh();
-            } else {
-                console.warn('Login: Sign-in successful but no session returned.');
-                setError("Session initialization failed. Try again.");
-                setIsLoading(false);
+        // Manual accounts map: username → { password, branchId }
+        const MANUAL_ACCOUNTS: Record<string, { password: string; branchId: string }> = {
+            kanika: { password: "123123", branchId: "04143ee4-91f5-4164-9d8f-37cfd36b4f8f" },
+            rong: { password: "123123", branchId: "d1949c13-629f-4b03-9ab5-861deb4ab15a" },
+            mong: { password: "12341234", branchId: "d1949c13-629f-4b03-9ab5-861deb4ab15a" },
+        };
+
+        const account = MANUAL_ACCOUNTS[normalizedUsername];
+
+        if (account && password === account.password) {
+            // For Kanika, also try Supabase Auth (has a real auth account)
+            if (normalizedUsername === "kanika") {
+                const { error: authError } = await supabase.auth.signInWithPassword({
+                    email: "kanika@bayon.com",
+                    password: "123123",
+                });
+                if (authError) {
+                    console.error('Login: Auth Error:', authError.message);
+                    setError(authError.message);
+                    setIsLoading(false);
+                    return;
+                }
             }
+
+            // Set session cookie
+            document.cookie = "bayon_authenticated=true; path=/; max-age=86400; SameSite=Lax";
+            // Persist branch
+            localStorage.setItem('active-branch-id', account.branchId);
+            // Store username for display purposes
+            localStorage.setItem('bayon_user', normalizedUsername);
+
+            console.debug('Login: Success for', normalizedUsername);
+            router.push("/");
+            router.refresh();
         } else {
             console.warn('Login: Local credential check failed');
             setError("Invalid credentials. Please contact administration.");
