@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
@@ -1728,6 +1728,7 @@ export default function LedgerPage() {
                                                          )} style={{ width: `${paidPercent}%` }} />
                                                        </div>
                                                      )}
+                                                    </button>
                                                   {activePaymentDropdown === firstEntry.id && (() => {
                                                     const triggerEl = document.querySelector(`[data-payment-trigger="${firstEntry.id}"]`);
                                                     const rect = triggerEl?.getBoundingClientRect();
