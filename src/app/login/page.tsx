@@ -6,6 +6,14 @@ import { Lock, User, Eye, EyeOff, Loader2, ArrowRight, ShieldCheck } from "lucid
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 
+// Defined at module level to guarantee bundler inclusion
+const MANUAL_ACCOUNTS: Record<string, { password: string; branchId: string; readonly?: boolean }> = {
+    kanika: { password: "123123", branchId: "04143ee4-91f5-4164-9d8f-37cfd36b4f8f" },
+    rong: { password: "123123", branchId: "d1949c13-629f-4b03-9ab5-861deb4ab15a" },
+    mong: { password: "12341234", branchId: "d1949c13-629f-4b03-9ab5-861deb4ab15a" },
+    demo: { password: "demo2024", branchId: "04143ee4-91f5-4164-9d8f-37cfd36b4f8f", readonly: true },
+};
+
 export default function LoginPage() {
     const router = useRouter();
     const [username, setUsername] = useState("");
@@ -24,12 +32,7 @@ export default function LoginPage() {
         console.debug('Login Attempt:', { username: normalizedUsername });
 
         // Manual accounts map: username → { password, branchId, readonly? }
-        const MANUAL_ACCOUNTS: Record<string, { password: string; branchId: string; readonly?: boolean }> = {
-            kanika: { password: "123123", branchId: "04143ee4-91f5-4164-9d8f-37cfd36b4f8f" },
-            rong: { password: "123123", branchId: "d1949c13-629f-4b03-9ab5-861deb4ab15a" },
-            mong: { password: "12341234", branchId: "d1949c13-629f-4b03-9ab5-861deb4ab15a" },
-            demo: { password: "demo2024", branchId: "04143ee4-91f5-4164-9d8f-37cfd36b4f8f", readonly: true },
-        };
+        // MANUAL_ACCOUNTS is now module-level
 
         const account = MANUAL_ACCOUNTS[normalizedUsername];
 
@@ -163,10 +166,26 @@ export default function LoginPage() {
                         </button>
                     </form>
 
-                    <div className="mt-8 pt-8 border-t border-[#F4F7FE] text-center">
-                        <p className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest">
-                            Secured by Bayon Cloud Protocol
-                        </p>
+                    {/* Demo Quick Access */}
+                    <div className="mt-6 pt-6 border-t border-[#F4F7FE] flex flex-col items-center gap-3">
+                        <p className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest">View-only demo</p>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setUsername('demo');
+                                setPassword('demo2024');
+                                setError('');
+                                // Submit after state flushes
+                                setTimeout(() => {
+                                    const form = document.querySelector('form');
+                                    if (form) form.requestSubmit();
+                                }, 50);
+                            }}
+                            className="w-full py-3 rounded-xl border-2 border-dashed border-[#E0E5F2] text-[11px] font-black text-[#A3AED0] uppercase tracking-[0.15em] hover:border-primary/40 hover:text-primary transition-all"
+                        >
+                            ✦ Try Demo Access
+                        </button>
+                        <p className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest">Secured by Bayon Cloud Protocol</p>
                     </div>
                 </div>
 
