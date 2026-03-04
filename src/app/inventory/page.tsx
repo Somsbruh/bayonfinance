@@ -6,12 +6,13 @@ import {
     Building2, DollarSign, CheckCircle2,
     ArrowUpDown, Check, ArrowLeftRight, Columns3, ChevronDown, ZoomIn
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useBranch } from "@/context/BranchContext";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import TransferStockModal from "@/components/TransferStockModal";
+import { useReadOnly } from "@/context/ReadOnlyContext";
+import { cn } from "@/lib/utils";
 
 interface InventoryItem {
     id: string;
@@ -70,6 +71,7 @@ function InventoryPageInner() {
     };
 
     const { currentBranch, branches } = useBranch();
+    const { isReadOnly } = useReadOnly();
 
     useEffect(() => {
         if (currentBranch) fetchInventory();
@@ -121,6 +123,7 @@ function InventoryPageInner() {
 
     const handleInternalTransfer = async () => {
         if (!internalTransferItem || !currentBranch) return;
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
 
         const amount = parseInt(internalTransferAmount);
         if (isNaN(amount) || amount <= 0) {
@@ -561,8 +564,14 @@ function InventoryPageInner() {
                             )}
                         </div>
 
-                        <Link href={`/inventory/new?tab=${activeTab === 'Medicine' ? 'medicine' : 'inventory'}`}>
-                            <button className="flex items-center justify-center gap-2 bg-[#3B82F6] px-6 py-3 rounded-lg text-[11px] font-medium text-white hover:bg-[#2563EB] transition-all shadow-md shadow-[#3B82F6]/20">
+                        <Link
+                            href={`/inventory/new?tab=${activeTab === 'Medicine' ? 'medicine' : 'inventory'}`}
+                            onClick={(e) => { if (isReadOnly) { e.preventDefault(); alert("Demo Mode: Action not allowed"); } }}
+                        >
+                            <button
+                                disabled={isReadOnly}
+                                className="flex items-center justify-center gap-2 bg-[#3B82F6] px-6 py-3 rounded-lg text-[11px] font-medium text-white hover:bg-[#2563EB] transition-all shadow-md shadow-[#3B82F6]/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
                                 <Plus className="w-4 h-4" />
                                 New Product
                             </button>
@@ -708,9 +717,12 @@ function InventoryPageInner() {
                                                                 <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                                                     {activeTab === 'Medicine' && (
                                                                         <button
-                                                                            onClick={() => setInternalTransferItem(item)}
+                                                                            onClick={() => {
+                                                                                if (isReadOnly) return alert("Demo Mode: Action not allowed");
+                                                                                setInternalTransferItem(item);
+                                                                            }}
                                                                             title="Transfer stock between Stock Room and Front Desk"
-                                                                            className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white hover:bg-purple-600 transition-all bg-purple-500 rounded-lg flex items-center gap-1 shadow-sm"
+                                                                            className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white hover:bg-purple-600 transition-all bg-purple-500 rounded-lg flex items-center gap-1 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                                                         >
                                                                             <ArrowLeftRight className="w-3 h-3" />
                                                                             Move
@@ -718,9 +730,12 @@ function InventoryPageInner() {
                                                                     )}
                                                                     {branches.length > 1 && (
                                                                         <button
-                                                                            onClick={() => setTransferItem(item)}
+                                                                            onClick={() => {
+                                                                                if (isReadOnly) return alert("Demo Mode: Action not allowed");
+                                                                                setTransferItem(item);
+                                                                            }}
                                                                             title="Transfer to another branch"
-                                                                            className="p-1.5 text-[#A3AED0] hover:text-[#6366F1] transition-all bg-[#F4F7FE]/50 hover:bg-[#6366F1]/10 rounded-lg"
+                                                                            className="p-1.5 text-[#A3AED0] hover:text-[#6366F1] transition-all bg-[#F4F7FE]/50 hover:bg-[#6366F1]/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                                                         >
                                                                             <Building2 className="w-4 h-4" />
                                                                         </button>

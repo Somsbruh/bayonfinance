@@ -23,6 +23,7 @@ import { format } from "date-fns";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import CompareMediaModal from "./CompareMediaModal";
+import { useReadOnly } from "@/context/ReadOnlyContext";
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -74,6 +75,8 @@ export default function PatientMediaGallery({ patientId, branchId, staff }: Pati
     const [toothTagValue, setToothTagValue] = useState("");
     const [uploadCategory, setUploadCategory] = useState("intraoral");
 
+    const { isReadOnly } = useReadOnly();
+
     const fileInputRef = useRef<HTMLInputElement>(null);
     const dropRef = useRef<HTMLDivElement>(null);
 
@@ -115,6 +118,7 @@ export default function PatientMediaGallery({ patientId, branchId, staff }: Pati
 
     // Upload handler
     async function handleUpload(files: FileList | File[]) {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         const fileArr = Array.from(files);
         if (fileArr.length === 0) return;
 
@@ -172,6 +176,7 @@ export default function PatientMediaGallery({ patientId, branchId, staff }: Pati
 
     // Delete handler
     async function handleDelete(item: MediaItem) {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         if (!confirm(`Delete ${item.file_name}?`)) return;
 
         try {
@@ -193,6 +198,7 @@ export default function PatientMediaGallery({ patientId, branchId, staff }: Pati
 
     // Save note
     async function saveNote(itemId: string) {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         await supabase
             .from("patient_media")
             .update({ clinical_note: noteText })
@@ -207,6 +213,7 @@ export default function PatientMediaGallery({ patientId, branchId, staff }: Pati
 
     // Save tooth tags
     async function saveToothTags(itemId: string) {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         const tags = toothTagValue.split(",").map((t) => t.trim()).filter(Boolean);
         await supabase
             .from("patient_media")
@@ -222,6 +229,7 @@ export default function PatientMediaGallery({ patientId, branchId, staff }: Pati
 
     // Set comparison tag
     async function setComparisonTag(itemId: string, tag: "before" | "after" | null) {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         await supabase
             .from("patient_media")
             .update({ comparison_tag: tag })
@@ -339,7 +347,7 @@ export default function PatientMediaGallery({ patientId, branchId, staff }: Pati
 
                         <button
                             onClick={() => fileInputRef.current?.click()}
-                            disabled={uploading}
+                            disabled={uploading || isReadOnly}
                             className="bg-[#4318FF] hover:bg-[#3311DB] disabled:bg-[#A3AED0] text-white px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md shadow-[#4318FF]/20 transition-all active:scale-95 flex items-center gap-2"
                         >
                             {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}

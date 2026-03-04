@@ -66,6 +66,7 @@ const FILTER_COLORS = CATEGORY_COLORS;
 
 import { useCurrency } from "@/context/CurrencyContext";
 import { useBranch } from "@/context/BranchContext";
+import { useReadOnly } from "@/context/ReadOnlyContext";
 
 import { Suspense } from "react";
 
@@ -147,6 +148,7 @@ function PatientDetailsContent() {
         time: format(new Date(), 'HH:mm'),
     });
     const { currentBranch } = useBranch();
+    const { isReadOnly } = useReadOnly();
 
     useEffect(() => {
         if (currentBranch) {
@@ -224,6 +226,7 @@ function PatientDetailsContent() {
 
 
     async function saveVisitNote(date: string, note: string) {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         const { error } = await supabase
             .from('ledger_entries')
             .update({ notes: note })
@@ -236,6 +239,7 @@ function PatientDetailsContent() {
     }
 
     async function deleteEntry(entry: any) {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         console.log("Starting deleteEntry for:", entry.id);
 
         // 1. Close Modal
@@ -284,6 +288,7 @@ function PatientDetailsContent() {
     }
 
     async function handleUpdateEntry(id: string, updates: any) {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         const { error } = await supabase
             .from('ledger_entries')
             .update(updates)
@@ -298,6 +303,7 @@ function PatientDetailsContent() {
     }
 
     async function handleUpdateEntryDate(date: Date, originalDate: string) {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         const dateStr = format(date, 'yyyy-MM-dd');
         const { error } = await supabase
             .from('ledger_entries')
@@ -313,6 +319,7 @@ function PatientDetailsContent() {
     }
 
     async function updateSessionStatus(date: string, doctorId: string, newStatus: string) {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         const { error } = await supabase
             .from('ledger_entries')
             .update({ status: newStatus })
@@ -334,6 +341,7 @@ function PatientDetailsContent() {
     }
 
     async function updateAppointmentPayment(originalDate: string, newDate: string, newTime: string, aba: number, cashUsd: number, cashKhr: number) {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         const appointmentEntries = history.filter(e => e.date === originalDate);
         const totalSessionValue = appointmentEntries.reduce((sum, e) => sum + Number(e.total_price), 0);
         const totalPaidAmount = aba + cashUsd + (cashKhr / usdToKhr);
@@ -428,6 +436,7 @@ function PatientDetailsContent() {
     }
 
     async function updatePaymentAmount() {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         if (!editPaymentData) return;
 
         const newAmount = Number(editPaymentData.amount);
@@ -473,6 +482,7 @@ function PatientDetailsContent() {
     }
 
     async function handleBulkSettlement() {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         if (selectedBulkEntries.length === 0) return;
 
         const aba = Number(bulkSettleData.amount_aba) || 0;
@@ -550,6 +560,7 @@ function PatientDetailsContent() {
         fetchPatientData();
     }
     async function updateDoctor(entryId: string, doctorId: string) {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         const { error } = await supabase
             .from('ledger_entries')
             .update({ doctor_id: doctorId })
@@ -562,6 +573,7 @@ function PatientDetailsContent() {
 
 
     async function handleSaveProfile() {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         if (!profileForm.name) return;
         const { error } = await supabase
             .from('patients')
@@ -583,6 +595,7 @@ function PatientDetailsContent() {
     }
 
     async function handleDeletePatient() {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         if (!confirm("Are you sure you want to void this patient? This action will remove them from the active directory.")) return;
 
         const { error } = await supabase

@@ -5,6 +5,7 @@ import { Search, Plus, UserPlus, X, User } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { useBranch } from "@/context/BranchContext";
+import { useReadOnly } from "@/context/ReadOnlyContext";
 
 export default function PatientSearch({ onSelect }: { onSelect?: (patient: any) => void }) {
     const [query, setQuery] = useState("");
@@ -14,6 +15,7 @@ export default function PatientSearch({ onSelect }: { onSelect?: (patient: any) 
     const [newPatient, setNewPatient] = useState({ name: "", gender: "F", age: "", phone: "" });
     const router = useRouter();
     const { currentBranch } = useBranch();
+    const { isReadOnly } = useReadOnly();
 
     useEffect(() => {
         if (selectionGuard) {
@@ -41,6 +43,7 @@ export default function PatientSearch({ onSelect }: { onSelect?: (patient: any) 
 
     async function handleAddPatient() {
         if (!newPatient.name || !currentBranch) return;
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         const { data, error } = await supabase
             .from('patients')
             .insert({
@@ -220,7 +223,8 @@ export default function PatientSearch({ onSelect }: { onSelect?: (patient: any) 
                         <div className="flex flex-col gap-4 pt-4">
                             <button
                                 onClick={handleAddPatient}
-                                className="w-full bg-primary hover:bg-[#2563EB] text-white py-5 rounded-[1.5rem] text-[10px] font-medium transition-all shadow-xl shadow-primary/20 uppercase tracking-[0.2em]"
+                                disabled={isReadOnly}
+                                className="w-full bg-primary hover:bg-[#2563EB] text-white py-5 rounded-[1.5rem] text-[10px] font-medium transition-all shadow-xl shadow-primary/20 uppercase tracking-[0.2em] disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Reify Profile & Open Records
                             </button>

@@ -22,6 +22,7 @@ import { supabase } from "@/lib/supabase";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useCurrency } from "@/context/CurrencyContext";
+import { useReadOnly } from "@/context/ReadOnlyContext";
 import {
     DndContext,
     closestCenter,
@@ -112,6 +113,7 @@ function SortableStaffRow({ staff, handleUpdateCommission }: { staff: any; handl
 }
 
 export default function SettingsPage() {
+    const { isReadOnly } = useReadOnly();
     const [exchangeRate, setExchangeRate] = useState("4100");
     const [invoiceColor, setInvoiceColor] = useState("#3B82F6");
     const [isSaving, setIsSaving] = useState(false);
@@ -173,6 +175,7 @@ export default function SettingsPage() {
     }
 
     async function handleUpdateCommission(id: string, rate: number) {
+        if (isReadOnly) return;
         const { error } = await supabase
             .from('staff')
             .update({ commission_rate: rate })
@@ -282,6 +285,7 @@ export default function SettingsPage() {
     }
 
     async function handleSaveRate() {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         setIsSaving(true);
         const { error } = await supabase
             .from('settings')

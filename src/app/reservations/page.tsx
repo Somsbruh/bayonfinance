@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBranch } from "@/context/BranchContext";
+import { useReadOnly } from "@/context/ReadOnlyContext";
 import { supabase } from "@/lib/supabase";
 import { format, startOfWeek, addDays, isSameDay, addMonths } from "date-fns";
 import Link from "next/link";
@@ -55,6 +56,7 @@ const INCREMENT_MINUTES = 15;
 
 export default function ReservationsPage() {
     const { currentBranch } = useBranch();
+    const { isReadOnly } = useReadOnly();
     const [view, setView] = useState<'day' | 'week'>('day');
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [activeTab, setActiveTab] = useState<'calendar' | 'history'>('calendar');
@@ -285,6 +287,10 @@ export default function ReservationsPage() {
 
     const handleApptDrop = async (e: React.DragEvent, docId: string, dateStr: string, timeIso: string) => {
         e.preventDefault();
+        if (isReadOnly) {
+            alert("Demo Mode: Action not allowed");
+            return;
+        }
         const apptId = e.dataTransfer.getData('apptId');
         if (!apptId) return;
 
@@ -336,6 +342,11 @@ export default function ReservationsPage() {
 
     async function handleCreateAppointment() {
         if (!selectedSlot || !currentBranch) return;
+        if (isReadOnly) {
+            setIsModalOpen(false);
+            alert("Demo Mode: Action not allowed");
+            return;
+        }
         setIsSaving(true);
 
         try {

@@ -31,9 +31,11 @@ interface Staff {
 }
 
 import { useBranch } from "@/context/BranchContext";
+import { useReadOnly } from "@/context/ReadOnlyContext";
 
 export default function StaffPage() {
     const { currentBranch } = useBranch();
+    const { isReadOnly } = useReadOnly();
     const [staff, setStaff] = useState<Staff[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [filterRole, setFilterRole] = useState("All");
@@ -74,6 +76,7 @@ export default function StaffPage() {
     }
 
     async function handleAdd() {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         if (!newStaff.name) return;
         setSubmitting(true);
         try {
@@ -98,6 +101,7 @@ export default function StaffPage() {
     }
 
     async function handleDelete(id: string) {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         if (!confirm("Decomissioning this personnel? Historical data will remain, but the entity will be removed from selection.")) return;
 
         try {
@@ -142,6 +146,7 @@ export default function StaffPage() {
     }
 
     async function handleEdit() {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         if (!editingStaff || !editingStaff.name) return;
         setSubmitting(true);
         try {

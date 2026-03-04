@@ -21,6 +21,7 @@ import { supabase } from "@/lib/supabase";
 import { TREATMENT_CATEGORIES, getCategoryColor } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useBranch } from "@/context/BranchContext";
+import { useReadOnly } from "@/context/ReadOnlyContext";
 
 interface Treatment {
     id: string;
@@ -35,6 +36,7 @@ const CATEGORIES = TREATMENT_CATEGORIES;
 
 export default function TreatmentsPage() {
     const { currentBranch } = useBranch();
+    const { isReadOnly } = useReadOnly();
     const [treatments, setTreatments] = useState<Treatment[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [isAdding, setIsAdding] = useState(false);
@@ -75,6 +77,7 @@ export default function TreatmentsPage() {
 
     async function handleAdd() {
         if (!newTreatment.name || !newTreatment.price) return;
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         setSubmitting(true);
         try {
             const { error } = await supabase.from('treatments').insert({
@@ -104,6 +107,7 @@ export default function TreatmentsPage() {
 
     async function handleEdit() {
         if (!editingTreatment || !editingTreatment.name || !editingTreatment.price) return;
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         setSubmitting(true);
         try {
             const { error } = await supabase.from('treatments').update({
@@ -126,6 +130,7 @@ export default function TreatmentsPage() {
     }
 
     async function handleDelete(id: string) {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         if (!confirm("Confirm removal of this clinical procedure? This action is restricted if historical records are present.")) return;
 
         try {
@@ -185,7 +190,8 @@ export default function TreatmentsPage() {
                     </div>
                     <button
                         onClick={() => setIsAdding(true)}
-                        className="btn-primary-premium h-[44px]"
+                        disabled={isReadOnly}
+                        className="btn-primary-premium h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <Plus className="w-4 h-4" />
                         New Service
@@ -229,6 +235,7 @@ export default function TreatmentsPage() {
                                                         key={t.id}
                                                         className="hover:bg-[#F4F7FE]/20 transition-colors group cursor-pointer"
                                                         onClick={() => {
+                                                            if (isReadOnly) return alert("Demo Mode: Action not allowed");
                                                             setEditingTreatment(t);
                                                             setIsEditing(true);
                                                         }}

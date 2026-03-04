@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import Link from "next/link";
+import { useReadOnly } from "@/context/ReadOnlyContext";
 
 const STATUS_FLOW = ['Registered', 'Doing Treatment', 'Finished'] as const;
 type AppointmentStatus = typeof STATUS_FLOW[number];
@@ -34,6 +35,7 @@ export default function AppointmentDetailModal({ appointment, onClose, onRefresh
     const [deleting, setDeleting] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { isReadOnly } = useReadOnly();
 
     const appt = appointment;
     const patientName = appt.patients?.name || appt.manual_patient_name || '—';
@@ -43,6 +45,7 @@ export default function AppointmentDetailModal({ appointment, onClose, onRefresh
 
     async function handleStatusChange(newStatus: string) {
         if (newStatus === status) return;
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         setLoading(true);
         setError(null);
         try {
@@ -61,6 +64,7 @@ export default function AppointmentDetailModal({ appointment, onClose, onRefresh
     }
 
     async function handleSaveNotes() {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         setLoading(true);
         setError(null);
         try {
@@ -79,6 +83,7 @@ export default function AppointmentDetailModal({ appointment, onClose, onRefresh
     }
 
     async function handleDelete() {
+        if (isReadOnly) return alert("Demo Mode: Action not allowed");
         if (!confirmDelete) {
             setConfirmDelete(true);
             return;
@@ -173,7 +178,7 @@ export default function AppointmentDetailModal({ appointment, onClose, onRefresh
                                     <button
                                         key={s}
                                         onClick={() => handleStatusChange(s)}
-                                        disabled={loading}
+                                        disabled={loading || isReadOnly}
                                         className={cn(
                                             "flex-1 py-2.5 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border",
                                             isActive
@@ -191,8 +196,8 @@ export default function AppointmentDetailModal({ appointment, onClose, onRefresh
                         {nextStatus && (
                             <button
                                 onClick={() => handleStatusChange(nextStatus)}
-                                disabled={loading}
-                                className="w-full mt-2.5 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest bg-[#1B2559] text-white hover:bg-[#253375] transition-all active:scale-[0.99] flex items-center justify-center gap-2 shadow-sm"
+                                disabled={loading || isReadOnly}
+                                className="w-full mt-2.5 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest bg-[#1B2559] text-white hover:bg-[#253375] transition-all active:scale-[0.99] flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ChevronRight className="w-4 h-4" />}
                                 Move to {nextStatus === 'Doing Treatment' ? 'In Chair' : 'Done'}
@@ -209,7 +214,7 @@ export default function AppointmentDetailModal({ appointment, onClose, onRefresh
                                     <Edit2 className="w-3 h-3" /> Edit
                                 </button>
                             ) : (
-                                <button onClick={handleSaveNotes} disabled={loading} className="flex items-center gap-1 text-[10px] font-black text-[#19D5C5] hover:underline">
+                                <button onClick={handleSaveNotes} disabled={loading || isReadOnly} className="flex items-center gap-1 text-[10px] font-black text-[#19D5C5] hover:underline">
                                     <Save className="w-3 h-3" /> Save
                                 </button>
                             )}
@@ -219,7 +224,8 @@ export default function AppointmentDetailModal({ appointment, onClose, onRefresh
                                 rows={3}
                                 value={notes}
                                 onChange={e => setNotes(e.target.value)}
-                                className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl px-4 py-3 text-[12px] font-medium text-[#1B2559] outline-none focus:border-[#3B82F6]/40 transition-all resize-none placeholder:text-[#A3AED0]"
+                                disabled={isReadOnly}
+                                className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-xl px-4 py-3 text-[12px] font-medium text-[#1B2559] outline-none focus:border-[#3B82F6]/40 transition-all resize-none placeholder:text-[#A3AED0] disabled:opacity-50"
                                 placeholder="Add clinical notes..."
                                 autoFocus
                             />
@@ -242,9 +248,9 @@ export default function AppointmentDetailModal({ appointment, onClose, onRefresh
                     <div className="pt-1 border-t border-[#F4F7FE]">
                         <button
                             onClick={handleDelete}
-                            disabled={deleting}
+                            disabled={deleting || isReadOnly}
                             className={cn(
-                                "w-full py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2",
+                                "w-full py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed",
                                 confirmDelete
                                     ? "bg-[#EE5D50] text-white hover:bg-red-600 shadow-sm"
                                     : "bg-[#F4F7FE] text-[#EE5D50] hover:bg-red-50 border border-[#EE5D50]/20"

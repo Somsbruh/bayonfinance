@@ -979,7 +979,7 @@ export default function LedgerPage() {
           </div>
         ) : viewMode === 'manual' ? (
           /* Manual / Spreadsheet View */
-          <div className="space-y-4 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="space-y-4 pb-48 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Tools Row */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
