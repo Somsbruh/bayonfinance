@@ -393,6 +393,7 @@ export default function LedgerPage() {
   };
 
   async function updateGroupMethod(patientId: string, visitDate: string, newMethod: string) {
+    if (isReadOnly) return;
     const { error } = await supabase
       .from('ledger_entries')
       .update({ method: newMethod })
@@ -402,6 +403,7 @@ export default function LedgerPage() {
   }
 
   async function updateEntryMethod(id: string, newMethod: string) {
+    if (isReadOnly) return;
     const { error } = await supabase
       .from('ledger_entries')
       .update({ method: newMethod })
@@ -410,6 +412,7 @@ export default function LedgerPage() {
   }
 
   async function voidTreatment(entry: any) {
+    if (isReadOnly) return;
     setManagedEntry(null);
     if (undoTimer) clearTimeout(undoTimer);
     setEntries(prev => prev.filter(e => e.id !== entry.id));
@@ -425,6 +428,7 @@ export default function LedgerPage() {
   }
 
   function handleUndo() {
+    if (isReadOnly) return;
     if (undoTimer) {
       clearTimeout(undoTimer);
       fetchDailyEntries();
@@ -435,6 +439,7 @@ export default function LedgerPage() {
   }
 
   async function handleUpdateEntry(id: string, updates: any) {
+    if (isReadOnly) return;
     const prevEntry = viewMode === 'list' ? entries.find(e => e.id === id) : monthEntries.find(e => e.id === id);
 
     if (viewMode === 'list') {
@@ -489,6 +494,7 @@ export default function LedgerPage() {
   }
 
   async function handleInitializeManualRow() {
+    if (isReadOnly) return;
     // Auto-set appointment_time to current time rounded to nearest 15 minutes
     const now = new Date();
     const mins = now.getMinutes();
@@ -526,6 +532,7 @@ export default function LedgerPage() {
   }
 
   async function handleDuplicateRow(entry: any) {
+    if (isReadOnly) return;
     const { data, error } = await supabase
       .from('ledger_entries')
       .insert({
@@ -565,6 +572,7 @@ export default function LedgerPage() {
   }
 
   async function handleSaveQuickEvent() {
+    if (isReadOnly) return;
     if (!quickEventData.patientName) return alert("Please enter a patient name");
     if (!quickEventData.doctorId) return alert("Please select a dentist");
 
@@ -1692,43 +1700,43 @@ export default function LedgerPage() {
                                         {/* Total / Paid / Remaining - MERGED per visit */}
                                         {
                                           isFirstOfGroup && (() => {
-                                             const groupTotal = group.reduce((sum, g) => sum + (g.total_price || 0), 0);
-                                             const groupPaid = group.reduce((sum, g) => sum + (g.amount_paid || 0), 0);
-                                             const groupRemaining = groupTotal - groupPaid;
-                                             const paidPercent = groupTotal > 0 ? Math.min((groupPaid / groupTotal) * 100, 100) : 0;
-                                             const hasDiscount = group.some(g => g.discount_type);
-                                             const originalTotal = group.reduce((sum, g) => sum + (g.unit_price || 0) * (g.quantity || 1), 0);
-                                             return (
-                                               <>
-                                                 {/* Total Cell */}
-                                                 <td rowSpan={group.length} className="px-4 py-1.5 border-r border-[#E0E5F2] text-center bg-[#F4F7FE]/10 align-middle">
-                                                   {hasDiscount && originalTotal > groupTotal && (
-                                                     <div className="text-[9px] font-medium text-[#A3AED0] line-through">${originalTotal.toLocaleString()}</div>
-                                                   )}
-                                                   <span className={cn("text-[11px] font-black", hasDiscount ? "text-emerald-600" : "text-[#1B2559]")}>${groupTotal.toLocaleString()}</span>
-                                                   {hasDiscount && <div className="text-[8px] font-black uppercase tracking-widest text-emerald-500">Disc</div>}
-                                                 </td>
-                                                 {/* Paid Cell + Progress Bar */}
-                                                 <td rowSpan={group.length} className="px-3 py-1.5 border-r border-[#E0E5F2] text-center align-middle min-w-[110px]">
-                                                   <button
-                                                     data-payment-trigger={firstEntry.id}
-                                                     onClick={() => !isReadOnly && setActivePaymentDropdown(prev => prev === firstEntry.id ? null : firstEntry.id)}
-                                                     className={cn("w-full text-center rounded-lg py-1 px-2 transition-all", isReadOnly ? "cursor-default" : "hover:bg-[#F4F7FE] cursor-pointer")}
-                                                   >
-                                                     <div className="flex items-center justify-center gap-1 mb-1">
-                                                       <span className={cn("text-[11px] font-black",
-                                                         paidPercent >= 100 ? "text-[#19D5C5]" : groupPaid > 0 ? "text-[#FFB547]" : "text-[#A3AED0]"
-                                                       )}>${groupPaid.toLocaleString()}</span>
-                                                       {groupTotal > 0 && <span className="text-[9px] text-[#A3AED0] font-medium">/ ${groupTotal.toLocaleString()}</span>}
-                                                     </div>
-                                                     {groupTotal > 0 && (
-                                                       <div className="h-[3px] w-full bg-[#E0E5F2] rounded-full overflow-hidden">
-                                                         <div className={cn("h-full rounded-full transition-all duration-500",
-                                                           paidPercent >= 100 ? "bg-[#19D5C5]" : paidPercent > 0 ? "bg-[#FFB547]" : "bg-[#E0E5F2]"
-                                                         )} style={{ width: `${paidPercent}%` }} />
-                                                       </div>
-                                                     )}
-                                                    </button>
+                                            const groupTotal = group.reduce((sum, g) => sum + (g.total_price || 0), 0);
+                                            const groupPaid = group.reduce((sum, g) => sum + (g.amount_paid || 0), 0);
+                                            const groupRemaining = groupTotal - groupPaid;
+                                            const paidPercent = groupTotal > 0 ? Math.min((groupPaid / groupTotal) * 100, 100) : 0;
+                                            const hasDiscount = group.some(g => g.discount_type);
+                                            const originalTotal = group.reduce((sum, g) => sum + (g.unit_price || 0) * (g.quantity || 1), 0);
+                                            return (
+                                              <>
+                                                {/* Total Cell */}
+                                                <td rowSpan={group.length} className="px-4 py-1.5 border-r border-[#E0E5F2] text-center bg-[#F4F7FE]/10 align-middle">
+                                                  {hasDiscount && originalTotal > groupTotal && (
+                                                    <div className="text-[9px] font-medium text-[#A3AED0] line-through">${originalTotal.toLocaleString()}</div>
+                                                  )}
+                                                  <span className={cn("text-[11px] font-black", hasDiscount ? "text-emerald-600" : "text-[#1B2559]")}>${groupTotal.toLocaleString()}</span>
+                                                  {hasDiscount && <div className="text-[8px] font-black uppercase tracking-widest text-emerald-500">Disc</div>}
+                                                </td>
+                                                {/* Paid Cell + Progress Bar */}
+                                                <td rowSpan={group.length} className="px-3 py-1.5 border-r border-[#E0E5F2] text-center align-middle min-w-[110px]">
+                                                  <button
+                                                    data-payment-trigger={firstEntry.id}
+                                                    onClick={() => !isReadOnly && setActivePaymentDropdown(prev => prev === firstEntry.id ? null : firstEntry.id)}
+                                                    className={cn("w-full text-center rounded-lg py-1 px-2 transition-all", isReadOnly ? "cursor-default" : "hover:bg-[#F4F7FE] cursor-pointer")}
+                                                  >
+                                                    <div className="flex items-center justify-center gap-1 mb-1">
+                                                      <span className={cn("text-[11px] font-black",
+                                                        paidPercent >= 100 ? "text-[#19D5C5]" : groupPaid > 0 ? "text-[#FFB547]" : "text-[#A3AED0]"
+                                                      )}>${groupPaid.toLocaleString()}</span>
+                                                      {groupTotal > 0 && <span className="text-[9px] text-[#A3AED0] font-medium">/ ${groupTotal.toLocaleString()}</span>}
+                                                    </div>
+                                                    {groupTotal > 0 && (
+                                                      <div className="h-[3px] w-full bg-[#E0E5F2] rounded-full overflow-hidden">
+                                                        <div className={cn("h-full rounded-full transition-all duration-500",
+                                                          paidPercent >= 100 ? "bg-[#19D5C5]" : paidPercent > 0 ? "bg-[#FFB547]" : "bg-[#E0E5F2]"
+                                                        )} style={{ width: `${paidPercent}%` }} />
+                                                      </div>
+                                                    )}
+                                                  </button>
                                                   {activePaymentDropdown === firstEntry.id && (() => {
                                                     const triggerEl = document.querySelector(`[data-payment-trigger="${firstEntry.id}"]`);
                                                     const rect = triggerEl?.getBoundingClientRect();
