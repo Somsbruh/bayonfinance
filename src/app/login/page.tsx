@@ -48,8 +48,9 @@ export default function LoginPage() {
                 }
             }
 
-            // Set session cookie
-            document.cookie = "bayon_authenticated=true; path=/; max-age=86400; SameSite=Lax";
+            // Set session cookie — add Secure flag on HTTPS (Vercel / production)
+            const isSecure = window.location.protocol === 'https:';
+            document.cookie = `bayon_authenticated=true; path=/; max-age=86400; SameSite=Lax${isSecure ? '; Secure' : ''}`;
             // Persist branch
             localStorage.setItem('active-branch-id', account.branchId);
             // Store username for display purposes
