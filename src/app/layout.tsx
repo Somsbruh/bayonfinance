@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 
 import { SidebarProvider } from "@/context/SidebarContext";
 import { BranchProvider } from "@/context/BranchContext";
+import { ReadOnlyProvider } from "@/context/ReadOnlyContext";
 import LayoutWrapper from "@/components/LayoutWrapper";
 
 export default function RootLayout({
@@ -31,9 +32,11 @@ export default function RootLayout({
         <BranchProvider>
           <CurrencyProvider>
             <SidebarProvider>
-              <LayoutWrapper>
-                {children}
-              </LayoutWrapper>
+              <ReadOnlyProvider>
+                <LayoutWrapper>
+                  {children}
+                </LayoutWrapper>
+              </ReadOnlyProvider>
             </SidebarProvider>
           </CurrencyProvider>
         </BranchProvider>

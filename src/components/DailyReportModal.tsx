@@ -24,11 +24,12 @@ export default function DailyReportModal({ isOpen, onClose, date, branchId }: Da
     const [notes, setNotes] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const [mounted, setMounted] = useState(false);
+    const [isLocked, setIsLocked] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
     const [revenueData, setRevenueData] = useState<{ category: string, amount: number }[]>([]);
 
     useEffect(() => {
-        setMounted(true);
+        setIsMounted(true);
     }, []);
 
     useEffect(() => {
@@ -99,9 +100,11 @@ export default function DailyReportModal({ isOpen, onClose, date, branchId }: Da
         if (reportData) {
             setSpending(Number(reportData.spending) || 0);
             setNotes(reportData.notes || "");
+            setIsLocked(!!reportData.is_locked);
         } else {
             setSpending(0);
             setNotes("");
+            setIsLocked(false);
         }
 
         setIsLoading(false);
@@ -121,6 +124,8 @@ export default function DailyReportModal({ isOpen, onClose, date, branchId }: Da
                 income_khr: incomeKhr,
                 spending: spending,
                 notes: notes,
+                is_locked: isLocked,
+                locked_at: isLocked ? new Date().toISOString() : null,
             }, { onConflict: 'date, branch_id' });
 
         setIsSaving(false);
@@ -131,7 +136,7 @@ export default function DailyReportModal({ isOpen, onClose, date, branchId }: Da
         }
     };
 
-    if (!isOpen || !mounted) return null;
+    if (!isOpen || !isMounted) return null;
 
     const totalIncomeUsd = incomeAba + incomeUsd + (incomeKhr / 4100);
     const netIncome = totalIncomeUsd - spending;
@@ -203,6 +208,19 @@ export default function DailyReportModal({ isOpen, onClose, date, branchId }: Da
                         >
                             <FileText className="w-3.5 h-3.5" />
                             Print Report
+                        </button>
+                        <div className="h-6 w-px bg-[#E0E5F2] mx-1" />
+                        <button
+                            onClick={() => setIsLocked(!isLocked)}
+                            className={cn(
+                                "px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center gap-2",
+                                isLocked
+                                    ? "bg-red-50 text-red-600 border border-red-100 hover:bg-red-100"
+                                    : "bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100"
+                            )}
+                        >
+                            {isLocked ? <Zap className="w-3.5 h-3.5 fill-current" /> : <Calculator className="w-3.5 h-3.5" />}
+                            {isLocked ? "Unlock Entry" : "Finalize & Lock Day"}
                         </button>
                     </div>
                     <button

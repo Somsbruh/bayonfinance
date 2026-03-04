@@ -23,11 +23,12 @@ export default function LoginPage() {
         const normalizedUsername = username.trim().toLowerCase();
         console.debug('Login Attempt:', { username: normalizedUsername });
 
-        // Manual accounts map: username → { password, branchId }
-        const MANUAL_ACCOUNTS: Record<string, { password: string; branchId: string }> = {
+        // Manual accounts map: username → { password, branchId, readonly? }
+        const MANUAL_ACCOUNTS: Record<string, { password: string; branchId: string; readonly?: boolean }> = {
             kanika: { password: "123123", branchId: "04143ee4-91f5-4164-9d8f-37cfd36b4f8f" },
             rong: { password: "123123", branchId: "d1949c13-629f-4b03-9ab5-861deb4ab15a" },
             mong: { password: "12341234", branchId: "d1949c13-629f-4b03-9ab5-861deb4ab15a" },
+            demo: { password: "demo2024", branchId: "04143ee4-91f5-4164-9d8f-37cfd36b4f8f", readonly: true },
         };
 
         const account = MANUAL_ACCOUNTS[normalizedUsername];
@@ -53,6 +54,12 @@ export default function LoginPage() {
             localStorage.setItem('active-branch-id', account.branchId);
             // Store username for display purposes
             localStorage.setItem('bayon_user', normalizedUsername);
+            // Set readonly flag for demo account
+            if (account.readonly) {
+                localStorage.setItem('bayon_readonly', 'true');
+            } else {
+                localStorage.removeItem('bayon_readonly');
+            }
 
             console.debug('Login: Success for', normalizedUsername);
             router.push("/");

@@ -28,7 +28,8 @@ import {
   Clock,
   CheckCircle2,
   FileText,
-  Check
+  Check,
+  Percent
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, startOfDay, addMinutes } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -41,6 +42,7 @@ import DailyReportModal from "@/components/DailyReportModal";
 import { useCurrency } from "@/context/CurrencyContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { useBranch } from "@/context/BranchContext";
+import { useReadOnly } from "@/context/ReadOnlyContext";
 import { TREATMENT_CATEGORIES } from "@/lib/constants";
 import {
   LayoutGrid,
@@ -57,6 +59,7 @@ let globalLedgerDate: Date | null = null;
 
 export default function LedgerPage() {
   const { currentBranch } = useBranch();
+  const { isReadOnly } = useReadOnly();
   const [date, setDate] = useState<Date>(globalLedgerDate || new Date());
 
   useEffect(() => {
@@ -90,6 +93,7 @@ export default function LedgerPage() {
 
   const { isCollapsed, showSummary, setShowSummary } = useSidebar();
   const { usdToKhr } = useCurrency();
+  const [isDayLocked, setIsDayLocked] = useState(false);
   const [treatments, setTreatments] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
   const [activePricePrompt, setActivePricePrompt] = useState<{ entryId: string, itemId: string, name: string, type: 'treatment' | 'medicine', price?: string } | null>(null);
@@ -138,6 +142,7 @@ export default function LedgerPage() {
   const [isAddingNewMedicine, setIsAddingNewMedicine] = useState<{ entryId: string, name: string } | null>(null);
   const [newMedicineForm, setNewMedicineForm] = useState({ name: '', price: '', unit: 'Piece' });
   const [activeTimeDropdown, setActiveTimeDropdown] = useState<{ id: string, rect: { top: number, left: number, bottom: number } } | null>(null); // entry with open time picker
+  const [activeDiscountPopover, setActiveDiscountPopover] = useState<{ entryId: string, rect: DOMRect } | null>(null);
 
   useEffect(() => {
     if (isAddingEntry && !quickPatient.appointment_date) {
@@ -168,9 +173,23 @@ export default function LedgerPage() {
       } else {
         fetchMonthlyEntries();
       }
+      fetchLockStatus();
       fetchStaticData();
     }
   }, [date, viewMode, mounted, currentBranch]);
+
+  async function fetchLockStatus() {
+    if (!currentBranch) return;
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const { data } = await supabase
+      .from('daily_reports')
+      .select('is_locked')
+      .eq('branch_id', currentBranch.id)
+      .eq('date', dateStr)
+      .maybeSingle();
+
+    setIsDayLocked(!!data?.is_locked);
+  }
 
   async function fetchStaticData() {
     if (!currentBranch) return;
@@ -711,13 +730,30 @@ export default function LedgerPage() {
 
           <button
             onClick={() => setIsAddingEntry(true)}
-            className="btn-primary-premium shadow-lg shadow-primary/20 h-[44px]"
+            disabled={isDayLocked}
+            className={cn(
+              "btn-primary-premium shadow-lg shadow-primary/20 h-[44px]",
+              isDayLocked && "opacity-50 cursor-not-allowed grayscale"
+            )}
           >
             <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300" />
             Create Patient
           </button>
         </div>
       </div>
+
+      {/* Lock Indicator */}
+      {isDayLocked && (
+        <div className="bg-red-50 border border-red-100 p-3 rounded-none flex items-center justify-center gap-3 animate-in fade-in slide-in-from-top-1 duration-300">
+          <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+            <ShieldCheck className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-[11px] font-black text-red-600 uppercase tracking-widest leading-none mb-0.5">System Lock Active</p>
+            <p className="text-[10px] font-medium text-red-400">This date has been finalized and locked by administration. No further edits allowed.</p>
+          </div>
+        </div>
+      )}
 
       {/* Modern Bento Grid Stats - Massive Density Gain */}
       {/* Intake / Stats Summary - Hidden in Calendar View for Full Screen experience */}
@@ -1068,53 +1104,62 @@ export default function LedgerPage() {
                                                 {displayTime}
                                               </button>
 
-                                              {activeTimeDropdown?.id === firstEntry.id && typeof window !== 'undefined' && createPortal(
-                                                <>
-                                                  <div className="fixed inset-0 z-[80]" onClick={() => setActiveTimeDropdown(null)} />
-                                                  <div
-                                                    className="fixed bg-white border border-[#E0E5F2] rounded-xl shadow-2xl z-[90] overflow-hidden animate-in fade-in zoom-in-95 duration-150"
-                                                    style={{
-                                                      top: (activeTimeDropdown?.rect.bottom ?? 0) + 4,
-                                                      left: (activeTimeDropdown?.rect.left ?? 0) - 10,
-                                                      width: 140
-                                                    }}
-                                                  >
-                                                    <div className="px-3 py-2 border-b border-[#F4F7FE] flex items-center justify-between">
-                                                      <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">Set Time</span>
-                                                      {timeVal && (
-                                                        <button
-                                                          onClick={async () => {
-                                                            await handleUpdateEntry(firstEntry.id, { appointment_time: null });
-                                                            setActiveTimeDropdown(null);
-                                                          }}
-                                                          className="text-[#EE5D50]/60 hover:text-[#EE5D50] transition-colors"
-                                                        >
-                                                          <X className="w-3 h-3" />
-                                                        </button>
+                                              {activeTimeDropdown?.id === firstEntry.id && typeof window !== 'undefined' && (() => {
+                                                const rect = activeTimeDropdown!.rect;
+                                                const height = 260;
+                                                const renderAbove = (window.innerHeight - rect.bottom) < height && rect.top > (window.innerHeight - rect.bottom);
+                                                return createPortal(
+                                                  <>
+                                                    <div className="fixed inset-0 z-[80]" onClick={() => setActiveTimeDropdown(null)} />
+                                                    <div
+                                                      className={cn(
+                                                        "fixed bg-white border border-[#E0E5F2] rounded-xl shadow-2xl z-[90] overflow-hidden animate-in fade-in duration-150",
+                                                        renderAbove ? "slide-in-from-bottom-2 origin-bottom" : "zoom-in-95 origin-top"
                                                       )}
+                                                      style={{
+                                                        top: renderAbove ? 'auto' : rect.bottom + 4,
+                                                        bottom: renderAbove ? window.innerHeight - rect.top + 4 : 'auto',
+                                                        left: rect.left - 10,
+                                                        width: 140
+                                                      }}
+                                                    >
+                                                      <div className="px-3 py-2 border-b border-[#F4F7FE] flex items-center justify-between">
+                                                        <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">Set Time</span>
+                                                        {timeVal && (
+                                                          <button
+                                                            onClick={async () => {
+                                                              await handleUpdateEntry(firstEntry.id, { appointment_time: null });
+                                                              setActiveTimeDropdown(null);
+                                                            }}
+                                                            className="text-[#EE5D50]/60 hover:text-[#EE5D50] transition-colors"
+                                                          >
+                                                            <X className="w-3 h-3" />
+                                                          </button>
+                                                        )}
+                                                      </div>
+                                                      <div className="max-h-[220px] overflow-y-auto custom-scrollbar">
+                                                        {intervals.map(t => (
+                                                          <button
+                                                            key={t}
+                                                            onClick={async () => {
+                                                              await handleUpdateEntry(firstEntry.id, { appointment_time: `${t}:00`, status: firstEntry.status === 'pending' ? 'Registered' : firstEntry.status });
+                                                              setActiveTimeDropdown(null);
+                                                            }}
+                                                            className={cn(
+                                                              "w-full px-4 py-2 text-left text-[10px] font-medium transition-colors flex items-center justify-between",
+                                                              timeVal === t ? "bg-primary/5 text-primary" : "text-[#1B2559] hover:bg-[#F4F7FE]"
+                                                            )}
+                                                          >
+                                                            {format(new Date(`2000-01-01T${t}:00`), 'h:mm a')}
+                                                            {timeVal === t && <Check className="w-3 h-3" />}
+                                                          </button>
+                                                        ))}
+                                                      </div>
                                                     </div>
-                                                    <div className="max-h-[220px] overflow-y-auto custom-scrollbar">
-                                                      {intervals.map(t => (
-                                                        <button
-                                                          key={t}
-                                                          onClick={async () => {
-                                                            await handleUpdateEntry(firstEntry.id, { appointment_time: `${t}:00`, status: firstEntry.status === 'pending' ? 'Registered' : firstEntry.status });
-                                                            setActiveTimeDropdown(null);
-                                                          }}
-                                                          className={cn(
-                                                            "w-full px-4 py-2 text-left text-[10px] font-medium transition-colors flex items-center justify-between",
-                                                            timeVal === t ? "bg-primary/5 text-primary" : "text-[#1B2559] hover:bg-[#F4F7FE]"
-                                                          )}
-                                                        >
-                                                          {format(new Date(`2000-01-01T${t}:00`), 'h:mm a')}
-                                                          {timeVal === t && <Check className="w-3 h-3" />}
-                                                        </button>
-                                                      ))}
-                                                    </div>
-                                                  </div>
-                                                </>,
-                                                document.body
-                                              )}
+                                                  </>,
+                                                  document.body
+                                                );
+                                              })()}
                                             </td>
                                           );
                                         })()}
@@ -1146,7 +1191,8 @@ export default function LedgerPage() {
                                                   data-patient-input={firstEntry.id}
                                                   className={cn(
                                                     "w-full bg-transparent outline-none focus:bg-[#F4F7FE] py-0.5 rounded transition-all text-[11px] font-medium placeholder:text-[#A3AED0]/70",
-                                                    firstEntry.patient_id ? "text-[#1B2559] group-hover:text-primary cursor-pointer hover:underline decoration-[2px] underline-offset-4" : "text-[#1B2559]"
+                                                    firstEntry.patient_id ? "text-[#1B2559] group-hover:text-primary cursor-pointer hover:underline decoration-[2px] underline-offset-4" : "text-[#1B2559]",
+                                                    isDayLocked && "opacity-50 cursor-not-allowed grayscale"
                                                   )}
                                                   placeholder="Search Patient..."
                                                   value={activePatientLookup && activePatientLookup.id === firstEntry.id ? activePatientLookup.query : (firstEntry.patients?.name || firstEntry.manual_patient_name || "")}
@@ -1154,6 +1200,7 @@ export default function LedgerPage() {
                                                   onFocus={() => setActivePatientLookup({ id: firstEntry.id, query: firstEntry.patients?.name || firstEntry.manual_patient_name || "" })}
                                                   onBlur={() => setTimeout(() => setActivePatientLookup(null), 200)}
                                                   onClick={() => { if (firstEntry.patient_id) window.open(`/patients/${firstEntry.patient_id}`, '_blank'); }}
+                                                  disabled={isDayLocked}
                                                 />
                                                 {/* Gender & Age - Only show if data exists */}
                                                 {(firstEntry.patients?.gender || firstEntry.manual_gender || firstEntry.patients?.age || firstEntry.manual_age) ? (
@@ -1172,11 +1219,21 @@ export default function LedgerPage() {
                                               const inputEl = document.querySelector(`[data-patient-input="${firstEntry.id}"]`);
                                               const rect = inputEl?.getBoundingClientRect();
                                               if (!rect) return null;
+                                              const height = 160;
+                                              const renderAbove = (window.innerHeight - rect.bottom) < height && rect.top > (window.innerHeight - rect.bottom);
                                               return createPortal(
                                                 <div
                                                   data-treatment-portal="true"
-                                                  className="fixed bg-white border border-[#E0E5F2] rounded-lg shadow-2xl z-[9999] overflow-hidden py-1 max-h-[160px] overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-150"
-                                                  style={{ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width + 60, 250) }}
+                                                  className={cn(
+                                                    "fixed bg-white border border-[#E0E5F2] rounded-lg shadow-2xl z-[9999] overflow-hidden py-1 max-h-[160px] overflow-y-auto custom-scrollbar animate-in fade-in duration-150",
+                                                    renderAbove ? "slide-in-from-bottom-2" : "slide-in-from-top-2"
+                                                  )}
+                                                  style={{
+                                                    top: renderAbove ? 'auto' : rect.bottom + 4,
+                                                    bottom: renderAbove ? window.innerHeight - rect.top + 4 : 'auto',
+                                                    left: rect.left,
+                                                    width: Math.max(rect.width + 60, 250)
+                                                  }}
                                                 >
                                                   {patientSearchResults.map(p => (
                                                     <button
@@ -1232,7 +1289,10 @@ export default function LedgerPage() {
                                           <div className="flex items-center gap-1">
                                             <input
                                               ref={(el) => { if (el && activeTreatmentLookup?.id === entry.id) el.setAttribute('data-treatment-input', entry.id); }}
-                                              className="flex-1 bg-transparent outline-none focus:bg-[#F4F7FE] rounded-lg transition-all"
+                                              className={cn(
+                                                "flex-1 bg-transparent outline-none focus:bg-[#F4F7FE] rounded-lg transition-all",
+                                                isDayLocked && "opacity-50 cursor-not-allowed grayscale"
+                                              )}
                                               placeholder="Select Treatment..."
                                               value={(activeTreatmentLookup && activeTreatmentLookup.id === entry.id) ? activeTreatmentLookup.query : (entry.description || entry.treatments?.name || entry.inventory?.name || "")}
                                               onChange={(e) => setActiveTreatmentLookup({ id: entry.id, query: e.target.value })}
@@ -1248,20 +1308,29 @@ export default function LedgerPage() {
                                                   setActiveTreatmentLookup(null);
                                                 }, 200);
                                               }}
+                                              disabled={isDayLocked}
                                             />
                                             {/* Add + Delete buttons on hover */}
                                             <div className="flex flex-row items-center justify-between w-14 ml-3 opacity-0 group-hover:opacity-100 transition-all shrink-0">
                                               <button
-                                                onClick={() => handleDuplicateRow(firstEntry)}
-                                                className="p-1.5 bg-primary/5 hover:bg-primary/20 hover:scale-110 rounded-md transition-all border border-primary/20 shadow-sm"
+                                                onClick={() => !isDayLocked && handleDuplicateRow(firstEntry)}
+                                                className={cn(
+                                                  "p-1.5 bg-primary/5 hover:bg-primary/20 hover:scale-110 rounded-md transition-all border border-primary/20 shadow-sm",
+                                                  isDayLocked && "opacity-50 cursor-not-allowed grayscale"
+                                                )}
                                                 title="Add treatment row"
+                                                disabled={isDayLocked}
                                               >
                                                 <Plus className="w-3.5 h-3.5 text-primary" />
                                               </button>
                                               <button
-                                                onClick={() => voidTreatment(entry)}
-                                                className="p-1.5 bg-[#EE5D50]/5 hover:bg-[#EE5D50]/20 hover:scale-110 rounded-md transition-all border border-[#EE5D50]/20 shadow-sm ml-2"
+                                                onClick={() => !isDayLocked && voidTreatment(entry)}
+                                                className={cn(
+                                                  "p-1.5 bg-[#EE5D50]/5 hover:bg-[#EE5D50]/20 hover:scale-110 rounded-md transition-all border border-[#EE5D50]/20 shadow-sm ml-2",
+                                                  isDayLocked && "opacity-50 cursor-not-allowed grayscale"
+                                                )}
                                                 title="Delete this row"
+                                                disabled={isDayLocked}
                                               >
                                                 <Trash2 className="w-3.5 h-3.5 text-[#EE5D50]" />
                                               </button>
@@ -1280,12 +1349,18 @@ export default function LedgerPage() {
                                               .map(i => ({ ...i, item_type: 'medicine', price: i.sell_price || 0 }));
 
                                             const combinedOptions = [...filteredTreatments, ...filteredInventory];
+                                            const height = 160;
+                                            const renderAbove = (window.innerHeight - rect.bottom) < height && rect.top > (window.innerHeight - rect.bottom);
 
                                             return createPortal(
                                               <div
-                                                className="fixed bg-white border border-[#E0E5F2] rounded-lg shadow-2xl z-[9999] overflow-hidden py-1 max-h-[160px] overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2"
+                                                className={cn(
+                                                  "fixed bg-white border border-[#E0E5F2] rounded-lg shadow-2xl z-[9999] overflow-hidden py-1 max-h-[160px] overflow-y-auto custom-scrollbar animate-in fade-in",
+                                                  renderAbove ? "slide-in-from-bottom-2" : "slide-in-from-top-2"
+                                                )}
                                                 style={{
-                                                  top: rect.bottom + 8,
+                                                  top: renderAbove ? 'auto' : rect.bottom + 8,
+                                                  bottom: renderAbove ? window.innerHeight - rect.top + 8 : 'auto',
                                                   left: rect.left,
                                                   width: Math.max(rect.width + 100, 280),
                                                 }}
@@ -1340,10 +1415,12 @@ export default function LedgerPage() {
                                                         style={{ width: `${Math.max(String(t.price ?? '').length, 1) + 0.5}ch` }}
                                                         className={cn(
                                                           "bg-transparent outline-none focus:bg-white border border-transparent focus:border-[#E0E5F2] rounded transition-all duration-200 text-left font-medium p-0 text-primary text-[12px]",
-                                                          "group-hover/price:translate-x-1 inline-block"
+                                                          "group-hover/price:translate-x-1 inline-block",
+                                                          isDayLocked && "opacity-50 cursor-not-allowed grayscale"
                                                         )}
                                                         defaultValue={t.price}
                                                         onBlur={async (e) => {
+                                                          if (isDayLocked) return;
                                                           const newPrice = Number(e.target.value.replace(/[^0-9.]/g, ''));
                                                           if (newPrice !== t.price && newPrice >= 0) {
                                                             if (t.item_type === 'treatment') {
@@ -1360,6 +1437,7 @@ export default function LedgerPage() {
                                                             (e.target as HTMLInputElement).blur();
                                                           }
                                                         }}
+                                                        disabled={isDayLocked}
                                                       />
                                                     </div>
                                                   </button>
@@ -1378,7 +1456,11 @@ export default function LedgerPage() {
                                                         setIsAddingTreatment(true);
                                                         setActiveTreatmentLookup(null);
                                                       }}
-                                                      className="w-full text-left px-4 py-2 bg-primary/5 hover:bg-primary/10 text-primary transition-colors flex items-center gap-2 border-b border-[#F4F7FE]"
+                                                      className={cn(
+                                                        "w-full text-left px-4 py-2 bg-primary/5 hover:bg-primary/10 text-primary transition-colors flex items-center gap-2 border-b border-[#F4F7FE]",
+                                                        isDayLocked && "opacity-50 cursor-not-allowed grayscale"
+                                                      )}
+                                                      disabled={isDayLocked}
                                                     >
                                                       <Plus className="w-3.5 h-3.5" />
                                                       <span className="text-[9px] font-medium uppercase tracking-widest">Add as Treatment</span>
@@ -1391,7 +1473,11 @@ export default function LedgerPage() {
                                                         setNewMedicineForm({ name: activeTreatmentLookup.query, price: '', unit: 'Piece' });
                                                         setActiveTreatmentLookup(null);
                                                       }}
-                                                      className="w-full text-left px-4 py-2 bg-[#FFB547]/5 hover:bg-[#FFB547]/10 text-[#FFB547] transition-colors flex items-center gap-2"
+                                                      className={cn(
+                                                        "w-full text-left px-4 py-2 bg-[#FFB547]/5 hover:bg-[#FFB547]/10 text-[#FFB547] transition-colors flex items-center gap-2",
+                                                        isDayLocked && "opacity-50 cursor-not-allowed grayscale"
+                                                      )}
+                                                      disabled={isDayLocked}
                                                     >
                                                       <Plus className="w-3.5 h-3.5" />
                                                       <span className="text-[9px] font-medium uppercase tracking-widest">Add as Medicine</span>
@@ -1418,14 +1504,120 @@ export default function LedgerPage() {
                                               )}
                                               value={entry.unit_price}
                                               onChange={(e) => {
+                                                if (isDayLocked || isReadOnly) return;
                                                 const up = Number(e.target.value.replace(/[^0-9.]/g, ''));
+                                                const discountMultiplier = entry.discount_type === 'percentage' ? (1 - (entry.discount_value || 0) / 100) : 1;
+                                                const discountFixed = entry.discount_type === 'fixed' ? (entry.discount_value || 0) : 0;
+                                                const newTotal = Math.max((up * (entry.quantity || 1) * discountMultiplier) - discountFixed, 0);
                                                 handleUpdateEntry(entry.id, {
                                                   unit_price: up,
-                                                  total_price: up * (entry.quantity || 1),
-                                                  amount_remaining: (entry.amount_remaining || 0) + ((up * (entry.quantity || 1)) - (entry.total_price || 0))
+                                                  total_price: newTotal,
+                                                  amount_remaining: (entry.amount_remaining || 0) + (newTotal - (entry.total_price || 0))
                                                 });
                                               }}
+                                              disabled={isDayLocked || isReadOnly}
                                             />
+                                            {/* Discount Badge */}
+                                            {!isDayLocked && !isReadOnly && (
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  const rect = e.currentTarget.getBoundingClientRect();
+                                                  setActiveDiscountPopover(prev =>
+                                                    prev?.entryId === entry.id ? null : { entryId: entry.id, rect }
+                                                  );
+                                                }}
+                                                className={cn(
+                                                  "ml-1 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase transition-all opacity-0 group-hover/input:opacity-100",
+                                                  entry.discount_type
+                                                    ? "bg-emerald-100 text-emerald-700 opacity-100"
+                                                    : "bg-[#F4F7FE] text-[#A3AED0] hover:text-primary hover:bg-primary/10"
+                                                )}
+                                                title="Set discount"
+                                              >
+                                                <Percent className="w-2.5 h-2.5" />
+                                                {entry.discount_type === 'percentage' && `${entry.discount_value}%`}
+                                                {entry.discount_type === 'fixed' && `-$${entry.discount_value}`}
+                                              </button>
+                                            )}
+                                            {/* Discount Portal Popover */}
+                                            {activeDiscountPopover?.entryId === entry.id && typeof window !== 'undefined' && createPortal(
+                                              <>
+                                                <div className="fixed inset-0 z-[9998]" onClick={() => setActiveDiscountPopover(null)} />
+                                                <div
+                                                  className="fixed z-[9999] bg-white border border-[#E0E5F2] rounded-xl shadow-2xl p-3 w-[190px] animate-in fade-in zoom-in-95 duration-150"
+                                                  style={{
+                                                    top: (activeDiscountPopover?.rect.bottom ?? 0) + 6,
+                                                    left: (activeDiscountPopover?.rect.left ?? 0) - 60,
+                                                  }}
+                                                >
+                                                  <p className="text-[9px] font-black uppercase tracking-widest text-[#A3AED0] mb-2">Discount</p>
+                                                  <div className="flex gap-1 mb-2">
+                                                    <button
+                                                      onClick={() => {
+                                                        const up = entry.unit_price || 0;
+                                                        const dv = entry.discount_value || 0;
+                                                        const newTotal = Math.max(up * (entry.quantity || 1) * (1 - dv / 100), 0);
+                                                        handleUpdateEntry(entry.id, { discount_type: 'percentage', total_price: newTotal, amount_remaining: (entry.amount_remaining || 0) + (newTotal - (entry.total_price || 0)) });
+                                                      }}
+                                                      className={cn(
+                                                        "flex-1 py-1.5 rounded-lg text-[10px] font-black transition-all",
+                                                        entry.discount_type === 'percentage' ? "bg-primary text-white" : "bg-[#F4F7FE] text-[#1B2559] hover:bg-primary/10"
+                                                      )}
+                                                    >
+                                                      % Off
+                                                    </button>
+                                                    <button
+                                                      onClick={() => {
+                                                        const up = entry.unit_price || 0;
+                                                        const dv = entry.discount_value || 0;
+                                                        const newTotal = Math.max(up * (entry.quantity || 1) - dv, 0);
+                                                        handleUpdateEntry(entry.id, { discount_type: 'fixed', total_price: newTotal, amount_remaining: (entry.amount_remaining || 0) + (newTotal - (entry.total_price || 0)) });
+                                                      }}
+                                                      className={cn(
+                                                        "flex-1 py-1.5 rounded-lg text-[10px] font-black transition-all",
+                                                        entry.discount_type === 'fixed' ? "bg-primary text-white" : "bg-[#F4F7FE] text-[#1B2559] hover:bg-primary/10"
+                                                      )}
+                                                    >
+                                                      $ Off
+                                                    </button>
+                                                    <button
+                                                      onClick={() => {
+                                                        const up = entry.unit_price || 0;
+                                                        const originalTotal = up * (entry.quantity || 1);
+                                                        handleUpdateEntry(entry.id, { discount_type: null, discount_value: 0, total_price: originalTotal, amount_remaining: (entry.amount_remaining || 0) + (originalTotal - (entry.total_price || 0)) });
+                                                        setActiveDiscountPopover(null);
+                                                      }}
+                                                      className="px-2 py-1.5 rounded-lg text-[10px] font-black bg-red-50 text-red-600 hover:bg-red-100 transition-all"
+                                                      title="Remove discount"
+                                                    >
+                                                      <X className="w-3 h-3" />
+                                                    </button>
+                                                  </div>
+                                                  <div className="relative">
+                                                    <input
+                                                      type="number"
+                                                      min="0"
+                                                      max={entry.discount_type === 'percentage' ? 100 : undefined}
+                                                      defaultValue={entry.discount_value || ''}
+                                                      placeholder={entry.discount_type === 'percentage' ? '10' : '5.00'}
+                                                      className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg px-3 py-2 text-[11px] font-bold text-[#1B2559] outline-none focus:border-primary/30"
+                                                      onBlur={(e) => {
+                                                        const dv = Number(e.target.value) || 0;
+                                                        const up = entry.unit_price || 0;
+                                                        let newTotal = up * (entry.quantity || 1);
+                                                        if (entry.discount_type === 'percentage') newTotal = Math.max(newTotal * (1 - dv / 100), 0);
+                                                        else if (entry.discount_type === 'fixed') newTotal = Math.max(newTotal - dv, 0);
+                                                        handleUpdateEntry(entry.id, { discount_value: dv, total_price: newTotal, amount_remaining: (entry.amount_remaining || 0) + (newTotal - (entry.total_price || 0)) });
+                                                      }}
+                                                      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                                      autoFocus
+                                                    />
+                                                  </div>
+                                                </div>
+                                              </>,
+                                              document.body
+                                            )}
                                           </div>
                                         </td>
 
@@ -1445,69 +1637,97 @@ export default function LedgerPage() {
                                             </span>
                                             <ChevronDown className="w-2.5 h-2.5 text-[#A3AED0] opacity-0 group-hover/qty:opacity-100 transition-all duration-200 absolute right-1/2 translate-x-3" />
                                           </button>
-                                          {activeQtyDropdown === entry.id && qtyDropdownRect && createPortal(
-                                            <>
-                                              {/* Backdrop */}
-                                              <div className="fixed inset-0 z-[9998]" onClick={() => setActiveQtyDropdown(null)} />
-                                              {/* Dropdown */}
-                                              <div
-                                                className="fixed z-[9999] bg-white border border-[#E0E5F2] rounded-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
-                                                style={{
-                                                  top: qtyDropdownRect.bottom + 4,
-                                                  left: qtyDropdownRect.left + qtyDropdownRect.width / 2 - 40,
-                                                  width: 80,
-                                                  maxHeight: 260,
-                                                  overflowY: 'auto'
-                                                }}
-                                              >
-                                                <div className="py-1">
-                                                  {Array.from({ length: 50 }, (_, i) => i + 1).map(qty => (
-                                                    <button
-                                                      key={qty}
-                                                      onClick={() => {
-                                                        handleUpdateEntry(entry.id, {
-                                                          quantity: qty,
-                                                          total_price: qty * (entry.unit_price || 0),
-                                                          amount_remaining: (entry.amount_remaining || 0) + ((qty * (entry.unit_price || 0)) - (entry.total_price || 0))
-                                                        });
-                                                        setActiveQtyDropdown(null);
-                                                      }}
-                                                      className={cn(
-                                                        "w-full text-center py-2 text-[11px] font-medium transition-colors",
-                                                        (entry.quantity || 1) === qty
-                                                          ? "bg-primary text-white"
-                                                          : "text-[#1B2559] hover:bg-[#F4F7FE]"
-                                                      )}
-                                                    >
-                                                      {qty}
-                                                    </button>
-                                                  ))}
+                                          {activeQtyDropdown === entry.id && qtyDropdownRect ? (() => {
+                                            const height = 260;
+                                            const renderAbove = (window.innerHeight - qtyDropdownRect.bottom) < height && qtyDropdownRect.top > (window.innerHeight - qtyDropdownRect.bottom);
+                                            return createPortal(
+                                              <>
+                                                {/* Backdrop */}
+                                                <div className="fixed inset-0 z-[9998]" onClick={() => setActiveQtyDropdown(null)} />
+                                                {/* Dropdown */}
+                                                <div
+                                                  className={cn(
+                                                    "fixed z-[9999] bg-white border border-[#E0E5F2] rounded-lg shadow-2xl overflow-hidden animate-in fade-in duration-150",
+                                                    renderAbove ? "slide-in-from-bottom-2 origin-bottom" : "zoom-in-95 origin-top"
+                                                  )}
+                                                  style={{
+                                                    top: renderAbove ? 'auto' : qtyDropdownRect.bottom + 4,
+                                                    bottom: renderAbove ? window.innerHeight - qtyDropdownRect.top + 4 : 'auto',
+                                                    left: qtyDropdownRect.left + qtyDropdownRect.width / 2 - 40,
+                                                    width: 80,
+                                                    maxHeight: 260,
+                                                    overflowY: 'auto'
+                                                  }}
+                                                >
+                                                  <div className="py-1">
+                                                    {Array.from({ length: 50 }, (_, i) => i + 1).map(qty => (
+                                                      <button
+                                                        key={qty}
+                                                        onClick={() => {
+                                                          handleUpdateEntry(entry.id, {
+                                                            quantity: qty,
+                                                            total_price: qty * (entry.unit_price || 0),
+                                                            amount_remaining: (entry.amount_remaining || 0) + ((qty * (entry.unit_price || 0)) - (entry.total_price || 0))
+                                                          });
+                                                          setActiveQtyDropdown(null);
+                                                        }}
+                                                        className={cn(
+                                                          "w-full text-center py-2 text-[11px] font-medium transition-colors",
+                                                          (entry.quantity || 1) === qty
+                                                            ? "bg-primary text-white"
+                                                            : "text-[#1B2559] hover:bg-[#F4F7FE]"
+                                                        )}
+                                                      >
+                                                        {qty}
+                                                      </button>
+                                                    ))}
+                                                  </div>
                                                 </div>
-                                              </div>
-                                            </>,
-                                            document.body
-                                          )}
+                                              </>,
+                                              document.body
+                                            );
+                                          })() : null}
                                         </td>
 
                                         {/* Total / Paid / Remaining - MERGED per visit */}
                                         {
                                           isFirstOfGroup && (() => {
-                                            const groupTotal = group.reduce((sum, g) => sum + (g.total_price || 0), 0);
-                                            const groupPaid = group.reduce((sum, g) => sum + (g.amount_paid || 0), 0);
-                                            const groupRemaining = groupTotal - groupPaid;
-                                            return (
-                                              <>
-                                                <td rowSpan={group.length} className="px-4 py-1.5 border-r border-[#E0E5F2] text-[11px] font-medium text-[#1B2559] text-center bg-[#F4F7FE]/10 align-middle">
-                                                  ${groupTotal.toLocaleString()}
-                                                </td>
-                                                <td rowSpan={group.length} className="px-4 py-1.5 border-r border-[#E0E5F2] text-[11px] font-medium text-[#19D5C5] text-center align-middle">
-                                                  <button
-                                                    data-payment-trigger={firstEntry.id}
-                                                    onClick={() => setActivePaymentDropdown(prev => prev === firstEntry.id ? null : firstEntry.id)}
-                                                    className="w-full text-center hover:bg-[#F4F7FE] rounded-lg py-1 px-2 transition-all font-medium text-[#19D5C5] cursor-pointer"
-                                                  >
-                                                    {groupPaid > 0 ? `$${groupPaid.toLocaleString()}` : <span className="text-[#A3AED0]">$0</span>}
-                                                  </button>
+                                             const groupTotal = group.reduce((sum, g) => sum + (g.total_price || 0), 0);
+                                             const groupPaid = group.reduce((sum, g) => sum + (g.amount_paid || 0), 0);
+                                             const groupRemaining = groupTotal - groupPaid;
+                                             const paidPercent = groupTotal > 0 ? Math.min((groupPaid / groupTotal) * 100, 100) : 0;
+                                             const hasDiscount = group.some(g => g.discount_type);
+                                             const originalTotal = group.reduce((sum, g) => sum + (g.unit_price || 0) * (g.quantity || 1), 0);
+                                             return (
+                                               <>
+                                                 {/* Total Cell */}
+                                                 <td rowSpan={group.length} className="px-4 py-1.5 border-r border-[#E0E5F2] text-center bg-[#F4F7FE]/10 align-middle">
+                                                   {hasDiscount && originalTotal > groupTotal && (
+                                                     <div className="text-[9px] font-medium text-[#A3AED0] line-through">${originalTotal.toLocaleString()}</div>
+                                                   )}
+                                                   <span className={cn("text-[11px] font-black", hasDiscount ? "text-emerald-600" : "text-[#1B2559]")}>${groupTotal.toLocaleString()}</span>
+                                                   {hasDiscount && <div className="text-[8px] font-black uppercase tracking-widest text-emerald-500">Disc</div>}
+                                                 </td>
+                                                 {/* Paid Cell + Progress Bar */}
+                                                 <td rowSpan={group.length} className="px-3 py-1.5 border-r border-[#E0E5F2] text-center align-middle min-w-[110px]">
+                                                   <button
+                                                     data-payment-trigger={firstEntry.id}
+                                                     onClick={() => !isReadOnly && setActivePaymentDropdown(prev => prev === firstEntry.id ? null : firstEntry.id)}
+                                                     className={cn("w-full text-center rounded-lg py-1 px-2 transition-all", isReadOnly ? "cursor-default" : "hover:bg-[#F4F7FE] cursor-pointer")}
+                                                   >
+                                                     <div className="flex items-center justify-center gap-1 mb-1">
+                                                       <span className={cn("text-[11px] font-black",
+                                                         paidPercent >= 100 ? "text-[#19D5C5]" : groupPaid > 0 ? "text-[#FFB547]" : "text-[#A3AED0]"
+                                                       )}>${groupPaid.toLocaleString()}</span>
+                                                       {groupTotal > 0 && <span className="text-[9px] text-[#A3AED0] font-medium">/ ${groupTotal.toLocaleString()}</span>}
+                                                     </div>
+                                                     {groupTotal > 0 && (
+                                                       <div className="h-[3px] w-full bg-[#E0E5F2] rounded-full overflow-hidden">
+                                                         <div className={cn("h-full rounded-full transition-all duration-500",
+                                                           paidPercent >= 100 ? "bg-[#19D5C5]" : paidPercent > 0 ? "bg-[#FFB547]" : "bg-[#E0E5F2]"
+                                                         )} style={{ width: `${paidPercent}%` }} />
+                                                       </div>
+                                                     )}
                                                   {activePaymentDropdown === firstEntry.id && (() => {
                                                     const triggerEl = document.querySelector(`[data-payment-trigger="${firstEntry.id}"]`);
                                                     const rect = triggerEl?.getBoundingClientRect();
@@ -1561,124 +1781,140 @@ export default function LedgerPage() {
                                                     return createPortal(
                                                       <>
                                                         <div className="fixed inset-0 z-[9998]" onClick={() => setActivePaymentDropdown(null)} />
-                                                        <div
-                                                          className="fixed bg-white border border-[#E0E5F2] rounded-lg shadow-2xl z-[9999] p-4 w-[240px] animate-in fade-in slide-in-from-top-2 duration-150"
-                                                          style={{ top: rect.bottom + 4, left: rect.left - 80 }}
-                                                        >
+                                                        {(() => {
+                                                          const dropdownHeight = isSuong ? 260 : 200; // Estimated height based on branch fields
+                                                          const spaceBelow = window.innerHeight - rect.bottom;
+                                                          const spaceAbove = rect.top;
+                                                          const renderAbove = spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
 
-                                                          {/* ABA or ACLEDA based on branch */}
-                                                          {!isSuong ? (
-                                                            <div className="mb-2">
-                                                              <div className="flex items-center gap-2 mb-1">
-                                                                <div className="w-2 h-2 rounded-full bg-[#3B82F6]" />
-                                                                <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">ABA Bank</span>
-                                                              </div>
-                                                              <div className="relative">
-                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-[#A3AED0]">$</span>
-                                                                <input
-                                                                  type="text"
-                                                                  inputMode="numeric"
-                                                                  className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg pl-7 pr-3 py-2 text-[11px] font-medium text-[#3B82F6] outline-none focus:border-[#3B82F6]/30 text-right"
-                                                                  defaultValue={groupAba || ''}
-                                                                  onBlur={(e) => applyPayment('paid_aba', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
-                                                                  onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                                                                />
-                                                              </div>
-                                                            </div>
-                                                          ) : (
-                                                            <>
+                                                          return (
+                                                            <div
+                                                              className={cn(
+                                                                "fixed bg-white border border-[#E0E5F2] rounded-lg shadow-2xl z-[9999] p-4 w-[240px] animate-in fade-in duration-150",
+                                                                renderAbove ? "slide-in-from-bottom-2" : "slide-in-from-top-2"
+                                                              )}
+                                                              style={{
+                                                                top: renderAbove ? 'auto' : rect.bottom + 4,
+                                                                bottom: renderAbove ? window.innerHeight - rect.top + 4 : 'auto',
+                                                                left: rect.left - 80
+                                                              }}
+                                                            >
+
+                                                              {/* ABA or ACLEDA based on branch */}
+                                                              {!isSuong ? (
+                                                                <div className="mb-2">
+                                                                  <div className="flex items-center gap-2 mb-1">
+                                                                    <div className="w-2 h-2 rounded-full bg-[#3B82F6]" />
+                                                                    <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">ABA Bank</span>
+                                                                  </div>
+                                                                  <div className="relative">
+                                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-[#A3AED0]">$</span>
+                                                                    <input
+                                                                      type="text"
+                                                                      inputMode="numeric"
+                                                                      className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg pl-7 pr-3 py-2 text-[11px] font-medium text-[#3B82F6] outline-none focus:border-[#3B82F6]/30 text-right"
+                                                                      defaultValue={groupAba || ''}
+                                                                      onBlur={(e) => applyPayment('paid_aba', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
+                                                                      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                                                    />
+                                                                  </div>
+                                                                </div>
+                                                              ) : (
+                                                                <>
+                                                                  <div className="mb-2">
+                                                                    <div className="flex items-center gap-2 mb-1">
+                                                                      <div className="w-2 h-2 rounded-full bg-[#4A32A5]" />
+                                                                      <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">ACLEDA Bank USD</span>
+                                                                    </div>
+                                                                    <div className="relative">
+                                                                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-[#A3AED0]">$</span>
+                                                                      <input
+                                                                        type="text"
+                                                                        inputMode="numeric"
+                                                                        className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg pl-7 pr-3 py-2 text-[11px] font-medium text-[#4A32A5] outline-none focus:border-[#4A32A5]/30 text-right"
+                                                                        defaultValue={groupAcledaUsd || ''}
+                                                                        onBlur={(e) => applyPayment('paid_acleda_usd', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
+                                                                        onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                                                      />
+                                                                    </div>
+                                                                  </div>
+                                                                  <div className="mb-2">
+                                                                    <div className="flex items-center gap-2 mb-1">
+                                                                      <div className="w-2 h-2 rounded-full bg-[#4A32A5]" />
+                                                                      <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">ACLEDA Bank KHR</span>
+                                                                    </div>
+                                                                    <div className="relative">
+                                                                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-[#A3AED0]">៛</span>
+                                                                      <input
+                                                                        type="text"
+                                                                        inputMode="numeric"
+                                                                        className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg pl-7 pr-3 py-2 text-[11px] font-medium text-[#4A32A5] outline-none focus:border-[#4A32A5]/30 text-right"
+                                                                        defaultValue={groupAcledaKhr || ''}
+                                                                        onBlur={(e) => applyPayment('paid_acleda_khr', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
+                                                                        onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                                                      />
+                                                                    </div>
+                                                                  </div>
+                                                                </>
+                                                              )}
+
+                                                              {/* Cash USD */}
                                                               <div className="mb-2">
                                                                 <div className="flex items-center gap-2 mb-1">
-                                                                  <div className="w-2 h-2 rounded-full bg-[#4A32A5]" />
-                                                                  <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">ACLEDA Bank USD</span>
+                                                                  <div className="w-2 h-2 rounded-full bg-[#19D5C5]" />
+                                                                  <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">Cash USD</span>
                                                                 </div>
                                                                 <div className="relative">
                                                                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-[#A3AED0]">$</span>
                                                                   <input
                                                                     type="text"
                                                                     inputMode="numeric"
-                                                                    className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg pl-7 pr-3 py-2 text-[11px] font-medium text-[#4A32A5] outline-none focus:border-[#4A32A5]/30 text-right"
-                                                                    defaultValue={groupAcledaUsd || ''}
-                                                                    onBlur={(e) => applyPayment('paid_acleda_usd', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
+                                                                    className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg pl-7 pr-3 py-2 text-[11px] font-medium text-[#19D5C5] outline-none focus:border-[#19D5C5]/30 text-right"
+                                                                    defaultValue={groupCashUsd || ''}
+                                                                    onBlur={(e) => applyPayment('paid_cash_usd', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
                                                                     onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                                                                   />
                                                                 </div>
                                                               </div>
+
+                                                              {/* Cash KHR */}
                                                               <div className="mb-2">
                                                                 <div className="flex items-center gap-2 mb-1">
-                                                                  <div className="w-2 h-2 rounded-full bg-[#4A32A5]" />
-                                                                  <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">ACLEDA Bank KHR</span>
+                                                                  <div className="w-2 h-2 rounded-full bg-[#FFB547]" />
+                                                                  <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">Cash KHR</span>
                                                                 </div>
                                                                 <div className="relative">
                                                                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-[#A3AED0]">៛</span>
                                                                   <input
                                                                     type="text"
                                                                     inputMode="numeric"
-                                                                    className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg pl-7 pr-3 py-2 text-[11px] font-medium text-[#4A32A5] outline-none focus:border-[#4A32A5]/30 text-right"
-                                                                    defaultValue={groupAcledaKhr || ''}
-                                                                    onBlur={(e) => applyPayment('paid_acleda_khr', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
+                                                                    className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg pl-7 pr-3 py-2 text-[11px] font-medium text-[#FFB547] outline-none focus:border-[#FFB547]/30 text-right"
+                                                                    defaultValue={groupCashKhr || ''}
+                                                                    onBlur={(e) => applyPayment('paid_cash_khr', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
                                                                     onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                                                                   />
                                                                 </div>
                                                               </div>
-                                                            </>
-                                                          )}
 
-                                                          {/* Cash USD */}
-                                                          <div className="mb-2">
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                              <div className="w-2 h-2 rounded-full bg-[#19D5C5]" />
-                                                              <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">Cash USD</span>
+                                                              {/* Divider + Remaining */}
+                                                              {(() => {
+                                                                const exchangeRate = Number(firstEntry.applied_exchange_rate) || 4100;
+                                                                const khrRemaining = Math.round(groupRemaining * exchangeRate);
+                                                                return (
+                                                                  <div className="border-t border-[#E0E5F2] pt-2 mt-3 flex justify-between items-center">
+                                                                    <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">Remaining</span>
+                                                                    <div className="text-right">
+                                                                      <span className={`text-[12px] font-medium ${groupRemaining > 0 ? 'text-[#EE5D50]' : 'text-[#19D5C5]'}`}>${groupRemaining.toLocaleString()}</span>
+                                                                      {groupRemaining > 0 && (
+                                                                        <p className={`text-[12px] font-medium ${groupRemaining > 0 ? 'text-[#A3AED0]' : 'text-[#19D5C5]'} font-kantumruy leading-tight mt-0.5`}>ឬ ៛{khrRemaining.toLocaleString()}</p>
+                                                                      )}
+                                                                    </div>
+                                                                  </div>
+                                                                );
+                                                              })()}
                                                             </div>
-                                                            <div className="relative">
-                                                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-[#A3AED0]">$</span>
-                                                              <input
-                                                                type="text"
-                                                                inputMode="numeric"
-                                                                className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg pl-7 pr-3 py-2 text-[11px] font-medium text-[#19D5C5] outline-none focus:border-[#19D5C5]/30 text-right"
-                                                                defaultValue={groupCashUsd || ''}
-                                                                onBlur={(e) => applyPayment('paid_cash_usd', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
-                                                                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                                                              />
-                                                            </div>
-                                                          </div>
-
-                                                          {/* Cash KHR */}
-                                                          <div className="mb-2">
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                              <div className="w-2 h-2 rounded-full bg-[#FFB547]" />
-                                                              <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">Cash KHR</span>
-                                                            </div>
-                                                            <div className="relative">
-                                                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-[#A3AED0]">៛</span>
-                                                              <input
-                                                                type="text"
-                                                                inputMode="numeric"
-                                                                className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg pl-7 pr-3 py-2 text-[11px] font-medium text-[#FFB547] outline-none focus:border-[#FFB547]/30 text-right"
-                                                                defaultValue={groupCashKhr || ''}
-                                                                onBlur={(e) => applyPayment('paid_cash_khr', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
-                                                                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                                                              />
-                                                            </div>
-                                                          </div>
-
-                                                          {/* Divider + Remaining */}
-                                                          {(() => {
-                                                            const exchangeRate = Number(firstEntry.applied_exchange_rate) || 4100;
-                                                            const khrRemaining = Math.round(groupRemaining * exchangeRate);
-                                                            return (
-                                                              <div className="border-t border-[#E0E5F2] pt-2 mt-3 flex justify-between items-center">
-                                                                <span className="text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest">Remaining</span>
-                                                                <div className="text-right">
-                                                                  <span className={`text-[12px] font-medium ${groupRemaining > 0 ? 'text-[#EE5D50]' : 'text-[#19D5C5]'}`}>${groupRemaining.toLocaleString()}</span>
-                                                                  {groupRemaining > 0 && (
-                                                                    <p className={`text-[12px] font-medium ${groupRemaining > 0 ? 'text-[#A3AED0]' : 'text-[#19D5C5]'} font-kantumruy leading-tight mt-0.5`}>ឬ ៛{khrRemaining.toLocaleString()}</p>
-                                                                  )}
-                                                                </div>
-                                                              </div>
-                                                            );
-                                                          })()}
-                                                        </div>
+                                                          );
+                                                        })()}
                                                       </>,
                                                       document.body
                                                     );
@@ -1732,12 +1968,22 @@ export default function LedgerPage() {
                                                 const triggerEl = document.querySelector(`[data-staff-trigger="doctor-${firstEntry.id}"]`);
                                                 const rect = triggerEl?.getBoundingClientRect();
                                                 if (!rect) return null;
+                                                const height = 200;
+                                                const renderAbove = (window.innerHeight - rect.bottom) < height && rect.top > (window.innerHeight - rect.bottom);
                                                 return createPortal(
                                                   <>
                                                     <div className="fixed inset-0 z-[9998]" onClick={() => setActiveStaffDropdown(null)} />
                                                     <div
-                                                      className="fixed bg-white border border-[#E0E5F2] rounded-lg shadow-2xl z-[9999] overflow-hidden py-1 max-h-[200px] overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-150"
-                                                      style={{ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 160) }}
+                                                      className={cn(
+                                                        "fixed bg-white border border-[#E0E5F2] rounded-lg shadow-2xl z-[9999] overflow-hidden py-1 max-h-[200px] overflow-y-auto custom-scrollbar animate-in fade-in duration-150",
+                                                        renderAbove ? "slide-in-from-bottom-2" : "slide-in-from-top-2"
+                                                      )}
+                                                      style={{
+                                                        top: renderAbove ? 'auto' : rect.bottom + 4,
+                                                        bottom: renderAbove ? window.innerHeight - rect.top + 4 : 'auto',
+                                                        left: rect.left,
+                                                        width: Math.max(rect.width, 160)
+                                                      }}
                                                     >
                                                       {staff.filter(s => s.role === 'Doctor').map(s => (
                                                         <button
@@ -1787,12 +2033,22 @@ export default function LedgerPage() {
                                                 const triggerEl = document.querySelector(`[data-staff-trigger="cashier-${firstEntry.id}"]`);
                                                 const rect = triggerEl?.getBoundingClientRect();
                                                 if (!rect) return null;
+                                                const height = 200;
+                                                const renderAbove = (window.innerHeight - rect.bottom) < height && rect.top > (window.innerHeight - rect.bottom);
                                                 return createPortal(
                                                   <>
                                                     <div className="fixed inset-0 z-[9998]" onClick={() => setActiveStaffDropdown(null)} />
                                                     <div
-                                                      className="fixed bg-white border border-[#E0E5F2] rounded-lg shadow-2xl z-[9999] overflow-hidden py-1 max-h-[200px] overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-150"
-                                                      style={{ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 160) }}
+                                                      className={cn(
+                                                        "fixed bg-white border border-[#E0E5F2] rounded-lg shadow-2xl z-[9999] overflow-hidden py-1 max-h-[200px] overflow-y-auto custom-scrollbar animate-in fade-in duration-150",
+                                                        renderAbove ? "slide-in-from-bottom-2" : "slide-in-from-top-2"
+                                                      )}
+                                                      style={{
+                                                        top: renderAbove ? 'auto' : rect.bottom + 4,
+                                                        bottom: renderAbove ? window.innerHeight - rect.top + 4 : 'auto',
+                                                        left: rect.left,
+                                                        width: Math.max(rect.width, 160)
+                                                      }}
                                                     >
                                                       {staff.filter(s => s.role === 'Receptionist').map(s => (
                                                         <button
@@ -3094,105 +3350,107 @@ export default function LedgerPage() {
         )
       }
 
-      {isAddingNewMedicine && (
-        <>
-          <div className="fixed inset-0 z-[100] bg-[#1B2559]/20 backdrop-blur-sm" onClick={() => setIsAddingNewMedicine(null)} />
-          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-[2rem] shadow-2xl z-[101] border border-[#E0E5F2] p-8 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-medium text-[#1B2559] tracking-tight">Add New Medicine</h3>
-              <button
-                onClick={() => setIsAddingNewMedicine(null)}
-                className="w-10 h-10 flex items-center justify-center bg-[#F4F7FE] rounded-lg text-[#A3AED0] hover:text-[#EE5D50] transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="space-y-5">
-              <div>
-                <label className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-[0.2em] mb-2 block">Medicine Name</label>
-                <input
-                  type="text"
-                  value={newMedicineForm.name}
-                  onChange={e => setNewMedicineForm({ ...newMedicineForm, name: e.target.value })}
-                  className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg px-5 py-3.5 text-[12px] font-medium text-[#1B2559] focus:bg-white focus:border-primary/30 outline-none transition-all placeholder:text-[#A3AED0]/50"
-                  placeholder="e.g. Paracetamol 500mg"
-                  autoFocus
-                />
+      {
+        isAddingNewMedicine && (
+          <>
+            <div className="fixed inset-0 z-[100] bg-[#1B2559]/20 backdrop-blur-sm" onClick={() => setIsAddingNewMedicine(null)} />
+            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-[2rem] shadow-2xl z-[101] border border-[#E0E5F2] p-8 animate-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-xl font-medium text-[#1B2559] tracking-tight">Add New Medicine</h3>
+                <button
+                  onClick={() => setIsAddingNewMedicine(null)}
+                  className="w-10 h-10 flex items-center justify-center bg-[#F4F7FE] rounded-lg text-[#A3AED0] hover:text-[#EE5D50] transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-5">
                 <div>
-                  <label className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-[0.2em] mb-2 block">Sell Price ($)</label>
-                  <div className="relative">
-                    <DollarIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A3AED0]" />
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={newMedicineForm.price}
-                      onChange={e => setNewMedicineForm({ ...newMedicineForm, price: e.target.value.replace(/[^0-9.]/g, '') })}
-                      className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg pl-10 pr-4 py-3.5 text-[12px] font-medium text-[#1B2559] focus:bg-white focus:border-primary/30 outline-none transition-all"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-[0.2em] mb-2 block">Selling Unit</label>
+                  <label className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-[0.2em] mb-2 block">Medicine Name</label>
                   <input
                     type="text"
-                    value={newMedicineForm.unit}
-                    onChange={e => setNewMedicineForm({ ...newMedicineForm, unit: e.target.value })}
-                    className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg px-5 py-3.5 text-[12px] font-medium text-[#1B2559] focus:bg-white focus:border-primary/30 outline-none transition-all"
-                    placeholder="e.g. Pill, Box, Card"
-                    list="unit-options"
+                    value={newMedicineForm.name}
+                    onChange={e => setNewMedicineForm({ ...newMedicineForm, name: e.target.value })}
+                    className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg px-5 py-3.5 text-[12px] font-medium text-[#1B2559] focus:bg-white focus:border-primary/30 outline-none transition-all placeholder:text-[#A3AED0]/50"
+                    placeholder="e.g. Paracetamol 500mg"
+                    autoFocus
                   />
-                  <datalist id="unit-options">
-                    <option value="Piece" />
-                    <option value="Pill" />
-                    <option value="Box" />
-                    <option value="Card" />
-                    <option value="Bottle" />
-                  </datalist>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-[0.2em] mb-2 block">Sell Price ($)</label>
+                    <div className="relative">
+                      <DollarIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A3AED0]" />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={newMedicineForm.price}
+                        onChange={e => setNewMedicineForm({ ...newMedicineForm, price: e.target.value.replace(/[^0-9.]/g, '') })}
+                        className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg pl-10 pr-4 py-3.5 text-[12px] font-medium text-[#1B2559] focus:bg-white focus:border-primary/30 outline-none transition-all"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-[0.2em] mb-2 block">Selling Unit</label>
+                    <input
+                      type="text"
+                      value={newMedicineForm.unit}
+                      onChange={e => setNewMedicineForm({ ...newMedicineForm, unit: e.target.value })}
+                      className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg px-5 py-3.5 text-[12px] font-medium text-[#1B2559] focus:bg-white focus:border-primary/30 outline-none transition-all"
+                      placeholder="e.g. Pill, Box, Card"
+                      list="unit-options"
+                    />
+                    <datalist id="unit-options">
+                      <option value="Piece" />
+                      <option value="Pill" />
+                      <option value="Box" />
+                      <option value="Card" />
+                      <option value="Bottle" />
+                    </datalist>
+                  </div>
                 </div>
               </div>
+              <div className="mt-8 pt-6 border-t border-[#F4F7FE] flex justify-end gap-3">
+                <button
+                  onClick={() => setIsAddingNewMedicine(null)}
+                  className="px-6 py-3.5 rounded-lg text-[11px] font-medium text-[#A3AED0] hover:bg-[#F4F7FE] hover:text-[#1B2559] uppercase tracking-widest transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!currentBranch || !newMedicineForm.name) return;
+                    const { data } = await supabase.from('inventory').insert({
+                      name: newMedicineForm.name,
+                      category: 'Uncategorized',
+                      stock_level: 0,
+                      sell_price: Number(newMedicineForm.price) || 0,
+                      unit: newMedicineForm.unit || 'Piece',
+                      branch_id: currentBranch.id
+                    }).select().single();
+                    if (data) {
+                      setInventory(prev => [...prev, data]);
+                      const currentEntry = monthEntries.find(e => e.id === isAddingNewMedicine.entryId) || { quantity: 1 };
+                      handleUpdateEntry(isAddingNewMedicine.entryId, {
+                        description: data.name,
+                        unit_price: data.sell_price,
+                        inventory_id: data.id,
+                        item_type: 'medicine',
+                        total_price: data.sell_price * (currentEntry.quantity || 1)
+                      });
+                    }
+                    setIsAddingNewMedicine(null);
+                  }}
+                  className="px-8 py-3.5 rounded-lg bg-primary text-white text-[11px] font-medium uppercase tracking-widest hover:bg-[#2563EB] shadow-md shadow-primary/20 transition-all"
+                >
+                  Add Medicine
+                </button>
+              </div>
             </div>
-            <div className="mt-8 pt-6 border-t border-[#F4F7FE] flex justify-end gap-3">
-              <button
-                onClick={() => setIsAddingNewMedicine(null)}
-                className="px-6 py-3.5 rounded-lg text-[11px] font-medium text-[#A3AED0] hover:bg-[#F4F7FE] hover:text-[#1B2559] uppercase tracking-widest transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={async () => {
-                  if (!currentBranch || !newMedicineForm.name) return;
-                  const { data } = await supabase.from('inventory').insert({
-                    name: newMedicineForm.name,
-                    category: 'Uncategorized',
-                    stock_level: 0,
-                    sell_price: Number(newMedicineForm.price) || 0,
-                    unit: newMedicineForm.unit || 'Piece',
-                    branch_id: currentBranch.id
-                  }).select().single();
-                  if (data) {
-                    setInventory(prev => [...prev, data]);
-                    const currentEntry = monthEntries.find(e => e.id === isAddingNewMedicine.entryId) || { quantity: 1 };
-                    handleUpdateEntry(isAddingNewMedicine.entryId, {
-                      description: data.name,
-                      unit_price: data.sell_price,
-                      inventory_id: data.id,
-                      item_type: 'medicine',
-                      total_price: data.sell_price * (currentEntry.quantity || 1)
-                    });
-                  }
-                  setIsAddingNewMedicine(null);
-                }}
-                className="px-8 py-3.5 rounded-lg bg-primary text-white text-[11px] font-medium uppercase tracking-widest hover:bg-[#2563EB] shadow-md shadow-primary/20 transition-all"
-              >
-                Add Medicine
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+          </>
+        )
+      }
 
       <DailyReportModal
         isOpen={isDailyReportOpen}

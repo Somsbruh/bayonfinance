@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { createPortal } from "react-dom";
 import { useSidebar } from "@/context/SidebarContext";
 import { useBranch } from "@/context/BranchContext";
 import { useCurrency } from "@/context/CurrencyContext";
@@ -40,6 +41,7 @@ export default function Sidebar() {
     const { isCollapsed, toggleSidebar } = useSidebar();
     const { currentBranch, branches, setBranch } = useBranch();
     const [isBranchMenuOpen, setIsBranchMenuOpen] = useState(false);
+    const [menuRect, setMenuRect] = useState<DOMRect | null>(null);
 
     return (
         <div
@@ -74,7 +76,10 @@ export default function Sidebar() {
                 )}>
                     <div className="relative">
                         <button
-                            onClick={() => setIsBranchMenuOpen(!isBranchMenuOpen)}
+                            onClick={(e) => {
+                                setMenuRect(e.currentTarget.getBoundingClientRect());
+                                setIsBranchMenuOpen(!isBranchMenuOpen);
+                            }}
                             className={cn(
                                 "group bg-[#F4F7FE] border border-[#E0E5F2] hover:border-primary/30 transition-all active:scale-[0.98] mx-auto",
                                 isCollapsed ? "w-12 h-12 flex items-center justify-center rounded-lg" : "w-full rounded-lg p-2.5 flex items-center gap-3"
@@ -97,37 +102,51 @@ export default function Sidebar() {
                             )}
                         </button>
 
-                        {isBranchMenuOpen && (
-                            <div className={cn(
-                                "absolute mt-2 bg-white border border-[#E0E5F2] rounded-3xl shadow-2xl p-2 z-[200] animate-in zoom-in-95 duration-200 glass",
-                                isCollapsed ? "left-full ml-4 top-0 w-64" : "top-full left-0 w-80"
-                            )}>
-                                <div className="px-4 py-2 text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest border-b border-[#F4F7FE] mb-2">
-                                    Select System Node
-                                </div>
-                                {branches.map(branch => (
-                                    <button
-                                        key={branch.id}
-                                        onClick={() => {
-                                            setBranch(branch.id);
-                                            setIsBranchMenuOpen(false);
-                                        }}
-                                        className={cn(
-                                            "w-full flex items-center gap-3 p-3 rounded-lg transition-all font-medium text-xs capitalize",
-                                            currentBranch?.id === branch.id
-                                                ? "bg-primary text-white"
-                                                : "text-[#707EAE] hover:bg-[#F4F7FE] hover:text-primary"
-                                        )}
-                                    >
-                                        <div className={cn(
-                                            "w-2 h-2 rounded-full",
-                                            currentBranch?.id === branch.id ? "bg-white" : "bg-primary/20"
-                                        )} />
-                                        {branch.name}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
+                        {isBranchMenuOpen && menuRect && typeof window !== 'undefined' && (() => {
+                            const expectedHeight = branches.length * 48 + 40; // rough calculation
+                            const spaceBelow = window.innerHeight - menuRect.bottom;
+                            const renderAbove = spaceBelow < expectedHeight && menuRect.top > spaceBelow;
+
+                            return createPortal(
+                                <>
+                                    <div className="fixed inset-0 z-[199]" onClick={() => setIsBranchMenuOpen(false)} />
+                                    <div className={cn(
+                                        "fixed bg-white border border-[#E0E5F2] rounded-3xl shadow-2xl p-2 z-[200] animate-in zoom-in-95 duration-200 glass",
+                                        isCollapsed ? "w-64" : "w-80"
+                                    )} style={{
+                                        top: renderAbove ? 'auto' : menuRect.bottom + 8,
+                                        bottom: renderAbove ? window.innerHeight - menuRect.top + 8 : 'auto',
+                                        left: isCollapsed ? menuRect.right + 16 : menuRect.left
+                                    }}>
+                                        <div className="px-4 py-2 text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest border-b border-[#F4F7FE] mb-2">
+                                            Select System Node
+                                        </div>
+                                        {branches.map(branch => (
+                                            <button
+                                                key={branch.id}
+                                                onClick={() => {
+                                                    setBranch(branch.id);
+                                                    setIsBranchMenuOpen(false);
+                                                }}
+                                                className={cn(
+                                                    "w-full flex items-center gap-3 p-3 rounded-lg transition-all font-medium text-xs capitalize",
+                                                    currentBranch?.id === branch.id
+                                                        ? "bg-primary text-white"
+                                                        : "text-[#707EAE] hover:bg-[#F4F7FE] hover:text-primary"
+                                                )}
+                                            >
+                                                <div className={cn(
+                                                    "w-2 h-2 rounded-full",
+                                                    currentBranch?.id === branch.id ? "bg-white" : "bg-primary/20"
+                                                )} />
+                                                {branch.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </>,
+                                document.body
+                            );
+                        })()}
                     </div>
                 </div>
 
