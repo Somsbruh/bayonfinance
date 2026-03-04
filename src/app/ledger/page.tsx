@@ -652,7 +652,7 @@ export default function LedgerPage() {
   return (
     <div className={cn(
       "relative transition-all",
-      viewMode === 'list' ? "space-y-6 block" : "flex flex-col h-[calc(100vh-3rem)] gap-4"
+      viewMode === 'list' ? "space-y-6 block pb-32" : "flex flex-col h-[calc(100vh-3rem)] gap-4"
     )}>
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-4">
@@ -979,7 +979,7 @@ export default function LedgerPage() {
           </div>
         ) : viewMode === 'manual' ? (
           /* Manual / Spreadsheet View */
-          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="space-y-4 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Tools Row */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
