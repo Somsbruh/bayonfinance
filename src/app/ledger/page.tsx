@@ -444,11 +444,14 @@ export default function LedgerPage() {
           const qty = updates.quantity !== undefined ? updates.quantity : (prevEntry.quantity || 1);
 
           if (isNowPaid && !wasAlreadyPaid && inventoryId) {
-            // Medicine is fully paid just now. Deduct stock.
-            const { data: invData } = await supabase.from('inventory').select('stock_level').eq('id', inventoryId).single();
+            // Medicine is fully paid just now. Deduct reception stock.
+            const { data: invData } = await supabase.from('inventory').select('reception_stock, name').eq('id', inventoryId).single();
             if (invData) {
-              const newStock = Math.max((invData.stock_level || 0) - qty, 0);
-              await supabase.from('inventory').update({ stock_level: newStock }).eq('id', inventoryId);
+              if ((invData.reception_stock || 0) < qty) {
+                alert(`Warning: Front desk stock for ${invData.name || 'this item'} is low. Please transfer from Stock Room on the Inventory page.`);
+              }
+              const newStock = Math.max((invData.reception_stock || 0) - qty, 0);
+              await supabase.from('inventory').update({ reception_stock: newStock }).eq('id', inventoryId);
               fetchStaticData(); // refresh UI local state
             }
           }
@@ -1781,8 +1784,12 @@ export default function LedgerPage() {
                               className="h-8 hover:bg-[#F4F7FE]/60 bg-[#F4F7FE]/30 cursor-text transition-all border-b border-[#E0E5F2] group"
                               onClick={handleInitializeManualRow}
                             >
-                              <td className="px-3 py-1.5 border-r border-[#E0E5F2] text-center w-[40px]"></td>
-                              <td className="px-3 py-1.5 border-r border-[#E0E5F2] text-center w-[40px] text-[#A3AED0]/50"><Plus className="w-4 h-4 mx-auto group-hover:text-primary transition-colors" /></td>
+                              <td className="px-2 py-1.5 border-r border-[#E0E5F2] text-center w-[80px]">
+                                <div className="flex items-center justify-center mx-auto px-1.5 py-1 rounded text-[10px] font-medium transition-all whitespace-nowrap w-full max-w-[65px] text-[#A3AED0] group-hover:text-primary transition-colors">
+                                  —
+                                </div>
+                              </td>
+                              <td className="px-3 py-1.5 border-r border-[#E0E5F2] text-center w-[48px] text-[#A3AED0]/50"><Plus className="w-4 h-4 mx-auto group-hover:text-primary transition-colors" /></td>
                               <td className="px-4 py-1.5 border-r border-[#E0E5F2] align-middle"><span className="text-[11px] font-medium text-[#A3AED0]/50 block mt-[0.5px]">Enter Patient...</span></td>
                               <td className="px-4 py-1.5 border-r border-[#E0E5F2]"><span className="text-[11px] font-medium text-[#A3AED0]/50">Select Treatment...</span></td>
                               <td className="px-4 py-1.5 border-r border-[#E0E5F2] text-center"><span className="text-[11px] font-medium text-[#A3AED0]/50">$0</span></td>

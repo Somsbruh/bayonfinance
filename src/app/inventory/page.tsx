@@ -20,6 +20,7 @@ interface InventoryItem {
     sku: string;
     vendor: string;
     stock_level: number;
+    reception_stock: number;
     unit: string;
     sell_price: number;
     item_type: 'medicine' | 'inventory' | 'consumable_medical';
@@ -53,6 +54,10 @@ function InventoryPageInner() {
     const [activeFilter, setActiveFilter] = useState<ActiveFilter>('none');
     const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'name', direction: 'asc' });
     const [transferItem, setTransferItem] = useState<InventoryItem | null>(null);
+    const [internalTransferItem, setInternalTransferItem] = useState<InventoryItem | null>(null);
+    const [internalTransferAmount, setInternalTransferAmount] = useState<string>("1");
+    const [internalTransferDirection, setInternalTransferDirection] = useState<'to_reception' | 'to_stock'>('to_reception');
+    const [isTransferring, setIsTransferring] = useState(false);
     const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
     const toggleCategory = (cat: string) => {
@@ -84,6 +89,7 @@ function InventoryPageInner() {
             // Process data for display
             const processedItems = (data || []).map(item => {
                 const stock = item.stock_level || 0;
+                const recStock = item.reception_stock || 0;
                 const price = item.sell_price || 0;
 
                 let status: 'IN STOCK' | 'LOW STOCK' | 'OUT OF STOCK' = 'OUT OF STOCK';
@@ -95,6 +101,7 @@ function InventoryPageInner() {
                     sku: item.sku || '-',
                     vendor: item.vendor || '-',
                     stock_level: stock,
+                    reception_stock: recStock,
                     unit: item.unit || 'Piece',
                     sell_price: price,
                     buy_price: item.buy_price || 0,
@@ -110,6 +117,58 @@ function InventoryPageInner() {
             setLoading(false);
         }
     }
+
+    const handleInternalTransfer = async () => {
+        if (!internalTransferItem || !currentBranch) return;
+
+        const amount = parseInt(internalTransferAmount);
+        if (isNaN(amount) || amount <= 0) {
+            alert('Please enter a valid amount greater than 0');
+            return;
+        }
+
+        const currentStockMain = internalTransferItem.stock_level;
+        const currentStockRec = internalTransferItem.reception_stock;
+
+        if (internalTransferDirection === 'to_reception' && amount > currentStockMain) {
+            alert('Not enough items in Stock Room to transfer.');
+            return;
+        }
+        if (internalTransferDirection === 'to_stock' && amount > currentStockRec) {
+            alert('Not enough items at Front Desk to transfer.');
+            return;
+        }
+
+        const newStockMain = internalTransferDirection === 'to_reception' ? currentStockMain - amount : currentStockMain + amount;
+        const newStockRec = internalTransferDirection === 'to_reception' ? currentStockRec + amount : currentStockRec - amount;
+
+        try {
+            setIsTransferring(true);
+            const { error } = await supabase
+                .from('inventory')
+                .update({
+                    stock_level: newStockMain,
+                    reception_stock: newStockRec
+                })
+                .eq('id', internalTransferItem.id);
+
+            if (error) throw error;
+
+            // Update local state immediately
+            setItems(prev => prev.map(item =>
+                item.id === internalTransferItem.id
+                    ? { ...item, stock_level: newStockMain, reception_stock: newStockRec }
+                    : item
+            ));
+
+            setInternalTransferItem(null);
+            setInternalTransferAmount("1");
+        } catch (error: any) {
+            alert(error.message || 'Failed to transfer stock');
+        } finally {
+            setIsTransferring(false);
+        }
+    };
 
     const handleSort = (key: SortConfig['key']) => {
         setSortConfig(prev => ({
@@ -221,6 +280,93 @@ function InventoryPageInner() {
                     onClose={() => setTransferItem(null)}
                     onSuccess={() => { setTransferItem(null); fetchInventory(); }}
                 />
+            )}
+            {/* Internal Transfer Modal */}
+            {internalTransferItem && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white rounded-[24px] p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-medium text-[#1B2559]">Transfer Stock</h3>
+                            <button onClick={() => setInternalTransferItem(null)} className="text-[#A3AED0] hover:text-[#1B2559]">
+                                <ArrowLeftRight className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="mb-6 p-4 bg-[#F4F7FE] rounded-xl flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center border border-[#E0E5F2] shadow-sm shrink-0">
+                                <Package className="w-6 h-6 text-[#3B82F6]" />
+                            </div>
+                            <div>
+                                <p className="text-[14px] font-bold text-[#1B2559] font-kantumruy leading-tight">{internalTransferItem.name}</p>
+                                <p className="text-[11px] font-medium text-[#A3AED0] mt-1">
+                                    Stock Room: <span className="text-[#1B2559]">{internalTransferItem.stock_level}</span> |
+                                    Front Desk: <span className="text-[#1B2559]">{internalTransferItem.reception_stock}</span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4 mb-8">
+                            <div>
+                                <label className="block text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest mb-2">Direction</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        onClick={() => setInternalTransferDirection('to_reception')}
+                                        className={cn(
+                                            "py-3 px-4 rounded-xl text-[12px] font-medium transition-all text-center border",
+                                            internalTransferDirection === 'to_reception'
+                                                ? "bg-[#3B82F6] text-white border-[#3B82F6] shadow-md shadow-[#3B82F6]/20"
+                                                : "bg-white text-[#1B2559] border-[#E0E5F2] hover:bg-[#F4F7FE]"
+                                        )}
+                                    >
+                                        To Front Desk
+                                    </button>
+                                    <button
+                                        onClick={() => setInternalTransferDirection('to_stock')}
+                                        className={cn(
+                                            "py-3 px-4 rounded-xl text-[12px] font-medium transition-all text-center border",
+                                            internalTransferDirection === 'to_stock'
+                                                ? "bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-600/20"
+                                                : "bg-white text-[#1B2559] border-[#E0E5F2] hover:bg-[#F4F7FE]"
+                                        )}
+                                    >
+                                        To Stock Room
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest mb-2">Transfer Amount</label>
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={internalTransferAmount}
+                                        onChange={(e) => setInternalTransferAmount(e.target.value)}
+                                        className="w-full bg-white border border-[#E0E5F2] hover:border-[#3B82F6]/50 focus:border-[#3B82F6] rounded-xl px-4 py-3 text-[14px] font-medium text-[#1B2559] outline-none transition-all shadow-sm"
+                                        placeholder="Enter amount..."
+                                    />
+                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[12px] font-medium text-[#A3AED0]">{internalTransferItem.unit}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setInternalTransferItem(null)}
+                                className="flex-1 px-6 py-3 rounded-xl border border-[#E0E5F2] text-[12px] font-bold text-[#1B2559] hover:bg-[#F4F7FE] transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleInternalTransfer}
+                                disabled={isTransferring}
+                                className="flex-1 px-6 py-3 rounded-xl bg-[#3B82F6] text-[12px] font-bold text-white hover:bg-[#2563EB] transition-all shadow-md shadow-[#3B82F6]/20 disabled:opacity-50"
+                            >
+                                {isTransferring ? 'Transferring...' : 'Confirm Transfer'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
             {/* Page Header Area */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-0">
@@ -434,10 +580,11 @@ function InventoryPageInner() {
                                                         <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Name</span></th>
                                                         {showExtraColumns && <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">SKU</span></th>}
                                                         {showExtraColumns && <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Vendor</span></th>}
-                                                        <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Stock</span></th>
+                                                        <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Stock Rm</span></th>
+                                                        {activeTab === 'Medicine' && <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Front Dsk</span></th>}
                                                         <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Status</span></th>
                                                         {showExtraColumns && <th className="px-5 py-5 text-right"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">{activeFilter === 'last-adjusted' ? 'Last Adjusted' : 'Asset Value'}</span></th>}
-                                                        <th className="px-5 py-5 w-12"></th>
+                                                        <th className="px-5 py-5 w-20"></th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-[#F4F7FE]">
@@ -476,8 +623,17 @@ function InventoryPageInner() {
                                                                 </td>
                                                             )}
                                                             <td className="px-5 py-4">
-                                                                <span className="text-[12px] font-medium text-[#1B2559]">{item.stock_level}</span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-[13px] font-bold text-[#1B2559]">{item.stock_level}</span>
+                                                                </div>
                                                             </td>
+                                                            {activeTab === 'Medicine' && (
+                                                                <td className="px-5 py-4">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-[13px] font-bold text-[#3B82F6]">{item.reception_stock || 0}</span>
+                                                                    </div>
+                                                                </td>
+                                                            )}
                                                             <td className="px-5 py-4">
                                                                 <div className={cn(
                                                                     "inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-tight",
@@ -506,19 +662,29 @@ function InventoryPageInner() {
                                                                 </td>
                                                             )}
                                                             <td className="px-5 py-4 text-right">
-                                                                <div className="flex items-center justify-end gap-1.5">
+                                                                <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    {activeTab === 'Medicine' && (
+                                                                        <button
+                                                                            onClick={() => setInternalTransferItem(item)}
+                                                                            title="Transfer stock between Stock Room and Front Desk"
+                                                                            className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white hover:bg-purple-600 transition-all bg-purple-500 rounded-lg flex items-center gap-1 shadow-sm"
+                                                                        >
+                                                                            <ArrowLeftRight className="w-3 h-3" />
+                                                                            Move
+                                                                        </button>
+                                                                    )}
                                                                     {branches.length > 1 && (
                                                                         <button
                                                                             onClick={() => setTransferItem(item)}
                                                                             title="Transfer to another branch"
-                                                                            className="p-2 text-[#A3AED0] hover:text-[#6366F1] transition-all bg-[#F4F7FE]/50 hover:bg-[#6366F1]/10 rounded-lg"
+                                                                            className="p-1.5 text-[#A3AED0] hover:text-[#6366F1] transition-all bg-[#F4F7FE]/50 hover:bg-[#6366F1]/10 rounded-lg"
                                                                         >
-                                                                            <ArrowLeftRight className="w-4 h-4" />
+                                                                            <Building2 className="w-4 h-4" />
                                                                         </button>
                                                                     )}
                                                                     <Link href={`/inventory/${item.id}`}>
-                                                                        <button className="p-2 text-[#A3AED0] hover:text-[#3B82F6] transition-all bg-[#F4F7FE]/50 rounded-lg">
-                                                                            <MoreVertical className="w-4.5 h-4.5" />
+                                                                        <button className="p-1.5 text-[#A3AED0] hover:text-[#3B82F6] transition-all bg-[#F4F7FE]/50 rounded-lg">
+                                                                            <MoreVertical className="w-4 h-4" />
                                                                         </button>
                                                                     </Link>
                                                                 </div>
