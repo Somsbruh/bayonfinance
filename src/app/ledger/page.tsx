@@ -738,10 +738,10 @@ export default function LedgerPage() {
 
           <button
             onClick={() => setIsAddingEntry(true)}
-            disabled={isDayLocked}
+            disabled={isDayLocked || isReadOnly}
             className={cn(
               "btn-primary-premium shadow-lg shadow-primary/20 h-[44px]",
-              isDayLocked && "opacity-50 cursor-not-allowed grayscale"
+              (isDayLocked || isReadOnly) && "opacity-50 cursor-not-allowed grayscale"
             )}
           >
             <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300" />
@@ -2485,8 +2485,15 @@ export default function LedgerPage() {
                               ))}
                               <div className="p-2 border-t border-[#F4F7FE] mt-1">
                                 <button
-                                  onClick={() => setIntakeResults([])}
-                                  className="w-full py-2.5 rounded-lg bg-primary text-white text-[9px] font-medium uppercase tracking-widest hover:bg-[#2563EB] transition-all shadow-lg shadow-primary/10"
+                                  onClick={() => {
+                                    if (isReadOnly) return alert("Demo Mode");
+                                    setIntakeResults([]);
+                                  }}
+                                  disabled={isReadOnly}
+                                  className={cn(
+                                    "w-full py-2.5 rounded-lg text-white text-[9px] font-medium uppercase tracking-widest transition-all shadow-lg",
+                                    isReadOnly ? "bg-gray-400 cursor-not-allowed" : "bg-primary hover:bg-[#2563EB] shadow-primary/10"
+                                  )}
                                 >
                                   Proceed as New Patient "{quickPatient.name}"
                                 </button>
@@ -2587,6 +2594,7 @@ export default function LedgerPage() {
 
                   <button
                     onClick={async () => {
+                      if (isReadOnly) return alert("Demo Mode: Cannot create profiles.");
                       if (!quickPatient.name || !quickPatient.phone) {
                         alert("Minimum identity required: Name & Phone.");
                         return;
@@ -2665,7 +2673,11 @@ export default function LedgerPage() {
                         alert("Failed to initialize profile. Error: " + (error?.message || "Unknown error"));
                       }
                     }}
-                    className="w-full bg-primary hover:bg-[#2563EB] text-white py-5 rounded-[1.5rem] text-xs font-medium transition-all shadow-xl shadow-primary/25 uppercase tracking-[0.2em]"
+                    disabled={isReadOnly}
+                    className={cn(
+                      "w-full text-white py-5 rounded-[1.5rem] text-xs font-medium transition-all shadow-xl uppercase tracking-[0.2em]",
+                      isReadOnly ? "bg-gray-400 cursor-not-allowed" : "bg-primary hover:bg-[#2563EB] shadow-primary/25"
+                    )}
                   >
                     Create Profile
                   </button>
