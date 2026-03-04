@@ -656,27 +656,25 @@ export default function LedgerPage() {
     )}>
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-4">
-          {/* View Toggle - Premium Tabs */}
-          <div className="flex items-center gap-8 border-b border-[#E0E5F2] pt-2 min-w-[280px]">
-            {(['manual', 'list', 'calendar'] as const).map((v) => {
-              const isActive = viewMode === v;
-              return (
-                <button
-                  key={v}
-                  onClick={() => setViewMode(v)}
-                  className={cn(
-                    "pb-2.5 text-[12px] font-bold transition-all relative uppercase tracking-wider",
-                    isActive ? "text-[#4318FF]" : "text-[#A3AED0] hover:text-[#1B2559]"
-                  )}
-                >
-                  {v === 'manual' && 'Manual View'}
-                  {v === 'list' && 'Daily View'}
-                  {v === 'calendar' && 'Calendar'}
-                  {isActive && <div className="absolute -bottom-[0.5px] left-0 right-0 h-[2px] bg-[#4318FF] rounded-t-full" />}
-                </button>
-              );
-            })}
+          {/* View Toggle - Compact - Now on the left */}
+          <div className="bg-[#F4F7FE] p-1 rounded-none border border-[#E0E5F2] flex items-center gap-1 shrink-0">
+            {(['manual', 'list', 'calendar'] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setViewMode(v)}
+                className={cn(
+                  "px-4 py-1.5 rounded-none text-[9px] font-medium uppercase tracking-widest transition-all whitespace-nowrap",
+                  viewMode === v ? "bg-white text-primary shadow-sm border border-[#E0E5F2]" : "text-[#A3AED0] hover:text-[#1B2559]"
+                )}
+              >
+                {v === 'manual' && 'Manual View'}
+                {v === 'list' && 'Daily View'}
+                {v === 'calendar' && 'Calendar'}
+              </button>
+            ))}
           </div>
+
+          <div className="h-6 w-px bg-[#E0E5F2] mx-2 hidden xl:block" />
         </div>
 
         <div className="flex items-center gap-3">
