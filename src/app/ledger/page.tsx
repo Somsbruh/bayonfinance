@@ -39,6 +39,7 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import PatientSearch from "@/components/PatientSearch";
 import DailyReportModal from "@/components/DailyReportModal";
+import OdontogramView from "@/components/OdontogramView";
 import { useCurrency } from "@/context/CurrencyContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { useBranch } from "@/context/BranchContext";
@@ -143,6 +144,7 @@ export default function LedgerPage() {
   const [newMedicineForm, setNewMedicineForm] = useState({ name: '', price: '', unit: 'Piece' });
   const [activeTimeDropdown, setActiveTimeDropdown] = useState<{ id: string, rect: { top: number, left: number, bottom: number } } | null>(null); // entry with open time picker
   const [activeDiscountPopover, setActiveDiscountPopover] = useState<{ entryId: string, rect: DOMRect } | null>(null);
+  const [activeOdontogramEntry, setActiveOdontogramEntry] = useState<{ entryId: string, currentDescription: string, selectedTeeth: string[] } | null>(null);
 
   useEffect(() => {
     if (isAddingEntry && !quickPatient.appointment_date) {
@@ -1298,13 +1300,33 @@ export default function LedgerPage() {
                                             <input
                                               ref={(el) => { if (el && activeTreatmentLookup?.id === entry.id) el.setAttribute('data-treatment-input', entry.id); }}
                                               className={cn(
-                                                "flex-1 bg-transparent outline-none focus:bg-[#F4F7FE] rounded-lg transition-all",
+                                                "flex-1 bg-transparent outline-none focus:bg-[#F4F7FE] rounded-lg transition-all cursor-pointer hover:text-primary",
                                                 isDayLocked && "opacity-50 cursor-not-allowed grayscale"
                                               )}
                                               placeholder="Select Treatment..."
                                               value={(activeTreatmentLookup && activeTreatmentLookup.id === entry.id) ? activeTreatmentLookup.query : (entry.description || entry.treatments?.name || entry.inventory?.name || "")}
                                               onChange={(e) => setActiveTreatmentLookup({ id: entry.id, query: e.target.value })}
-                                              onFocus={() => setActiveTreatmentLookup({ id: entry.id, query: entry.description || entry.treatments?.name || entry.inventory?.name || "" })}
+                                              onClick={() => {
+                                                // Edit existing tooth specific treatment manually
+                                                const currentDesc = entry.description || entry.treatments?.name || entry.inventory?.name || "";
+                                                const isToothSpecific = ["extraction", "root canal", "filling", "crown", "implant", "veneer", "removal", "restoration", "rct"].some(kw => currentDesc.toLowerCase().includes(kw));
+                                                const hasTeeth = currentDesc.includes("#");
+                                                if (isToothSpecific || hasTeeth) {
+                                                  const parts = currentDesc.split('#');
+                                                  const baseName = parts[0];
+                                                  const teeth = parts.slice(1);
+                                                  setActiveOdontogramEntry({ entryId: entry.id, currentDescription: baseName, selectedTeeth: teeth });
+                                                } else {
+                                                  setActiveTreatmentLookup({ id: entry.id, query: currentDesc });
+                                                }
+                                              }}
+                                              onFocus={() => {
+                                                const currentDesc = entry.description || entry.treatments?.name || entry.inventory?.name || "";
+                                                // Prevent focus logic from overwriting if Odontogram is opening
+                                                if (!activeOdontogramEntry) {
+                                                  setActiveTreatmentLookup({ id: entry.id, query: currentDesc.split('#')[0] });
+                                                }
+                                              }}
                                               onBlur={(e) => {
                                                 setTimeout(() => {
                                                   if (
@@ -1382,6 +1404,8 @@ export default function LedgerPage() {
                                                         setActivePricePrompt({ entryId: entry.id, itemId: t.id, name: t.name, type: t.item_type as 'treatment' | 'medicine' });
                                                         setActiveTreatmentLookup(null);
                                                       } else {
+                                                        const isToothSpecific = ["extraction", "root canal", "filling", "crown", "implant", "veneer", "removal", "restoration", "rct"].some(kw => t.name.toLowerCase().includes(kw));
+
                                                         const updateData: any = {
                                                           description: t.name,
                                                           unit_price: t.price,
@@ -1396,8 +1420,15 @@ export default function LedgerPage() {
                                                           updateData.treatment_id = null;
                                                         }
                                                         updateData.amount_remaining = (entry.amount_remaining || 0) + ((t.price * (entry.quantity || 1)) - (entry.total_price || 0));
+
                                                         handleUpdateEntry(entry.id, updateData);
                                                         setActiveTreatmentLookup(null);
+
+                                                        if (isToothSpecific) {
+                                                          setTimeout(() => {
+                                                            setActiveOdontogramEntry({ entryId: entry.id, currentDescription: t.name, selectedTeeth: [] });
+                                                          }, 100);
+                                                        }
                                                       }
                                                     }}
                                                     className="w-full text-left px-4 py-2 hover:bg-[#F4F7FE] text-[10px] font-medium text-[#1B2559] flex justify-between items-center transition-colors border-b border-[#F4F7FE] last:border-0"
@@ -3485,6 +3516,89 @@ export default function LedgerPage() {
         date={date}
         branchId={currentBranch?.id || ""}
       />
+
+      {/* Odontogram Modal */}
+      {activeOdontogramEntry && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm shadow-2xl animate-in fade-in duration-200" onClick={(e) => {
+            e.stopPropagation();
+          }} />
+          <div className="bg-white rounded-[24px] shadow-2xl border border-slate-200 max-w-2xl w-full max-h-[90vh] flex flex-col relative z-10 animate-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white rounded-t-[24px]">
+              <div>
+                <h3 className="text-xl font-bold text-[#1B2559] tracking-tight">Select Teeth</h3>
+                <p className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest mt-0.5">For {activeOdontogramEntry.currentDescription.split('#')[0]}</p>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveOdontogramEntry(null);
+                }}
+                className="p-2 hover:bg-[#F4F7FE] rounded-lg transition-colors text-[#A3AED0] hover:text-[#1B2559] border border-transparent hover:border-[#E0E5F2]"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto bg-[#F4F7FE]/50 p-6 min-h-[400px]">
+              <OdontogramView
+                patientId="ledger"
+                initialSelectedTeeth={activeOdontogramEntry.selectedTeeth}
+                onSelectionChange={(teeth) => {
+                  setActiveOdontogramEntry(prev => prev ? { ...prev, selectedTeeth: teeth } : null);
+                }}
+              />
+            </div>
+
+            <div className="p-5 border-t border-slate-100 flex items-center justify-between shrink-0 bg-white rounded-b-[24px]">
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest">Selected:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {activeOdontogramEntry.selectedTeeth.length === 0 ? (
+                    <span className="text-[11px] font-medium text-[#A3AED0] italic">None</span>
+                  ) : (
+                    activeOdontogramEntry.selectedTeeth.map(t => (
+                      <span key={t} className="px-2.5 py-1 rounded bg-primary/10 text-primary text-[11px] font-bold border border-primary/20">
+                        #{t}
+                      </span>
+                    ))
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveOdontogramEntry(null);
+                  }}
+                  className="px-5 py-2.5 rounded-xl text-[11px] font-bold text-[#1B2559] hover:bg-[#F4F7FE] transition-colors border border-[#E0E5F2]"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const newDescription = activeOdontogramEntry.currentDescription.split('#')[0] +
+                      (activeOdontogramEntry.selectedTeeth.length > 0
+                        ? '#' + activeOdontogramEntry.selectedTeeth.join('#')
+                        : '');
+
+                    handleUpdateEntry(activeOdontogramEntry.entryId, {
+                      description: newDescription
+                    });
+
+                    setActiveOdontogramEntry(null);
+                  }}
+                  className="px-6 py-2.5 rounded-xl bg-primary text-white text-[11px] font-bold hover:bg-[#2563EB] shadow-md shadow-primary/20 transition-all uppercase tracking-widest"
+                >
+                  Confirm Selection
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div >
   );
 }

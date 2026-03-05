@@ -17,15 +17,20 @@ const Odontogram = dynamic(() => import("react-odontogram").then(mod => mod.Odon
 
 interface OdontogramViewProps {
     patientId: string;
+    initialSelectedTeeth?: string[];
+    onSelectionChange?: (teeth: string[]) => void;
 }
 
-export default function OdontogramView({ patientId }: OdontogramViewProps) {
+export default function OdontogramView({ patientId, initialSelectedTeeth = [], onSelectionChange }: OdontogramViewProps) {
     const [chartType, setChartType] = useState<'adult' | 'baby'>('adult');
-    const [selectedTeeth, setSelectedTeeth] = useState<string[]>([]);
+    const [selectedTeeth, setSelectedTeeth] = useState<string[]>(initialSelectedTeeth);
 
     const handleOdontogramChange = (teeth: any[]) => {
         const ids = teeth.map(t => t.id.replace('teeth-', ''));
         setSelectedTeeth(ids);
+        if (onSelectionChange) {
+            onSelectionChange(ids);
+        }
     };
 
     return (
