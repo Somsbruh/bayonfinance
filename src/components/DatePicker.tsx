@@ -112,9 +112,9 @@ export default function DatePicker({
         setIsOpen(false);
     };
 
-    // Year range: current year +/- 50
+    // Year range: 1900 to current year + 10
     const currentYear = new Date().getFullYear();
-    const years = Array.from({ length: 101 }, (_, i) => currentYear - 50 + i);
+    const years = Array.from({ length: currentYear - 1900 + 11 }, (_, i) => 1900 + i);
 
     // Calendar Grid Logic
     const monthStart = startOfMonth(viewDate);

@@ -1940,12 +1940,12 @@ export default function LedgerPage() {
                                                     <input
                                                       type="text"
                                                       inputMode="numeric"
-                                                      style={{ width: `${Math.max(String(firstEntry.amount_remaining ?? '').length, 1) + 0.5}ch` }}
+                                                      style={{ width: `${Math.max(String(groupRemaining ?? '').length, 1) + 0.5}ch` }}
                                                       className={cn(
                                                         "bg-transparent outline-none focus:bg-[#F4F7FE] border border-transparent focus:border-[#E0E5F2] rounded-lg transition-transform duration-200 text-left font-black p-0",
                                                         "group-hover/input:translate-x-1 text-[#EE5D50] inline-block"
                                                       )}
-                                                      value={firstEntry.amount_remaining ?? ''}
+                                                      value={groupRemaining ?? ''}
                                                       onChange={(e) => {
                                                         const newRemaining = Number(e.target.value.replace(/[^0-9.]/g, ''));
                                                         handleUpdateEntry(firstEntry.id, {
