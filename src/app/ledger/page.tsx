@@ -1920,7 +1920,7 @@ export default function LedgerPage() {
                                                                     <div className="text-right">
                                                                       <span className={`text-[12px] font-black ${groupRemaining > 0 ? 'text-[#EE5D50]' : 'text-[#19D5C5]'}`}>${groupRemaining.toLocaleString()}</span>
                                                                       {groupRemaining > 0 && (
-                                                                        <p className={`text-[10px] font-bold ${groupRemaining > 0 ? 'text-[#A3AED0]' : 'text-[#19D5C5]'} font-kantumruy leading-tight mt-0.5 uppercase tracking-tighter`}>ឬ ៛{khrRemaining.toLocaleString()}</p>
+                                                                        <p className={`text-[12px] font-black ${groupRemaining > 0 ? 'text-[#1B2559]' : 'text-[#19D5C5]'} font-kantumruy leading-tight mt-0.5 uppercase tracking-tighter`}>ឬ ៛{khrRemaining.toLocaleString()}</p>
                                                                       )}
                                                                     </div>
                                                                   </div>
