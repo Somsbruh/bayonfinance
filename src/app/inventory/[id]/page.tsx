@@ -63,6 +63,7 @@ export default function ItemDetailsPage() {
     const [usageTrend, setUsageTrend] = useState(0);
     const [showNote, setShowNote] = useState(false);
     const [adjExpiry, setAdjExpiry] = useState<string>("");
+    const [adjDate, setAdjDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [showVendorInfo, setShowVendorInfo] = useState(false);
     const [showProductDetails, setShowProductDetails] = useState(false);
 
@@ -198,11 +199,10 @@ export default function ItemDetailsPage() {
         setVendorSearch(v.name);
         setShowVendorSuggestions(false);
     };
-
     const handleAdjustStock = async (amount: number, type: 'IN' | 'OUT') => {
         const adjustment = type === 'IN' ? amount : -amount;
         const newQty = Math.max(0, formData.quantity + adjustment);
-        const now = new Date().toISOString();
+        const now = adjDate ? new Date(adjDate).toISOString() : new Date().toISOString();
 
         setFormData(prev => ({
             ...prev,
@@ -233,6 +233,7 @@ export default function ItemDetailsPage() {
                     resulting_stock: newQty,
                     reason: adjNote || null,
                     expiry_date: type === 'IN' && adjExpiry ? adjExpiry : null,
+                    created_at: now
                 })
                 .select()
                 .single();
@@ -248,6 +249,7 @@ export default function ItemDetailsPage() {
             setAdjQty(0);
             setAdjNote("");
             setAdjExpiry("");
+            setAdjDate(new Date().toISOString().split('T')[0]);
             setShowNote(false);
         } catch (err: any) {
             console.error('Error adjusting stock:', err);
@@ -713,6 +715,17 @@ export default function ItemDetailsPage() {
                         <div className="flex items-center gap-2">
                             <Calendar className="w-4.5 h-4.5 text-[#3B82F6] shrink-0" />
                             <h2 className="text-[14px] font-black text-[#1B2559] tracking-tight flex-1">Stock Management</h2>
+                        </div>
+
+                        {/* Transaction Date */}
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Adjustment Date</label>
+                            <DatePicker
+                                value={adjDate || undefined}
+                                onChange={(date) => setAdjDate(date.toISOString().split('T')[0])}
+                                format="dd/MM/yyyy"
+                                triggerClassName="bg-[#F4F7FE]/50 border-[#F4F7FE] hover:bg-[#F4F7FE]/80 h-[36px] px-4"
+                            />
                         </div>
 
                         {/* Stepper */}
