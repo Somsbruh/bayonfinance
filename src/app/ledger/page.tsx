@@ -1499,33 +1499,37 @@ export default function LedgerPage() {
                                         </td>
 
 
-                                        <td className="px-4 py-1.5 border-r border-[#E0E5F2] text-[12px] font-medium text-[#1B2559] text-center">
-                                          <div className="flex items-center justify-center w-full group/input relative text-[#1B2559] gap-[1px]">
-                                            <span className="text-[12px] font-medium pointer-events-none transition-transform duration-200 group-hover/input:-translate-x-1 border-r border-transparent">$</span>
-                                            <input
-                                              type="text"
-                                              inputMode="numeric"
-                                              style={{ width: `${Math.max(String(entry.unit_price ?? '').length, 1)}ch` }}
-                                              className={cn(
-                                                "bg-transparent outline-none focus:bg-[#F4F7FE] rounded transition-transform duration-200 text-left font-medium p-0",
-                                                "group-hover/input:translate-x-1 inline-block"
-                                              )}
-                                              value={entry.unit_price}
-                                              onChange={(e) => {
-                                                if (isDayLocked || isReadOnly) return;
-                                                const up = Number(e.target.value.replace(/[^0-9.]/g, ''));
-                                                const discountMultiplier = entry.discount_type === 'percentage' ? (1 - (entry.discount_value || 0) / 100) : 1;
-                                                const discountFixed = entry.discount_type === 'fixed' ? (entry.discount_value || 0) : 0;
-                                                const newTotal = Math.max((up * (entry.quantity || 1) * discountMultiplier) - discountFixed, 0);
-                                                handleUpdateEntry(entry.id, {
-                                                  unit_price: up,
-                                                  total_price: newTotal,
-                                                  amount_remaining: (entry.amount_remaining || 0) + (newTotal - (entry.total_price || 0))
-                                                });
-                                              }}
-                                              disabled={isDayLocked || isReadOnly}
-                                            />
-                                            {/* Discount Badge */}
+                                        <td className="px-2 py-1.5 border-r border-[#E0E5F2] text-center relative group/pricecell">
+                                          <div className="flex items-center justify-center w-full relative">
+                                            {/* Centered price: $ + input */}
+                                            <div className="flex items-center gap-[1px] group/input">
+                                              <span className="text-[12px] font-medium text-[#1B2559] pointer-events-none transition-transform duration-200 group-hover/input:-translate-x-0.5">$</span>
+                                              <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                style={{ width: `${Math.max(String(entry.unit_price ?? '').length, 1)}ch` }}
+                                                className={cn(
+                                                  "bg-transparent outline-none focus:bg-[#F4F7FE] rounded transition-all duration-200 text-center font-medium p-0 text-[12px] text-[#1B2559]",
+                                                  isDayLocked && "opacity-50 cursor-not-allowed grayscale"
+                                                )}
+                                                value={entry.unit_price}
+                                                onChange={(e) => {
+                                                  if (isDayLocked || isReadOnly) return;
+                                                  const up = Number(e.target.value.replace(/[^0-9.]/g, ''));
+                                                  const discountMultiplier = entry.discount_type === 'percentage' ? (1 - (entry.discount_value || 0) / 100) : 1;
+                                                  const discountFixed = entry.discount_type === 'fixed' ? (entry.discount_value || 0) : 0;
+                                                  const newTotal = Math.max((up * (entry.quantity || 1) * discountMultiplier) - discountFixed, 0);
+                                                  handleUpdateEntry(entry.id, {
+                                                    unit_price: up,
+                                                    total_price: newTotal,
+                                                    amount_remaining: (entry.amount_remaining || 0) + (newTotal - (entry.total_price || 0))
+                                                  });
+                                                }}
+                                                disabled={isDayLocked || isReadOnly}
+                                              />
+                                            </div>
+
+                                            {/* % Discount badge — absolutely positioned, appears on hover */}
                                             {!isDayLocked && !isReadOnly && (
                                               <button
                                                 onClick={(e) => {
@@ -1536,10 +1540,10 @@ export default function LedgerPage() {
                                                   );
                                                 }}
                                                 className={cn(
-                                                  "ml-1 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase transition-all opacity-0 group-hover/input:opacity-100",
+                                                  "absolute right-0 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase transition-all duration-150",
                                                   entry.discount_type
                                                     ? "bg-emerald-100 text-emerald-700 opacity-100"
-                                                    : "bg-[#F4F7FE] text-[#A3AED0] hover:text-primary hover:bg-primary/10"
+                                                    : "opacity-0 group-hover/pricecell:opacity-100 bg-[#F4F7FE] text-[#A3AED0] hover:text-primary hover:bg-primary/10"
                                                 )}
                                                 title="Set discount"
                                               >
@@ -1548,85 +1552,86 @@ export default function LedgerPage() {
                                                 {entry.discount_type === 'fixed' && `-$${entry.discount_value}`}
                                               </button>
                                             )}
-                                            {/* Discount Portal Popover */}
-                                            {activeDiscountPopover?.entryId === entry.id && typeof window !== 'undefined' && createPortal(
-                                              <>
-                                                <div className="fixed inset-0 z-[9998]" onClick={() => setActiveDiscountPopover(null)} />
-                                                <div
-                                                  className="fixed z-[9999] bg-white border border-[#E0E5F2] rounded-xl shadow-2xl p-3 w-[190px] animate-in fade-in zoom-in-95 duration-150"
-                                                  style={{
-                                                    top: (activeDiscountPopover?.rect.bottom ?? 0) + 6,
-                                                    left: (activeDiscountPopover?.rect.left ?? 0) - 60,
-                                                  }}
-                                                >
-                                                  <p className="text-[9px] font-black uppercase tracking-widest text-[#A3AED0] mb-2">Discount</p>
-                                                  <div className="flex gap-1 mb-2">
-                                                    <button
-                                                      onClick={() => {
-                                                        const up = entry.unit_price || 0;
-                                                        const dv = entry.discount_value || 0;
-                                                        const newTotal = Math.max(up * (entry.quantity || 1) * (1 - dv / 100), 0);
-                                                        handleUpdateEntry(entry.id, { discount_type: 'percentage', total_price: newTotal, amount_remaining: (entry.amount_remaining || 0) + (newTotal - (entry.total_price || 0)) });
-                                                      }}
-                                                      className={cn(
-                                                        "flex-1 py-1.5 rounded-lg text-[10px] font-black transition-all",
-                                                        entry.discount_type === 'percentage' ? "bg-primary text-white" : "bg-[#F4F7FE] text-[#1B2559] hover:bg-primary/10"
-                                                      )}
-                                                    >
-                                                      % Off
-                                                    </button>
-                                                    <button
-                                                      onClick={() => {
-                                                        const up = entry.unit_price || 0;
-                                                        const dv = entry.discount_value || 0;
-                                                        const newTotal = Math.max(up * (entry.quantity || 1) - dv, 0);
-                                                        handleUpdateEntry(entry.id, { discount_type: 'fixed', total_price: newTotal, amount_remaining: (entry.amount_remaining || 0) + (newTotal - (entry.total_price || 0)) });
-                                                      }}
-                                                      className={cn(
-                                                        "flex-1 py-1.5 rounded-lg text-[10px] font-black transition-all",
-                                                        entry.discount_type === 'fixed' ? "bg-primary text-white" : "bg-[#F4F7FE] text-[#1B2559] hover:bg-primary/10"
-                                                      )}
-                                                    >
-                                                      $ Off
-                                                    </button>
-                                                    <button
-                                                      onClick={() => {
-                                                        const up = entry.unit_price || 0;
-                                                        const originalTotal = up * (entry.quantity || 1);
-                                                        handleUpdateEntry(entry.id, { discount_type: null, discount_value: 0, total_price: originalTotal, amount_remaining: (entry.amount_remaining || 0) + (originalTotal - (entry.total_price || 0)) });
-                                                        setActiveDiscountPopover(null);
-                                                      }}
-                                                      className="px-2 py-1.5 rounded-lg text-[10px] font-black bg-red-50 text-red-600 hover:bg-red-100 transition-all"
-                                                      title="Remove discount"
-                                                    >
-                                                      <X className="w-3 h-3" />
-                                                    </button>
-                                                  </div>
-                                                  <div className="relative">
-                                                    <input
-                                                      type="number"
-                                                      min="0"
-                                                      max={entry.discount_type === 'percentage' ? 100 : undefined}
-                                                      defaultValue={entry.discount_value || ''}
-                                                      placeholder={entry.discount_type === 'percentage' ? '10' : '5.00'}
-                                                      className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg px-3 py-2 text-[11px] font-bold text-[#1B2559] outline-none focus:border-primary/30"
-                                                      onBlur={(e) => {
-                                                        const dv = Number(e.target.value) || 0;
-                                                        const up = entry.unit_price || 0;
-                                                        let newTotal = up * (entry.quantity || 1);
-                                                        if (entry.discount_type === 'percentage') newTotal = Math.max(newTotal * (1 - dv / 100), 0);
-                                                        else if (entry.discount_type === 'fixed') newTotal = Math.max(newTotal - dv, 0);
-                                                        handleUpdateEntry(entry.id, { discount_value: dv, total_price: newTotal, amount_remaining: (entry.amount_remaining || 0) + (newTotal - (entry.total_price || 0)) });
-                                                      }}
-                                                      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                                                      autoFocus
-                                                    />
-                                                  </div>
-                                                </div>
-                                              </>,
-                                              document.body
-                                            )}
                                           </div>
+                                          {/* Discount Portal Popover */}
+                                          {activeDiscountPopover?.entryId === entry.id && typeof window !== 'undefined' && createPortal(
+
+                                            <>
+                                              <div className="fixed inset-0 z-[9998]" onClick={() => setActiveDiscountPopover(null)} />
+                                              <div
+                                                className="fixed z-[9999] bg-white border border-[#E0E5F2] rounded-xl shadow-2xl p-3 w-[190px] animate-in fade-in zoom-in-95 duration-150"
+                                                style={{
+                                                  top: (activeDiscountPopover?.rect.bottom ?? 0) + 6,
+                                                  left: (activeDiscountPopover?.rect.left ?? 0) - 60,
+                                                }}
+                                              >
+                                                <p className="text-[9px] font-black uppercase tracking-widest text-[#A3AED0] mb-2">Discount</p>
+                                                <div className="flex gap-1 mb-2">
+                                                  <button
+                                                    onClick={() => {
+                                                      const up = entry.unit_price || 0;
+                                                      const dv = entry.discount_value || 0;
+                                                      const newTotal = Math.max(up * (entry.quantity || 1) * (1 - dv / 100), 0);
+                                                      handleUpdateEntry(entry.id, { discount_type: 'percentage', total_price: newTotal, amount_remaining: (entry.amount_remaining || 0) + (newTotal - (entry.total_price || 0)) });
+                                                    }}
+                                                    className={cn(
+                                                      "flex-1 py-1.5 rounded-lg text-[10px] font-black transition-all",
+                                                      entry.discount_type === 'percentage' ? "bg-primary text-white" : "bg-[#F4F7FE] text-[#1B2559] hover:bg-primary/10"
+                                                    )}
+                                                  >
+                                                    % Off
+                                                  </button>
+                                                  <button
+                                                    onClick={() => {
+                                                      const up = entry.unit_price || 0;
+                                                      const dv = entry.discount_value || 0;
+                                                      const newTotal = Math.max(up * (entry.quantity || 1) - dv, 0);
+                                                      handleUpdateEntry(entry.id, { discount_type: 'fixed', total_price: newTotal, amount_remaining: (entry.amount_remaining || 0) + (newTotal - (entry.total_price || 0)) });
+                                                    }}
+                                                    className={cn(
+                                                      "flex-1 py-1.5 rounded-lg text-[10px] font-black transition-all",
+                                                      entry.discount_type === 'fixed' ? "bg-primary text-white" : "bg-[#F4F7FE] text-[#1B2559] hover:bg-primary/10"
+                                                    )}
+                                                  >
+                                                    $ Off
+                                                  </button>
+                                                  <button
+                                                    onClick={() => {
+                                                      const up = entry.unit_price || 0;
+                                                      const originalTotal = up * (entry.quantity || 1);
+                                                      handleUpdateEntry(entry.id, { discount_type: null, discount_value: 0, total_price: originalTotal, amount_remaining: (entry.amount_remaining || 0) + (originalTotal - (entry.total_price || 0)) });
+                                                      setActiveDiscountPopover(null);
+                                                    }}
+                                                    className="px-2 py-1.5 rounded-lg text-[10px] font-black bg-red-50 text-red-600 hover:bg-red-100 transition-all"
+                                                    title="Remove discount"
+                                                  >
+                                                    <X className="w-3 h-3" />
+                                                  </button>
+                                                </div>
+                                                <div className="relative">
+                                                  <input
+                                                    type="number"
+                                                    min="0"
+                                                    max={entry.discount_type === 'percentage' ? 100 : undefined}
+                                                    defaultValue={entry.discount_value || ''}
+                                                    placeholder={entry.discount_type === 'percentage' ? '10' : '5.00'}
+                                                    className="w-full bg-[#F4F7FE] border border-[#E0E5F2] rounded-lg px-3 py-2 text-[11px] font-bold text-[#1B2559] outline-none focus:border-primary/30"
+                                                    onBlur={(e) => {
+                                                      const dv = Number(e.target.value) || 0;
+                                                      const up = entry.unit_price || 0;
+                                                      let newTotal = up * (entry.quantity || 1);
+                                                      if (entry.discount_type === 'percentage') newTotal = Math.max(newTotal * (1 - dv / 100), 0);
+                                                      else if (entry.discount_type === 'fixed') newTotal = Math.max(newTotal - dv, 0);
+                                                      handleUpdateEntry(entry.id, { discount_value: dv, total_price: newTotal, amount_remaining: (entry.amount_remaining || 0) + (newTotal - (entry.total_price || 0)) });
+                                                    }}
+                                                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                                    autoFocus
+                                                  />
+                                                </div>
+                                              </div>
+                                            </>,
+                                            document.body
+                                          )}
                                         </td>
 
                                         {/* Qty - INDIVIDUAL (Custom Dropdown) */}
@@ -2086,8 +2091,9 @@ export default function LedgerPage() {
                                         }
                                       </tr >
                                     );
-                                  })}
-                                </tbody>
+                                  })
+                                  }
+                                </tbody >
                               );
                             });
                           })()}
