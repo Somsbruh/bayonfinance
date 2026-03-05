@@ -14,6 +14,7 @@ import {
     Layers,
     AlertTriangle,
 } from "lucide-react";
+import { format } from "date-fns";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -471,7 +472,7 @@ function CreateNewItemPageInner() {
                                 <label className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Expiry Date</label>
                                 <DatePicker
                                     value={formData.expiryDate || undefined}
-                                    onChange={(date) => setFormData({ ...formData, expiryDate: date.toISOString().split('T')[0] })}
+                                    onChange={(date) => setFormData({ ...formData, expiryDate: format(date, 'yyyy-MM-dd') })}
                                     placeholder="Select date"
                                     format="dd/MM/yyyy"
                                     triggerClassName="bg-[#F4F7FE]/50 border-[#F4F7FE] hover:bg-[#F4F7FE]/80 h-[46px] px-5"

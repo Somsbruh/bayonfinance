@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
     ArrowLeft,
     Building2,
@@ -21,6 +22,7 @@ import {
     ClipboardList,
     AlertTriangle
 } from "lucide-react";
+import { format } from "date-fns";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -63,9 +65,33 @@ export default function ItemDetailsPage() {
     const [usageTrend, setUsageTrend] = useState(0);
     const [showNote, setShowNote] = useState(false);
     const [adjExpiry, setAdjExpiry] = useState<string>("");
-    const [adjDate, setAdjDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [adjDate, setAdjDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
     const [showVendorInfo, setShowVendorInfo] = useState(false);
     const [showProductDetails, setShowProductDetails] = useState(false);
+
+    // Refs for Portals
+    const vendorTriggerRef = useRef<HTMLInputElement>(null);
+    const categoryTriggerRef = useRef<HTMLInputElement>(null);
+    const unitTriggerRef = useRef<HTMLInputElement>(null);
+
+    // Coordinates for Portals
+    const [vendorCoords, setVendorCoords] = useState({ top: 0, left: 0, width: 0 });
+    const [categoryCoords, setCategoryCoords] = useState({ top: 0, left: 0, width: 0 });
+    const [unitCoords, setUnitCoords] = useState({ top: 0, left: 0, width: 0 });
+
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+
+    const updatePortalCoords = (ref: React.RefObject<HTMLElement | null>, setCoords: (coords: { top: number; left: number; width: number }) => void) => {
+        if (ref.current) {
+            const rect = ref.current.getBoundingClientRect();
+            setCoords({
+                top: rect.bottom + window.scrollY,
+                left: rect.left + window.scrollX,
+                width: rect.width
+            });
+        }
+    };
 
     interface Transaction {
         id: string;
@@ -199,6 +225,19 @@ export default function ItemDetailsPage() {
         setVendorSearch(v.name);
         setShowVendorSuggestions(false);
     };
+
+    // Trigger coordinate updates
+    useEffect(() => {
+        if (showVendorSuggestions) updatePortalCoords(vendorTriggerRef, setVendorCoords);
+    }, [showVendorSuggestions]);
+
+    useEffect(() => {
+        if (isCategoryDropdownOpen) updatePortalCoords(categoryTriggerRef, setCategoryCoords);
+    }, [isCategoryDropdownOpen]);
+
+    useEffect(() => {
+        if (isUnitDropdownOpen) updatePortalCoords(unitTriggerRef, setUnitCoords);
+    }, [isUnitDropdownOpen]);
     const handleAdjustStock = async (amount: number, type: 'IN' | 'OUT') => {
         const adjustment = type === 'IN' ? amount : -amount;
         const newQty = Math.max(0, formData.quantity + adjustment);
@@ -249,7 +288,7 @@ export default function ItemDetailsPage() {
             setAdjQty(0);
             setAdjNote("");
             setAdjExpiry("");
-            setAdjDate(new Date().toISOString().split('T')[0]);
+            setAdjDate(format(new Date(), 'yyyy-MM-dd'));
             setShowNote(false);
         } catch (err: any) {
             console.error('Error adjusting stock:', err);
@@ -399,7 +438,7 @@ export default function ItemDetailsPage() {
             {/* Page Header Area */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-2">
                 <div className="flex items-center gap-5">
-                    <Link href="/inventory">
+                    <Link href={`/inventory?tab=${formData.item_type}`}>
                         <button className="w-11 h-11 rounded-full border border-[#E0E5F2] bg-white flex items-center justify-center text-[#1B2559] hover:shadow-md transition-all shadow-sm group">
                             <ArrowLeft className="w-5.5 h-5.5 transition-transform group-hover:-translate-x-0.5" />
                         </button>
@@ -473,22 +512,34 @@ export default function ItemDetailsPage() {
                                                 setFormData({ ...formData, vendorName: e.target.value });
                                             }}
                                             className="w-full bg-[#F4F7FE]/50 border-none rounded-lg px-5 py-3 text-[12px] font-medium text-[#1B2559] outline-none placeholder:text-[#A3AED0] focus:ring-2 focus:ring-[#3B82F6]/10 transition-all font-kantumruy"
+                                            ref={vendorTriggerRef}
                                         />
                                         <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A3AED0]" />
 
-                                        {showVendorSuggestions && suggestions.length > 0 && (
-                                            <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#E0E5F2] rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                                                {suggestions.map((v) => (
-                                                    <button
-                                                        key={v.name}
-                                                        onClick={() => selectVendor(v)}
-                                                        className="w-full px-5 py-3 text-left hover:bg-[#F4F7FE] transition-colors flex flex-col gap-0.5"
-                                                    >
-                                                        <span className="text-[12px] font-medium text-[#1B2559]">{v.name}</span>
-                                                        <span className="text-[10px] text-[#A3AED0] font-medium">{v.contact} • {v.phone}</span>
-                                                    </button>
-                                                ))}
-                                            </div>
+                                        {showVendorSuggestions && suggestions.length > 0 && mounted && createPortal(
+                                            <>
+                                                <div className="fixed inset-0 z-[9998]" onClick={() => setShowVendorSuggestions(false)} />
+                                                <div
+                                                    className="fixed z-[9999] bg-white border border-[#E0E5F2] rounded-lg shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                                                    style={{
+                                                        top: `${vendorCoords.top + 8}px`,
+                                                        left: `${vendorCoords.left}px`,
+                                                        width: `${vendorCoords.width}px`
+                                                    }}
+                                                >
+                                                    {suggestions.map((v) => (
+                                                        <button
+                                                            key={v.name}
+                                                            onClick={() => selectVendor(v)}
+                                                            className="w-full px-5 py-3 text-left hover:bg-[#F4F7FE] transition-colors flex flex-col gap-0.5"
+                                                        >
+                                                            <span className="text-[12px] font-medium text-[#1B2559]">{v.name}</span>
+                                                            <span className="text-[10px] text-[#A3AED0] font-medium">{v.contact} • {v.phone}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </>,
+                                            document.body
                                         )}
                                     </div>
                                 </div>
@@ -582,12 +633,20 @@ export default function ItemDetailsPage() {
                                                 setIsCategoryDropdownOpen(true);
                                             }}
                                             className="w-full bg-[#F4F7FE]/50 rounded-lg px-5 py-3 text-[12px] font-medium text-[#1B2559] outline-none hover:bg-[#F4F7FE]/80 transition-all border border-transparent focus:border-[#3B82F6]/20"
+                                            ref={categoryTriggerRef}
                                         />
                                         <ChevronDown className={cn("absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A3AED0] transition-transform pointer-events-none", isCategoryDropdownOpen && "rotate-180")} />
-                                        {isCategoryDropdownOpen && (
+                                        {isCategoryDropdownOpen && mounted && createPortal(
                                             <>
-                                                <div className="fixed inset-0 z-40" onClick={() => setIsCategoryDropdownOpen(false)} />
-                                                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#E0E5F2] rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                                <div className="fixed inset-0 z-[9998]" onClick={() => setIsCategoryDropdownOpen(false)} />
+                                                <div
+                                                    className="fixed z-[9999] mb-4 bg-white border border-[#E0E5F2] rounded-lg shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                                                    style={{
+                                                        top: `${categoryCoords.top + 8}px`,
+                                                        left: `${categoryCoords.left}px`,
+                                                        width: `${categoryCoords.width}px`
+                                                    }}
+                                                >
                                                     <div className="max-h-[200px] overflow-y-auto">
                                                         {dbCategories
                                                             .filter(cat => !formData.category || cat.toLowerCase().includes(formData.category.toLowerCase()))
@@ -603,7 +662,8 @@ export default function ItemDetailsPage() {
                                                             ))}
                                                     </div>
                                                 </div>
-                                            </>
+                                            </>,
+                                            document.body
                                         )}
                                     </div>
                                 </div>
@@ -663,12 +723,20 @@ export default function ItemDetailsPage() {
                                                     onFocus={() => setIsUnitDropdownOpen(true)}
                                                     onChange={(e) => { setFormData({ ...formData, unit: e.target.value }); setIsUnitDropdownOpen(true); }}
                                                     className="w-full bg-[#F4F7FE]/50 rounded-lg px-3 py-3 text-[12px] font-medium text-[#1B2559] outline-none hover:bg-[#F4F7FE]/80 transition-all border border-transparent focus:border-[#3B82F6]/20"
+                                                    ref={unitTriggerRef}
                                                 />
                                                 <ChevronDown className={cn("absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A3AED0] pointer-events-none transition-transform", isUnitDropdownOpen && "rotate-180")} />
-                                                {isUnitDropdownOpen && (
+                                                {isUnitDropdownOpen && mounted && createPortal(
                                                     <>
-                                                        <div className="fixed inset-0 z-40" onClick={() => setIsUnitDropdownOpen(false)} />
-                                                        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#E0E5F2] rounded-lg shadow-xl z-50 overflow-hidden">
+                                                        <div className="fixed inset-0 z-[9998]" onClick={() => setIsUnitDropdownOpen(false)} />
+                                                        <div
+                                                            className="fixed z-[9999] mt-2 bg-white border border-[#E0E5F2] rounded-lg shadow-xl overflow-hidden"
+                                                            style={{
+                                                                top: `${unitCoords.top + 8}px`,
+                                                                left: `${unitCoords.left}px`,
+                                                                width: `${unitCoords.width}px`
+                                                            }}
+                                                        >
                                                             <div className="max-h-[200px] overflow-y-auto">
                                                                 {dbUnits.filter(u => !formData.unit || u.toLowerCase().includes(formData.unit.toLowerCase())).map(u => (
                                                                     <button key={u} type="button" onClick={() => { setFormData({ ...formData, unit: u }); setIsUnitDropdownOpen(false); }} className={cn("w-full px-5 py-2.5 text-left text-[12px] font-medium", formData.unit === u ? "text-[#3B82F6] bg-[#F4F7FE]/50" : "text-[#1B2559] hover:bg-[#F4F7FE]")}>
@@ -677,7 +745,8 @@ export default function ItemDetailsPage() {
                                                                 ))}
                                                             </div>
                                                         </div>
-                                                    </>
+                                                    </>,
+                                                    document.body
                                                 )}
                                             </div>
                                         </div>
@@ -722,7 +791,7 @@ export default function ItemDetailsPage() {
                             <label className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Adjustment Date</label>
                             <DatePicker
                                 value={adjDate || undefined}
-                                onChange={(date) => setAdjDate(date.toISOString().split('T')[0])}
+                                onChange={(date) => setAdjDate(format(date, 'yyyy-MM-dd'))}
                                 format="dd/MM/yyyy"
                                 triggerClassName="bg-[#F4F7FE]/50 border-[#F4F7FE] hover:bg-[#F4F7FE]/80 h-[36px] px-4"
                             />
@@ -758,7 +827,7 @@ export default function ItemDetailsPage() {
                             <label className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest pl-1">Batch Expiry Date</label>
                             <DatePicker
                                 value={adjExpiry || undefined}
-                                onChange={(date) => setAdjExpiry(date.toISOString().split('T')[0])}
+                                onChange={(date) => setAdjExpiry(format(date, 'yyyy-MM-dd'))}
                                 placeholder="Optional"
                                 format="dd/MM/yyyy"
                                 triggerClassName="bg-[#F4F7FE]/50 border-[#F4F7FE] hover:bg-[#F4F7FE]/80 h-[36px] px-4"
@@ -1026,12 +1095,34 @@ export default function ItemDetailsPage() {
                                                 <button
                                                     onClick={async () => {
                                                         if (!confirm('Delete this transaction record?')) return;
-                                                        const { error } = await supabase
-                                                            .from('inventory_transactions')
-                                                            .delete()
-                                                            .eq('id', txn.id);
-                                                        if (!error) {
+
+                                                        try {
+                                                            // 1. Calculate new stock level (revert the change)
+                                                            const revertedQty = Math.max(0, formData.quantity - txn.quantity_change);
+
+                                                            // 2. Update inventory table
+                                                            const { error: updateError } = await supabase
+                                                                .from('inventory')
+                                                                .update({ stock_level: revertedQty })
+                                                                .eq('id', id);
+
+                                                            if (updateError) throw updateError;
+
+                                                            // 3. Delete the transaction record
+                                                            const { error: deleteError } = await supabase
+                                                                .from('inventory_transactions')
+                                                                .delete()
+                                                                .eq('id', txn.id);
+
+                                                            if (deleteError) throw deleteError;
+
+                                                            // 4. Update local state
+                                                            setFormData(prev => ({ ...prev, quantity: revertedQty }));
                                                             setTransactions(prev => prev.filter(t => t.id !== txn.id));
+
+                                                        } catch (err: any) {
+                                                            console.error("Error deleting transaction:", err);
+                                                            alert("Failed to delete transaction: " + err.message);
                                                         }
                                                     }}
                                                     className="p-1.5 text-[#A3AED0] hover:text-[#EE5D50] hover:bg-[#EE5D50]/10 rounded-lg transition-all"

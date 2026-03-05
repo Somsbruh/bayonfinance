@@ -26,7 +26,19 @@ export default function DatePicker({
     triggerClassName
 }: DatePickerProps) {
     const [isOpen, setIsOpen] = useState(false);
-    const [viewDate, setViewDate] = useState(value ? new Date(value) : new Date());
+
+    // Process input value to avoid timezone shifts when it's a string like "2026-02-20"
+    const getSafeDate = (val?: Date | string) => {
+        if (!val) return new Date();
+        if (typeof val === 'string' && val.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            // YYYY-MM-DD string, parse as local to prevent shift
+            const [y, m, d] = val.split('-');
+            return new Date(Number(y), Number(m) - 1, Number(d));
+        }
+        return new Date(val);
+    };
+
+    const [viewDate, setViewDate] = useState(getSafeDate(value));
     const [mounted, setMounted] = useState(false);
     const [showMonthPicker, setShowMonthPicker] = useState(false);
     const [showYearPicker, setShowYearPicker] = useState(false);
@@ -36,7 +48,7 @@ export default function DatePicker({
     const yearListRef = useRef<HTMLDivElement>(null);
     const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
 
-    const selectedDate = value ? new Date(value) : null;
+    const selectedDate = value ? getSafeDate(value) : null;
 
     useEffect(() => {
         setMounted(true);
@@ -50,7 +62,7 @@ export default function DatePicker({
 
     useEffect(() => {
         if (value) {
-            setViewDate(new Date(value));
+            setViewDate(getSafeDate(value));
         }
     }, [value]);
 

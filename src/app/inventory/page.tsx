@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, Suspense } from "react";
 import {
     Package, Plus, Search, Filter, MoreVertical,
-    Building2, DollarSign, CheckCircle2,
+    Building2, CheckCircle2,
     ArrowUpDown, Check, ArrowLeftRight, Columns3, ChevronDown, ZoomIn
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -256,6 +256,24 @@ function InventoryPageInner() {
         }
     };
 
+    const scrollToCategory = (category: string) => {
+        const el = document.getElementById(`category-${category.replace(/\s+/g, '-')}`);
+        if (el) {
+            setCollapsedCategories(prev => {
+                const next = new Set(prev);
+                Array.from(new Set(filteredItems.map(i => i.category))).forEach(cat => {
+                    if ((cat || "Uncategorized") === category) {
+                        next.delete(cat);
+                    }
+                });
+                return next;
+            });
+            setTimeout(() => {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 50);
+        }
+    };
+
     const stats = useMemo(() => {
         let currentItems = items;
         if (activeTab === 'Medicine') currentItems = items.filter(i => i.item_type === 'medicine');
@@ -402,9 +420,7 @@ function InventoryPageInner() {
                 <div className="flex flex-col lg:flex-row items-center gap-7 pt-0">
                     {/* Asset Value Section */}
                     <div className="flex items-center gap-4">
-                        <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center border border-[#E0E5F2] shadow-sm shrink-0">
-                            <DollarSign className="w-5.5 h-5.5 text-[#3B82F6]" />
-                        </div>
+
                         <div>
                             <p className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest mb-0.5">Total Asset Value</p>
                             <h2 className="text-3xl font-medium text-[#1B2559] tracking-tighter leading-none">
@@ -582,181 +598,218 @@ function InventoryPageInner() {
 
             {/* Content Area */}
             {activeTab === 'Medicine' || activeTab === 'Consumable Medical' || activeTab === 'Inventory' ? (
-                <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    {Array.from(new Set(filteredItems.map(i => i.category))).map((category) => (
-                        <div key={category} className="space-y-4">
-                            <button
-                                onClick={() => toggleCategory(category)}
-                                className="w-full px-4 flex items-center gap-4 group text-left"
-                            >
-                                <h3 className="text-[30px] font-black uppercase tracking-widest text-[#A3AED0] leading-none group-hover:text-[#1B2559] transition-colors">
-                                    {category || "Uncategorized"}
-                                </h3>
-                                <div className="h-px flex-1 bg-[#E0E5F2] opacity-50" />
-                                <ChevronDown className={cn(
-                                    "w-5 h-5 text-[#A3AED0] shrink-0 transition-transform duration-300",
-                                    collapsedCategories.has(category) ? "-rotate-90" : "rotate-0"
-                                )} />
-                            </button>
+                <div className="flex gap-2 items-start animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
+                    {/* Sticky Sidebar (Hover Drawer) */}
+                    <div className="hidden lg:block w-4 shrink-0 sticky top-[240px] z-40 group h-0 mt-8">
+                        {/* Invisible larger hit area for hover */}
+                        <div className="absolute top-0 -left-6 w-12 h-[60vh] bg-transparent cursor-pointer z-10" />
 
-                            {/* Animated collapsible with scale, fade, and CSS grid trick: 0fr ↔ 1fr */}
+                        {/* Inactive Line Indicator */}
+                        <div className="absolute top-10 left-0 w-1.5 h-32 bg-[#E0E5F2] group-hover:bg-[#3B82F6] rounded-full transition-all duration-300 transform origin-left" />
+
+                        {/* Expanded Sidebar Drawer */}
+                        <div className="absolute left-6 top-0 w-64 bg-white border border-[#E0E5F2] shadow-[10px_0_40px_-10px_rgba(0,0,0,0.1)] rounded-[20px] opacity-0 -translate-x-4 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto transition-all duration-300 overflow-hidden">
+                            <div className="p-3 space-y-1 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                                {Array.from(new Set(filteredItems.map(i => i.category))).map((category) => {
+                                    const count = filteredItems.filter(i => i.category === category).length;
+                                    return (
+                                        <button
+                                            key={category || "Uncategorized"}
+                                            onClick={() => scrollToCategory(category || "Uncategorized")}
+                                            className="w-full text-left px-4 py-3 rounded-xl hover:bg-[#F4F7FE] transition-colors flex items-center justify-between group/link"
+                                        >
+                                            <span className="text-[12px] font-bold text-[#1B2559] truncate pr-2">{category || "Uncategorized"}</span>
+                                            <span className="text-[10px] font-black text-[#A3AED0] bg-white border border-[#E0E5F2] group-hover/link:border-[#3B82F6]/30 group-hover/link:text-[#3B82F6] px-2.5 py-0.5 rounded-[10px] transition-all shrink-0">
+                                                {count} {count === 1 ? 'item' : 'items'}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Main List */}
+                    <div className="flex-1 min-w-0 space-y-10 lg:pl-6 pb-20">
+                        {Array.from(new Set(filteredItems.map(i => i.category))).map((category) => (
                             <div
-                                style={{
-                                    display: 'grid',
-                                    gridTemplateRows: collapsedCategories.has(category) ? '0fr' : '1fr',
-                                    opacity: collapsedCategories.has(category) ? 0 : 1,
-                                    transition: 'all 500ms cubic-bezier(0.4, 0, 0.2, 1)',
-                                }}
+                                key={category}
+                                id={`category-${(category || "Uncategorized").replace(/\s+/g, '-')}`}
+                                className="space-y-4 scroll-m-[240px]"
                             >
-                                <div className="overflow-hidden">
-                                    <div
-                                        className={cn(
-                                            "bg-white rounded-lg border border-[#E0E5F2] shadow-sm overflow-hidden transition-all duration-500 transform origin-top",
-                                            collapsedCategories.has(category) ? "scale-[0.98] -translate-y-4" : "scale-100 translate-y-0"
-                                        )}
-                                    >
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-left">
-                                                <thead>
-                                                    <tr className="border-b border-[#F4F7FE]">
-                                                        <th className="px-5 py-5 w-10">
-                                                            <div className="w-5 h-5 rounded-md border-2 border-[#E0E5F2] flex items-center justify-center bg-white cursor-pointer" onClick={toggleSelectAll}>
-                                                                {selectedItems.length === filteredItems.length && filteredItems.length > 0 && <Check className="w-3.5 h-3.5 text-[#3B82F6]" />}
-                                                            </div>
-                                                        </th>
-                                                        <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Name</span></th>
-                                                        {showExtraColumns && <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">SKU</span></th>}
-                                                        {showExtraColumns && <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Vendor</span></th>}
-                                                        <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Stock Rm</span></th>
-                                                        {activeTab === 'Medicine' && <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Front Dsk</span></th>}
-                                                        <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Status</span></th>
-                                                        {showExtraColumns && <th className="px-5 py-5 text-right"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">{activeFilter === 'last-adjusted' ? 'Last Adjusted' : 'Asset Value'}</span></th>}
-                                                        <th className="px-5 py-5 w-20"></th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-[#F4F7FE]">
-                                                    {filteredItems.filter(i => i.category === category).map((item) => (
-                                                        <tr key={item.id} className="hover:bg-[#F4F7FE]/20 transition-colors group">
-                                                            <td className="px-5 py-4">
-                                                                <div
-                                                                    onClick={() => toggleSelectItem(item.id)}
-                                                                    className={cn(
-                                                                        "w-5 h-5 rounded-md border-2 border-[#E0E5F2] flex items-center justify-center transition-all cursor-pointer",
-                                                                        selectedItems.includes(item.id) ? "bg-[#3B82F6] border-[#3B82F6]" : "bg-white group-hover:border-[#3B82F6]/50"
-                                                                    )}
-                                                                >
-                                                                    {selectedItems.includes(item.id) && <Check className="w-3.5 h-3.5 text-white" />}
+                                <button
+                                    onClick={() => toggleCategory(category)}
+                                    className="w-full px-4 flex items-center gap-4 group text-left"
+                                >
+                                    <h3 className="text-[30px] font-black uppercase tracking-widest text-[#A3AED0] leading-none group-hover:text-[#1B2559] transition-colors">
+                                        {category || "Uncategorized"}
+                                    </h3>
+                                    <div className="h-px flex-1 bg-[#E0E5F2] opacity-50" />
+                                    <ChevronDown className={cn(
+                                        "w-5 h-5 text-[#A3AED0] shrink-0 transition-transform duration-150",
+                                        collapsedCategories.has(category) ? "-rotate-90" : "rotate-0"
+                                    )} />
+                                </button>
+
+                                {/* Animated collapsible with scale, fade, and CSS grid trick: 0fr ↔ 1fr */}
+                                <div
+                                    style={{
+                                        display: 'grid',
+                                        gridTemplateRows: collapsedCategories.has(category) ? '0fr' : '1fr',
+                                        opacity: collapsedCategories.has(category) ? 0 : 1,
+                                        transition: 'all 150ms cubic-bezier(0.4, 0, 0.2, 1)',
+                                    }}
+                                >
+                                    <div className="overflow-hidden">
+                                        <div
+                                            className={cn(
+                                                "bg-white rounded-lg border border-[#E0E5F2] shadow-sm overflow-hidden transition-all duration-150 transform origin-top",
+                                                collapsedCategories.has(category) ? "scale-[0.98] -translate-y-4" : "scale-100 translate-y-0"
+                                            )}
+                                        >
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-left">
+                                                    <thead>
+                                                        <tr className="border-b border-[#F4F7FE]">
+                                                            <th className="px-5 py-5 w-10">
+                                                                <div className="w-5 h-5 rounded-md border-2 border-[#E0E5F2] flex items-center justify-center bg-white cursor-pointer" onClick={toggleSelectAll}>
+                                                                    {selectedItems.length === filteredItems.length && filteredItems.length > 0 && <Check className="w-3.5 h-3.5 text-[#3B82F6]" />}
                                                                 </div>
-                                                            </td>
-                                                            <td className="px-5 py-4">
-                                                                <Link href={`/inventory/${item.id}`} className="flex flex-col group/name cursor-pointer">
-                                                                    <span
-                                                                        className="font-bold text-[#1B2559] group-hover/name:text-[#3B82F6] leading-tight font-kantumruy transition-all duration-300"
-                                                                        style={{ fontSize: `${nameFontSize}px` }}
-                                                                    >
-                                                                        {item.name}
-                                                                    </span>
-                                                                    <span className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-tighter mt-0.5">{item.unit}</span>
-                                                                </Link>
-                                                            </td>
-                                                            {showExtraColumns && (
-                                                                <td className="px-5 py-4">
-                                                                    <span className="text-[12px] font-medium text-[#1B2559]">{item.sku || '—'}</span>
-                                                                </td>
-                                                            )}
-                                                            {showExtraColumns && (
-                                                                <td className="px-5 py-4">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <div className="w-7 h-7 bg-[#F4F7FE] rounded-lg flex items-center justify-center shrink-0">
-                                                                            <Building2 className="w-3.5 h-3.5 text-[#3B82F6]" />
-                                                                        </div>
-                                                                        <span className="text-[12px] font-medium text-[#1B2559]">{item.vendor || '—'}</span>
-                                                                    </div>
-                                                                </td>
-                                                            )}
-                                                            <td className="px-5 py-4">
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-[13px] font-bold text-[#1B2559]">{item.stock_level}</span>
-                                                                </div>
-                                                            </td>
-                                                            {activeTab === 'Medicine' && (
-                                                                <td className="px-5 py-4">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="text-[13px] font-bold text-[#3B82F6]">{item.reception_stock || 0}</span>
-                                                                    </div>
-                                                                </td>
-                                                            )}
-                                                            <td className="px-5 py-4">
-                                                                <div className={cn(
-                                                                    "inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-tight",
-                                                                    item.status === 'IN STOCK' ? "text-[#19D5C5]" :
-                                                                        item.status === 'LOW STOCK' ? "text-[#FFB547]" : "text-[#EE5D50]"
-                                                                )}>
-                                                                    <div className={cn(
-                                                                        "w-2 h-2 rounded-full",
-                                                                        item.status === 'IN STOCK' ? "bg-[#19D5C5]" :
-                                                                            item.status === 'LOW STOCK' ? "bg-[#FFB547]" : "bg-[#EE5D50]"
-                                                                    )} />
-                                                                    {item.status}
-                                                                </div>
-                                                            </td>
-                                                            {showExtraColumns && (
-                                                                <td className="px-5 py-4 text-right">
-                                                                    {activeFilter === 'last-adjusted' ? (
-                                                                        <span className="text-[12px] font-medium text-[#A3AED0]">
-                                                                            {item.last_stock_in
-                                                                                ? new Date(item.last_stock_in).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-                                                                                : '—'}
-                                                                        </span>
-                                                                    ) : (
-                                                                        <span className="text-[12px] font-medium text-[#1B2559]">${(item.stock_level * item.sell_price).toLocaleString()}</span>
-                                                                    )}
-                                                                </td>
-                                                            )}
-                                                            <td className="px-5 py-4 text-right">
-                                                                <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                    {activeTab === 'Medicine' && (
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                if (isReadOnly) return alert("Demo Mode: Action not allowed");
-                                                                                setInternalTransferItem(item);
-                                                                            }}
-                                                                            title="Transfer stock between Stock Room and Front Desk"
-                                                                            className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white hover:bg-purple-600 transition-all bg-purple-500 rounded-lg flex items-center gap-1 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                        >
-                                                                            <ArrowLeftRight className="w-3 h-3" />
-                                                                            Move
-                                                                        </button>
-                                                                    )}
-                                                                    {branches.length > 1 && (
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                if (isReadOnly) return alert("Demo Mode: Action not allowed");
-                                                                                setTransferItem(item);
-                                                                            }}
-                                                                            title="Transfer to another branch"
-                                                                            className="p-1.5 text-[#A3AED0] hover:text-[#6366F1] transition-all bg-[#F4F7FE]/50 hover:bg-[#6366F1]/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                        >
-                                                                            <Building2 className="w-4 h-4" />
-                                                                        </button>
-                                                                    )}
-                                                                    <Link href={`/inventory/${item.id}`}>
-                                                                        <button className="p-1.5 text-[#A3AED0] hover:text-[#3B82F6] transition-all bg-[#F4F7FE]/50 rounded-lg">
-                                                                            <MoreVertical className="w-4 h-4" />
-                                                                        </button>
-                                                                    </Link>
-                                                                </div>
-                                                            </td>
+                                                            </th>
+                                                            <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Name</span></th>
+                                                            {showExtraColumns && <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">SKU</span></th>}
+                                                            {showExtraColumns && <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Vendor</span></th>}
+                                                            <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Stock Rm</span></th>
+                                                            {activeTab === 'Medicine' && <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Front Dsk</span></th>}
+                                                            <th className="px-5 py-5"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">Status</span></th>
+                                                            {showExtraColumns && <th className="px-5 py-5 text-right"><span className="text-[11px] font-medium text-[#A3AED0] uppercase tracking-widest">{activeFilter === 'last-adjusted' ? 'Last Adjusted' : 'Asset Value'}</span></th>}
+                                                            <th className="px-5 py-5 w-20"></th>
                                                         </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-[#F4F7FE]">
+                                                        {filteredItems.filter(i => i.category === category).map((item) => (
+                                                            <tr key={item.id} className="hover:bg-[#F4F7FE]/20 transition-colors group">
+                                                                <td className="px-5 py-4">
+                                                                    <div
+                                                                        onClick={() => toggleSelectItem(item.id)}
+                                                                        className={cn(
+                                                                            "w-5 h-5 rounded-md border-2 border-[#E0E5F2] flex items-center justify-center transition-all cursor-pointer",
+                                                                            selectedItems.includes(item.id) ? "bg-[#3B82F6] border-[#3B82F6]" : "bg-white group-hover:border-[#3B82F6]/50"
+                                                                        )}
+                                                                    >
+                                                                        {selectedItems.includes(item.id) && <Check className="w-3.5 h-3.5 text-white" />}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-5 py-4">
+                                                                    <Link href={`/inventory/${item.id}`} className="flex flex-col group/name cursor-pointer">
+                                                                        <span
+                                                                            className="font-bold text-[#1B2559] group-hover/name:text-[#3B82F6] leading-tight font-kantumruy transition-all duration-300"
+                                                                            style={{ fontSize: `${nameFontSize}px` }}
+                                                                        >
+                                                                            {item.name}
+                                                                        </span>
+                                                                        <span className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-tighter mt-0.5">{item.unit}</span>
+                                                                    </Link>
+                                                                </td>
+                                                                {showExtraColumns && (
+                                                                    <td className="px-5 py-4">
+                                                                        <span className="text-[12px] font-medium text-[#1B2559]">{item.sku || '—'}</span>
+                                                                    </td>
+                                                                )}
+                                                                {showExtraColumns && (
+                                                                    <td className="px-5 py-4">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <div className="w-7 h-7 bg-[#F4F7FE] rounded-lg flex items-center justify-center shrink-0">
+                                                                                <Building2 className="w-3.5 h-3.5 text-[#3B82F6]" />
+                                                                            </div>
+                                                                            <span className="text-[12px] font-medium text-[#1B2559]">{item.vendor || '—'}</span>
+                                                                        </div>
+                                                                    </td>
+                                                                )}
+                                                                <td className="px-5 py-4">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-[13px] font-bold text-[#1B2559]">{item.stock_level}</span>
+                                                                    </div>
+                                                                </td>
+                                                                {activeTab === 'Medicine' && (
+                                                                    <td className="px-5 py-4">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-[13px] font-bold text-[#3B82F6]">{item.reception_stock || 0}</span>
+                                                                        </div>
+                                                                    </td>
+                                                                )}
+                                                                <td className="px-5 py-4">
+                                                                    <div className={cn(
+                                                                        "inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-tight",
+                                                                        item.status === 'IN STOCK' ? "text-[#19D5C5]" :
+                                                                            item.status === 'LOW STOCK' ? "text-[#FFB547]" : "text-[#EE5D50]"
+                                                                    )}>
+                                                                        <div className={cn(
+                                                                            "w-2 h-2 rounded-full",
+                                                                            item.status === 'IN STOCK' ? "bg-[#19D5C5]" :
+                                                                                item.status === 'LOW STOCK' ? "bg-[#FFB547]" : "bg-[#EE5D50]"
+                                                                        )} />
+                                                                        {item.status}
+                                                                    </div>
+                                                                </td>
+                                                                {showExtraColumns && (
+                                                                    <td className="px-5 py-4 text-right">
+                                                                        {activeFilter === 'last-adjusted' ? (
+                                                                            <span className="text-[12px] font-medium text-[#A3AED0]">
+                                                                                {item.last_stock_in
+                                                                                    ? new Date(item.last_stock_in).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                                                                                    : '—'}
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="text-[12px] font-medium text-[#1B2559]">${(item.stock_level * item.sell_price).toLocaleString()}</span>
+                                                                        )}
+                                                                    </td>
+                                                                )}
+                                                                <td className="px-5 py-4 text-right">
+                                                                    <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                        {activeTab === 'Medicine' && (
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    if (isReadOnly) return alert("Demo Mode: Action not allowed");
+                                                                                    setInternalTransferItem(item);
+                                                                                }}
+                                                                                title="Transfer stock between Stock Room and Front Desk"
+                                                                                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white hover:bg-purple-600 transition-all bg-purple-500 rounded-lg flex items-center gap-1 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                            >
+                                                                                <ArrowLeftRight className="w-3 h-3" />
+                                                                                Move
+                                                                            </button>
+                                                                        )}
+                                                                        {branches.length > 1 && (
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    if (isReadOnly) return alert("Demo Mode: Action not allowed");
+                                                                                    setTransferItem(item);
+                                                                                }}
+                                                                                title="Transfer to another branch"
+                                                                                className="p-1.5 text-[#A3AED0] hover:text-[#6366F1] transition-all bg-[#F4F7FE]/50 hover:bg-[#6366F1]/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                            >
+                                                                                <Building2 className="w-4 h-4" />
+                                                                            </button>
+                                                                        )}
+                                                                        <Link href={`/inventory/${item.id}`}>
+                                                                            <button className="p-1.5 text-[#A3AED0] hover:text-[#3B82F6] transition-all bg-[#F4F7FE]/50 rounded-lg">
+                                                                                <MoreVertical className="w-4 h-4" />
+                                                                            </button>
+                                                                        </Link>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
             ) : activeTab === 'Order Stock' ? (
                 <div className="bg-white rounded-lg overflow-hidden border border-[#E0E5F2] shadow-sm">
