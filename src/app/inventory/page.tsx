@@ -581,7 +581,7 @@ function InventoryPageInner() {
                         </div>
 
                         <Link
-                            href={`/inventory/new?tab=${activeTab === 'Medicine' ? 'medicine' : 'inventory'}`}
+                            href={`/inventory/new?tab=${activeTab === 'Medicine' ? 'medicine' : activeTab === 'Consumable Medical' ? 'consumable' : 'inventory'}`}
                             onClick={(e) => { if (isReadOnly) { e.preventDefault(); alert("Demo Mode: Action not allowed"); } }}
                         >
                             <button

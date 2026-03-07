@@ -36,7 +36,7 @@ function CreateNewItemPageInner() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const tabParam = searchParams.get('tab') || 'medicine';
-    const itemType = tabParam === 'inventory' ? 'inventory' : 'medicine';
+    const itemType = tabParam === 'inventory' ? 'inventory' : tabParam === 'consumable' ? 'consumable_medical' : 'medicine';
     const { currentBranch } = useBranch();
 
     const [vendorSearch, setVendorSearch] = useState("");

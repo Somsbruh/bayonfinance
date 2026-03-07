@@ -145,6 +145,7 @@ export default function LedgerPage() {
   const [activeTimeDropdown, setActiveTimeDropdown] = useState<{ id: string, rect: { top: number, left: number, bottom: number } } | null>(null); // entry with open time picker
   const [activeDiscountPopover, setActiveDiscountPopover] = useState<{ entryId: string, rect: DOMRect } | null>(null);
   const [activeOdontogramEntry, setActiveOdontogramEntry] = useState<{ entryId: string, currentDescription: string, selectedTeeth: string[] } | null>(null);
+  const [activeOdontogramChartType, setActiveOdontogramChartType] = useState<'adult' | 'baby'>('adult');
 
   useEffect(() => {
     if (isAddingEntry && !quickPatient.appointment_date) {
@@ -765,71 +766,101 @@ export default function LedgerPage() {
         </div>
       )}
 
-      {/* Modern Bento Grid Stats - Massive Density Gain */}
-      {/* Intake / Stats Summary - Hidden in Calendar View for Full Screen experience */}
-      {
-        viewMode !== 'calendar' && (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-1.5 animate-in fade-in slide-in-from-top-2 duration-500">
-            {/* Main Portfolio Card - Total Earnings (Highlighted) */}
-            <div className="md:col-span-4 bg-gradient-to-br from-[#1B2559] to-[#2563EB] rounded-none p-5 text-white flex flex-col justify-between relative overflow-hidden group hover:shadow-xl hover:shadow-primary/20 transition-all">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-bl-full -mr-6 -mt-6 transition-transform group-hover:scale-110" />
+      {/* Insights Banner */}
+      {viewMode !== 'calendar' && (
+        <div className={cn("grid gap-4 mb-4 animate-in fade-in slide-in-from-top-2 duration-500", currentBranch?.name?.toLowerCase().includes('suong') ? "grid-cols-1 md:grid-cols-3 lg:grid-cols-5" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-4")}>
 
-              <div className="relative z-10">
-                <span className="text-[9px] font-medium text-white/50 uppercase tracking-widest">Global Earnings Cluster</span>
-                <h2 className="text-2xl font-medium text-white mt-1 tracking-tight">
-                  ${(currentEntries.reduce((acc, curr) => acc + (Number(curr.amount_paid) || 0), 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </h2>
+          {/* Total Revenue */}
+          <div className="bg-gradient-to-br from-[#1B2559] to-[#2563EB] rounded-[20px] p-5 text-white flex flex-col justify-between relative overflow-hidden group shadow-lg shadow-primary/20 xl:col-span-1">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-bl-full -mr-6 -mt-6 transition-transform group-hover:scale-110" />
+            <div className="relative z-10 flex flex-col h-full justify-between gap-4">
+              <span className="text-[14px] font-black text-white/90 uppercase tracking-widest leading-tight">TOTAL REVENUE</span>
+              <h2 className="text-3xl font-black text-white tracking-tighter leading-none mt-2">
+                ${(currentEntries.reduce((acc, curr) => acc + (Number(curr.amount_paid) || 0), 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </h2>
+            </div>
+          </div>
+
+          {currentBranch?.name?.toLowerCase().includes('suong') ? (
+            <>
+              {/* Acleda USD (Suong Only) */}
+              <div className="bg-white border border-[#E0E5F2] rounded-[20px] p-5 flex flex-col justify-between hover:border-blue-500/30 transition-all shadow-sm group xl:col-span-1">
+                <div className="flex flex-col h-full justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-colors shrink-0">
+                      <Zap className="w-4 h-4 text-blue-500 group-hover:text-white" />
+                    </div>
+                    <span className="text-[14px] font-black text-[#1B2559] uppercase tracking-widest leading-tight">ACLEDA USD</span>
+                  </div>
+                  <p className="text-3xl font-black text-[#1B2559] tracking-tighter leading-none">
+                    ${currentEntries.reduce((acc, curr) => acc + (Number(curr.paid_acleda_usd) || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
               </div>
 
-              <div className="relative z-10 flex items-center justify-between mt-4">
-                <div className="flex items-center gap-1.5 text-emerald-400 bg-white/10 px-2 py-0.5 rounded-none">
-                  <TrendingUp className="w-3 h-3" />
-                  <span className="text-[9px] font-medium">+12.5%</span>
+              {/* Acleda KHR (Suong Only) */}
+              <div className="bg-white border border-[#E0E5F2] rounded-[20px] p-5 flex flex-col justify-between hover:border-blue-500/30 transition-all shadow-sm group xl:col-span-1">
+                <div className="flex flex-col h-full justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-colors shrink-0">
+                      <Zap className="w-4 h-4 text-blue-500 group-hover:text-white" />
+                    </div>
+                    <span className="text-[14px] font-black text-[#1B2559] uppercase tracking-widest leading-tight">ACLEDA KHR</span>
+                  </div>
+                  <div className="flex items-end gap-1.5 mt-auto">
+                    <p className="text-3xl font-black text-[#1B2559] tracking-tighter leading-none">
+                      {currentEntries.reduce((acc, curr) => acc + (Number(curr.paid_acleda_khr) || 0), 0).toLocaleString()}
+                    </p>
+                    <span className="text-lg font-black text-[#A3AED0] mb-0.5">៛</span>
+                  </div>
                 </div>
+              </div>
+            </>
+          ) : (
+            /* ABA Transfers (Non-Suong) */
+            <div className="bg-white border border-[#E0E5F2] rounded-[20px] p-5 flex flex-col justify-between hover:border-blue-500/30 transition-all shadow-sm group xl:col-span-1">
+              <div className="flex flex-col h-full justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-colors shrink-0">
+                    <Zap className="w-4 h-4 text-blue-500 group-hover:text-white" />
+                  </div>
+                  <span className="text-[14px] font-black text-[#1B2559] uppercase tracking-widest leading-tight">ABA</span>
+                </div>
+                <p className="text-3xl font-black text-[#1B2559] tracking-tighter leading-none">${abaIntake.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
             </div>
+          )}
 
-            {/* Binary Stats (ABA + Cash) */}
-            <div className="md:col-span-5 grid grid-cols-2 gap-4">
-              <div className="bg-white border border-[#E0E5F2] rounded-none p-4 flex flex-col justify-between hover:border-blue-500/30 transition-all">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="w-7 h-7 rounded-none bg-blue-500/10 flex items-center justify-center text-blue-500">
-                    <Zap className="w-3.5 h-3.5" />
-                  </div>
-                  <span className="text-[8px] font-medium text-[#A3AED0] uppercase">ABA</span>
+          {/* USD Vault */}
+          <div className="bg-white border border-[#E0E5F2] rounded-[20px] p-5 flex flex-col justify-between hover:border-emerald-500/30 transition-all shadow-sm group xl:col-span-1">
+            <div className="flex flex-col h-full justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-white transition-colors shrink-0">
+                  <Wallet className="w-4 h-4 text-emerald-500 group-hover:text-white" />
                 </div>
-                <div>
-                  <p className="text-lg font-medium text-[#1B2559] tracking-tight">${abaIntake.toLocaleString()}</p>
-                </div>
+                <span className="text-[14px] font-black text-[#1B2559] uppercase tracking-widest leading-tight">USD</span>
               </div>
-              <div className="bg-white border border-[#E0E5F2] rounded-none p-4 flex flex-col justify-between hover:border-emerald-500/30 transition-all">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="w-7 h-7 rounded-none bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                    <Wallet className="w-3.5 h-3.5" />
-                  </div>
-                  <span className="text-[8px] font-medium text-[#A3AED0] uppercase">USD Cash</span>
-                </div>
-                <div>
-                  <p className="text-lg font-medium text-[#1B2559] tracking-tight">${usdCashIntake.toLocaleString()}</p>
-                </div>
-              </div>
+              <p className="text-3xl font-black text-[#1B2559] tracking-tighter leading-none">${usdCashIntake.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
+          </div>
 
-            {/* KHR Card - Standardized */}
-            <div className="md:col-span-3 bg-white border border-[#E0E5F2] rounded-none p-4 flex flex-col justify-between hover:border-indigo-500/30 transition-all">
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-7 h-7 rounded-none bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-                  <Target className="w-3.5 h-3.5" />
+          {/* KHR Vault */}
+          <div className="bg-white border border-[#E0E5F2] rounded-[20px] p-5 flex flex-col justify-between hover:border-indigo-500/30 transition-all shadow-sm group xl:col-span-1">
+            <div className="flex flex-col h-full justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-500 group-hover:text-white transition-colors shrink-0">
+                  <Target className="w-4 h-4 text-indigo-500 group-hover:text-white" />
                 </div>
-                <span className="text-[8px] font-medium text-[#A3AED0] uppercase">KHR Cash</span>
+                <span className="text-[14px] font-black text-[#1B2559] uppercase tracking-widest leading-tight">KHR</span>
               </div>
-              <div>
-                <p className="text-lg font-medium text-[#1B2559] tracking-tight">{khrCashIntake.toLocaleString()} <span className="text-xs font-medium text-[#A3AED0]">៛</span></p>
+              <div className="flex items-end gap-1.5 mt-auto">
+                <p className="text-3xl font-black text-[#1B2559] tracking-tighter leading-none">{khrCashIntake.toLocaleString()}</p>
+                <span className="text-lg font-black text-[#A3AED0] mb-0.5">៛</span>
               </div>
             </div>
           </div>
-        )
-      }
+        </div>
+      )}
 
       {/* Main Viewport */}
       {
@@ -3523,34 +3554,67 @@ export default function LedgerPage() {
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm shadow-2xl animate-in fade-in duration-200" onClick={(e) => {
             e.stopPropagation();
           }} />
-          <div className="bg-white rounded-[24px] shadow-2xl border border-slate-200 max-w-2xl w-full max-h-[90vh] flex flex-col relative z-10 animate-in zoom-in-95 duration-200">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white rounded-t-[24px]">
+          <div className="bg-white rounded-[24px] shadow-2xl border border-slate-200 max-w-2xl w-full h-[90vh] md:h-auto max-h-[90vh] flex flex-col relative z-10 animate-in zoom-in-95 duration-200">
+            <div className="p-5 flex items-center justify-between shrink-0 bg-white rounded-t-[24px]">
               <div>
-                <h3 className="text-xl font-bold text-[#1B2559] tracking-tight">Select Teeth</h3>
-                <p className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest mt-0.5">For {activeOdontogramEntry.currentDescription.split('#')[0]}</p>
+                <h3 className="text-xl font-bold text-[#1B2559] tracking-tight leading-none mb-1">Select Teeth</h3>
+                <p className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest leading-none">
+                  For {activeOdontogramEntry.currentDescription.split('#')[0]}
+                </p>
               </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActiveOdontogramEntry(null);
-                }}
-                className="p-2 hover:bg-[#F4F7FE] rounded-lg transition-colors text-[#A3AED0] hover:text-[#1B2559] border border-transparent hover:border-[#E0E5F2]"
-              >
-                <X className="w-5 h-5" />
-              </button>
+
+              <div className="flex items-center gap-4">
+                <div className="flex bg-[#F4F7FE] p-1 rounded-xl border border-[#E0E5F2]">
+                  <button
+                    onClick={() => setActiveOdontogramChartType('adult')}
+                    className={cn(
+                      "px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all",
+                      activeOdontogramChartType === 'adult'
+                        ? "bg-white text-primary shadow-sm border border-[#E0E5F2]"
+                        : "text-[#A3AED0] hover:text-[#1B2559]"
+                    )}
+                  >
+                    Adult
+                  </button>
+                  <button
+                    onClick={() => setActiveOdontogramChartType('baby')}
+                    className={cn(
+                      "px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all",
+                      activeOdontogramChartType === 'baby'
+                        ? "bg-white text-primary shadow-sm border border-[#E0E5F2]"
+                        : "text-[#A3AED0] hover:text-[#1B2559]"
+                    )}
+                  >
+                    Baby
+                  </button>
+                </div>
+
+                <div className="w-[1px] h-6 bg-slate-200" />
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveOdontogramEntry(null);
+                  }}
+                  className="p-2.5 hover:bg-[#F4F7FE] rounded-xl transition-all text-[#A3AED0] hover:text-[#1B2559] border border-transparent hover:border-[#E0E5F2]"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
-            <div className="flex-1 overflow-auto bg-[#F4F7FE]/50 p-6 min-h-[400px]">
+            <div className="flex-1 overflow-hidden bg-white px-2 py-2 md:px-6 md:py-6 min-h-[300px] flex flex-col">
               <OdontogramView
                 patientId="ledger"
                 initialSelectedTeeth={activeOdontogramEntry.selectedTeeth}
+                chartType={activeOdontogramChartType}
                 onSelectionChange={(teeth) => {
                   setActiveOdontogramEntry(prev => prev ? { ...prev, selectedTeeth: teeth } : null);
                 }}
               />
             </div>
 
-            <div className="p-5 border-t border-slate-100 flex items-center justify-between shrink-0 bg-white rounded-b-[24px]">
+            <div className="p-5 flex items-center justify-between shrink-0 bg-white rounded-b-[24px]">
               <div className="flex items-center gap-3">
                 <span className="text-[10px] font-medium text-[#A3AED0] uppercase tracking-widest">Selected:</span>
                 <div className="flex flex-wrap gap-1.5">
@@ -3576,16 +3640,64 @@ export default function LedgerPage() {
                   Cancel
                 </button>
                 <button
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.stopPropagation();
-                    const newDescription = activeOdontogramEntry.currentDescription.split('#')[0] +
-                      (activeOdontogramEntry.selectedTeeth.length > 0
-                        ? '#' + activeOdontogramEntry.selectedTeeth.join('#')
-                        : '');
+                    const bTeeth = ['51', '52', '53', '54', '55', '61', '62', '63', '64', '65', '71', '72', '73', '74', '75', '81', '82', '83', '84', '85'];
+                    let calculatedPrice = 0;
 
-                    handleUpdateEntry(activeOdontogramEntry.entryId, {
+                    const descLower = activeOdontogramEntry.currentDescription.toLowerCase();
+                    const isRCT = descLower.includes('rct') || descLower.includes('root canal');
+                    const isRedo = descLower.includes('redo');
+
+                    if (activeOdontogramEntry.selectedTeeth.length > 0) {
+                      for (const tooth of activeOdontogramEntry.selectedTeeth) {
+                        const isBaby = bTeeth.includes(tooth);
+                        const position = isBaby ? 0 : Number(tooth[1]);
+
+                        if (isRCT) {
+                          if (isBaby) {
+                            calculatedPrice += 50;
+                          } else {
+                            if (isRedo) {
+                              if (position >= 1 && position <= 4) calculatedPrice += 70;
+                              else if (position >= 5 && position <= 8) calculatedPrice += 90;
+                            } else {
+                              if (position >= 1 && position <= 4) calculatedPrice += 50;
+                              else if (position >= 5 && position <= 8) calculatedPrice += 70;
+                            }
+                          }
+                        } else {
+                          // Default / Extraction rules
+                          if (isBaby) {
+                            calculatedPrice += 15;
+                          } else {
+                            if (position >= 1 && position <= 4) calculatedPrice += 25;
+                            else if (position >= 5 && position <= 7) calculatedPrice += 40;
+                            else if (position === 8) calculatedPrice += 150;
+                          }
+                        }
+                      }
+                    }
+
+                    const baseDesc = activeOdontogramEntry.currentDescription.split(' #')[0].trim();
+                    const newDescription = activeOdontogramEntry.selectedTeeth.length > 0
+                      ? `${baseDesc} #${activeOdontogramEntry.selectedTeeth.join(' #')}`
+                      : baseDesc;
+
+                    const updatePayload: any = {
                       description: newDescription
-                    });
+                    };
+
+                    if (activeOdontogramEntry.selectedTeeth.length > 0) {
+                      updatePayload.unit_price = calculatedPrice;
+                      updatePayload.total_price = calculatedPrice;
+                      updatePayload.amount_remaining = calculatedPrice;
+
+                      // NOTE: If there are partial payments, amount_remaining should technically be calculatedPrice - amount_paid.
+                      // Assuming new selections happen before payment for now.
+                    }
+
+                    handleUpdateEntry(activeOdontogramEntry.entryId, updatePayload);
 
                     setActiveOdontogramEntry(null);
                   }}

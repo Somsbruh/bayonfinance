@@ -58,8 +58,13 @@ g[class^="teeth-"]:hover path:nth-of-type(2) {
 }
 
 .odontogram-tooltip {
-    box-shadow: 0 2px 8px #00000026;
-    backdrop-filter: blur(4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(8px);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #1B2559;
 }
 
 .Odontogram g[role="option"]:focus-visible {

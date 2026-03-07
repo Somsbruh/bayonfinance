@@ -118,9 +118,7 @@ export default function Sidebar() {
                                         bottom: renderAbove ? window.innerHeight - menuRect.top + 8 : 'auto',
                                         left: isCollapsed ? menuRect.right + 16 : menuRect.left
                                     }}>
-                                        <div className="px-4 py-2 text-[9px] font-medium text-[#A3AED0] uppercase tracking-widest border-b border-[#F4F7FE] mb-2">
-                                            Select System Node
-                                        </div>
+
                                         {branches.map(branch => (
                                             <button
                                                 key={branch.id}

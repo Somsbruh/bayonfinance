@@ -175,7 +175,6 @@ export function RevenueBreakdownChart({ data, title = "Income", selectedTimefram
                     </svg>
 
                     <div className="absolute inset-0 flex flex-col items-center justify-center mt-1 pointer-events-none">
-                        <span className="text-[7.5px] font-black text-[#8B95B7] mb-0.5 uppercase tracking-widest">Total {title}</span>
                         <span className="text-[16px] font-black text-[#1B2559] tracking-tighter leading-none">
                             ${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>

@@ -14,9 +14,9 @@ import {
     AlertCircle,
     ChevronRight,
     LayoutGrid,
-    Wallet,
     ShieldCheck
 } from "lucide-react";
+import { CashflowChart } from "@/components/CashflowChart";
 import { RevenueBreakdownChart } from "@/components/RevenueBreakdownChart";
 import { supabase } from "@/lib/supabase";
 import { useBranch } from "@/context/BranchContext";
@@ -521,31 +521,15 @@ export default function ReportsPage() {
                 </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-1">
-                <div className="bg-card border border-border rounded-3xl p-8 shadow-xl">
-                    <h3 className="text-lg font-medium mb-6">Revenue Growth</h3>
-                    <div className={cn(
-                        "h-64 flex items-end justify-between px-4",
-                        stats.chartData.length > 12 ? "gap-1" : "gap-2"
-                    )}>
-                        {stats.chartData.map((h, i) => {
-                            const max = Math.max(...stats.chartData, 1);
-                            const height = (h / max) * 100;
-                            return (
-                                <div key={i} className="flex-1 bg-primary/20 rounded-t-lg relative group transition-all hover:bg-primary/40" style={{ height: `${height}%` }}>
-                                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-popover text-popover-foreground text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                        ${h.toLocaleString()}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                    <div className="flex justify-between mt-4 text-[10px] text-muted-foreground font-medium uppercase tracking-widest px-2 overflow-x-auto no-scrollbar gap-1">
-                        {stats.chartLabels.map((label, i) => (
-                            <span key={i} className="flex-1 text-center min-w-[30px]">{label}</span>
-                        ))}
-                    </div>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-1 mt-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
+                <CashflowChart
+                    data={stats.chartData}
+                    labels={stats.chartLabels}
+                    timeframe={timeframe}
+                    onTimeframeChange={(t: string) => setTimeframe(t as '1' | '7' | '30' | '90' | '180' | '365')}
+                    totalRevenue={stats.periodRevenue}
+                    trend={4.51} // Assuming static trend for now or from calculated forecast
+                />
             </div>
         </div>
     );

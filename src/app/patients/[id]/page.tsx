@@ -139,6 +139,7 @@ function PatientDetailsContent() {
     const [isDocGeneratorOpen, setIsDocGeneratorOpen] = useState(false);
     const [portalLinkCopied, setPortalLinkCopied] = useState(false);
     const [activeTab, setActiveTab] = useState<'patient-info' | 'appointment-history' | 'payment-plans' | 'odontogram' | 'medical-record'>('appointment-history');
+    const [chartType, setChartType] = useState<'adult' | 'baby'>('adult');
     const [selectedBulkEntries, setSelectedBulkEntries] = useState<string[]>([]);
     const [bulkSettleData, setBulkSettleData] = useState({
         amount_aba: "",
@@ -1279,7 +1280,41 @@ function PatientDetailsContent() {
 
                     {/* Tab Content: Odontogram */}
                     {activeTab === 'odontogram' && (
-                        <OdontogramView patientId={id as string} />
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className="flex justify-end">
+                                <div className="flex bg-[#F4F7FE] p-1 rounded-xl border border-[#E0E5F2]">
+                                    <button
+                                        onClick={() => setChartType('adult')}
+                                        className={cn(
+                                            "px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all",
+                                            chartType === 'adult'
+                                                ? "bg-white text-primary shadow-sm border border-[#E0E5F2]"
+                                                : "text-[#A3AED0] hover:text-[#1B2559]"
+                                        )}
+                                    >
+                                        Adult
+                                    </button>
+                                    <button
+                                        onClick={() => setChartType('baby')}
+                                        className={cn(
+                                            "px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all",
+                                            chartType === 'baby'
+                                                ? "bg-white text-primary shadow-sm border border-[#E0E5F2]"
+                                                : "text-[#A3AED0] hover:text-[#1B2559]"
+                                        )}
+                                    >
+                                        Baby
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="card-premium p-10 min-h-[600px] flex items-center justify-center">
+                                <OdontogramView
+                                    patientId={id as string}
+                                    chartType={chartType}
+                                    onChartTypeChange={setChartType}
+                                />
+                            </div>
+                        </div>
                     )}
 
 
